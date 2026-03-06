@@ -1,0 +1,558 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║     SISTEMA DE GESTIÓN DE PRODUCCIÓN TEXTIL - VERSIÓN OPTIMIZADA v3.1        ║
+║                          GUÍA DE INSTALACIÓN                                  ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+CARACTERÍSTICAS DE OPTIMIZACIÓN:
+─────────────────────────────────────────────────────────────────────────────────
+* Caché en memoria (búsquedas 100x más rápidas)
+* Cálculos en VBA (no fórmulas masivas en Excel)
+* Arrays de datos (lectura/escritura optimizada)
+* Sin conexiones externas (totalmente local)
+* Bajo consumo de RAM (~50-100 MB)
+* Interfaz visual profesional
+
+═══════════════════════════════════════════════════════════════════════════════════
+PASO 1: INSTALAR LOS MÓDULOS VBA (6 módulos)
+═══════════════════════════════════════════════════════════════════════════════════
+
+1.1 Abrir Excel → Alt + F11
+1.2 Para cada archivo de módulo:
+    ├─ Insertar > Módulo (Ctrl + M)
+    ├─ Copiar TODO el contenido del archivo
+    ├─ Pegar en el nuevo módulo
+    └─ Verificar que NO hay errores de sintaxis
+
+ORDEN DE INSTALACIÓN (IMPORTANTE):
+─────────────────────────────────────────────────────────────────────────────────
+1. Modulo1_Inicializador_Optimizado.txt
+   └─ Sub InicializarSistema()
+
+2. Modulo2_Gestor_Datos_Maestros.txt
+   └─ Sub CargarCacheEnMemoria()
+
+3. Modulo3_Gestor_Asignaciones.txt
+   └─ Sub CrearAsignacion()
+
+4. Modulo4_Seleccion_Filas.txt
+   └─ Sub RegistrarFilaEnFormulario()
+
+5. Modulo5_Utilidades_Helpers.txt
+   └─ Sub AplicarFormatoAsignaciones()
+
+6. Modulo6_Gestor_Maestros.txt (NUEVO)
+   └─ Sub AbrirGestorOperarias()
+
+[OK] Verificación: En el editor VBA debes tener 6 módulos
+
+═══════════════════════════════════════════════════════════════════════════════════
+PASO 2: CREAR EL USERFORM (frmEditarAsignacion)
+═══════════════════════════════════════════════════════════════════════════════════
+
+2.1 En el editor VBA:
+    ├─ Insertar > UserForm
+    ├─ Se crea "UserForm1"
+    ├─ En propiedades (F4):
+    │  ├─ Name: frmEditarAsignacion
+    │  ├─ Caption: Editar Asignación Diaria
+    │  ├─ Width: 450
+    │  └─ Height: 600
+
+2.2 Agregar controles al formulario:
+    └─ Ver sección "CONTROLES DEL USERFORM" más abajo
+
+2.3 Pegar código del UserForm:
+    ├─ Doble clic en el UserForm (en el área gris)
+    ├─ Copiar: UserForm_Optimizado_frmEditarAsignacion.txt
+    ├─ Pegar TODO el código
+    └─ Cerrar el editor
+
+═══════════════════════════════════════════════════════════════════════════════════
+CONTROLES DEL USERFORM - ESTRUCTURA VISUAL
+═══════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────┐
+│  EDITAR ASIGNACIÓN / CREAR NUEVA ASIGNACIÓN                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ FECHA:                                                          │
+│ [txtFecha_____________________]                                │
+│                                                                 │
+│ OPERARIA:                                                       │
+│ ID: [cboOperaria________▼]  Nombre: [txtNombreOperaria] (BLQ)  │
+│                                                                 │
+│ REFERENCIA:                                                     │
+│ ID: [cboReferencia_______▼]  Nombre Referencia: [txtNombreRef] (BLQ)      │
+│                                                                 │
+│ LOTE & COLOR:                                                   │
+│ [cboLote________▼]  [cboColor_______▼]                        │
+│                                                                 │
+│ TALLA & TAREA:                                                  │
+│ [cboTalla_______▼]  [cboNumeroTarea______▼]                   │
+│                                                                 │
+│ NOMBRE TAREA:                                                   │
+│ [txtNombreTarea_______________________] (BLOQUEADO)            │
+│                                                                 │
+│ CANTIDAD & TIEMPO:                                              │
+│ Cantidad: [txtCantidad_____]  Tiempo Unit: [txtTiempo] (BLQ)  │
+│ Tiempo Total: [lblTiempoTotalSeg]                              │
+│    [lblTiempoTotalMin]                                         │
+│                                                                 │
+│ ESTADO:                                                         │
+│ [cboEstado_____________▼]  Unidades Completas: [txtUnit]      │
+│                                                                 │
+│ DATOS REALES:                                                   │
+│ Fecha Real: [txtFechaReal]  Tiempo Real (min): [txtTiempoReal] │
+│                                                                 │
+│ OBSERVACIONES:                                                  │
+│ [txtObservaciones_________________________]                    │
+│ [____________________________________MULTILINE]              │
+│                                                                 │
+│         [Guardar]      [Limpiar]      [Cancelar]               │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════════
+LISTA DETALLADA DE CONTROLES A AGREGAR
+═══════════════════════════════════════════════════════════════════════════════════
+
+┌─ FILA 1: FECHA ─────────────────────────────────────────────────┐
+│ Label: "Fecha:" Name=lblFecha, Caption="Fecha:"
+│ TextBox: Name = txtFecha, Width = 200, Height = 20
+└─────────────────────────────────────────────────────────────────┘
+
+┌─ FILA 2: OPERARIA ──────────────────────────────────────────────┐
+│ Label: "ID Operaria:" Name=lblIDOperaria, Caption="ID Operaria:"
+│ ComboBox: Name = cboOperaria, Width = 100, Height = 20
+│ Label: "Nombre:" Name=lblNombreOperaria, Caption="Nombre:"
+│ TextBox: Name = txtNombreOperaria, Width = 150, Height = 20
+│          Locked = True, BackColor = &H8000000F&
+└─────────────────────────────────────────────────────────────────┘
+
+┌─ FILA 3: REFERENCIA ────────────────────────────────────────────┐
+│ Label: "ID Referencia:" Name=lblIDReferencia, Caption="ID Referencia:"
+│ ComboBox: Name = cboReferencia, Width = 100, Height = 20
+│ Label: "Nombre:" Name=lblNombreReferencia, Caption="Nombre Referencia:"
+│ TextBox: Name = txtNombreReferencia, Width = 150, Height = 20
+│          Locked = True, BackColor = &H8000000F&
+└─────────────────────────────────────────────────────────────────┘
+
+┌─ FILA 4: LOTE Y COLOR ──────────────────────────────────────────┐
+│ Label: "Lote:" Name=lblLote, Caption="Lote:" Width = 80, Height = 20
+│ ComboBox: Name = cboLote, Width = 100, Height = 20
+│ Label: "Color:" Name=lblColor, Caption="Color:" Width = 80, Height = 20
+│ ComboBox: Name = cboColor, Width = 100, Height = 20
+└─────────────────────────────────────────────────────────────────┘
+
+┌─ FILA 5: TALLA Y TAREA ─────────────────────────────────────────┐
+│ Label: "Talla:" Name=lblTalla, Caption="Talla:" Width = 80, Height = 20
+│ ComboBox: Name = cboTalla, Width = 80, Height = 20
+│ Label: "Num Tarea:" Name=lblNumeroTarea, Caption="Num Tarea:" Width = 80, Height = 20
+│ ComboBox: Name = cboNumeroTarea, Width = 80, Height = 20
+└─────────────────────────────────────────────────────────────────┘
+
+┌─ FILA 6: NOMBRE TAREA ──────────────────────────────────────────┐
+│ Label: "Nombre Tarea:" Name=lblNombreTarea, Caption="Nombre Tarea:"
+│ TextBox: Name = txtNombreTarea, Width = 300, Height = 20
+│          Locked = True, BackColor = &H8000000F&
+└─────────────────────────────────────────────────────────────────┘
+
+┌─ FILA 7: CANTIDAD Y TIEMPO ─────────────────────────────────────┐
+│ Label: "Cantidad Unidades:" Name=lblCantidad, Caption="Cantidad:"
+│ TextBox: Name = txtCantidad, Width = 80, Height = 20
+│ Label: "Tiempo Unitario (seg):" Name=lblTiempoUnitario, Caption="Tiempo Unitario (seg):"
+│ TextBox: Name = txtTiempoUnitario, Width = 80, Height = 20
+│          Locked = True, BackColor = &H8000000F&
+└─────────────────────────────────────────────────────────────────┘
+
+┌─ FILA 8: TIEMPOS CALCULADOS ────────────────────────────────────┐
+│ Label: Name = lblTiempoTotalSegundos, Caption = "Tiempo Total: 0 seg", Width = 150
+│ Label: Name = lblTiempoTotalMinutos, Caption = "(0.00 min)", Width = 150
+└─────────────────────────────────────────────────────────────────┘
+
+┌─ FILA 9: ESTADO ────────────────────────────────────────────────┐
+│ Label: "Estado:" Name=lblEstado, Caption="Estado:"
+│ ComboBox: Name = cboEstado, Width = 120, Height = 20
+│ Label: "Unidades Completadas:" Name=lblUnidadesCompletadas, Caption="Unidades Completadas:"
+│ TextBox: Name = txtUnidadesCompletadas, Width = 80, Height = 20
+└─────────────────────────────────────────────────────────────────┘
+
+┌─ FILA 10: DATOS REALES (NUEVO) ─────────────────────────────────┐
+│ Label: "Fecha Real:" Name=lblFechaReal, Caption="Fecha Real:"
+│ TextBox: Name = txtFechaReal, Width = 80, Height = 20
+│ Label: "Tiempo Real (min):" Name=lblTiempoReal, Caption="Tiempo Real (min):"
+│ TextBox: Name = txtTiempoReal, Width = 80, Height = 20
+└─────────────────────────────────────────────────────────────────┘
+
+┌─ FILA 11: OBSERVACIONES ────────────────────────────────────────┐
+│ Label: "Observaciones:" Name=lblObservaciones, Caption="Observaciones:"
+│ TextBox: Name = txtObservaciones, Width = 400, Height = 80
+│          MultiLine = True, WordWrap = True
+└─────────────────────────────────────────────────────────────────┘
+
+┌─ FILA 12: BOTONES ──────────────────────────────────────────────┐
+│ CommandButton: Name = btnGuardar, Caption = "Guardar"
+│ CommandButton: Name = btnLimpiar, Caption = "Limpiar"
+│ CommandButton: Name = btnCancelar, Caption = "Cancelar"
+└─────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════════
+PASO 2.5: CREAR EL USERFORM DE MAESTROS (frmMaestros)
+═══════════════════════════════════════════════════════════════════════════════════
+
+Este formulario único servirá para llenar Operarias, Referencias, Tallas y Tareas.
+
+1.  Insertar > UserForm
+2.  Propiedades: Name = frmMaestros, Caption = "Gestión de Maestros", Height = 650
+
+┌─────────────────────────────────────────────────────────────────┐
+│ EDITAR REFERENCIAS                                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ ID Referencia: [ REF001 ] (Bloqueado)                           │
+│ Nombre Referencia: [ Camiseta Básica    ]                       │
+│ Descripción: [ Camiseta 100% algodón, cuello redondo ]          │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ Colores Disponibles: [+] [-]  Tallas Disponibles: [+] [-]       │
+│ ┌───────────────────┐         ┌───────────────────┐             │
+│ │ Rojo              │         │ S                 │             │
+│ │ Azul              │         │ M                 │             │
+│ │ Negro             │         │ L                 │             │
+│ └───────────────────┘         └───────────────────┘             │
+│                                                                 │
+│ Tareas (N°, Nombre, Tiempo): [+] [-]                            │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ 1   Costura lateral      120                                │ │
+│ │ 2   Costura hombros      180                                │ │
+│ │ 3   Ribete cuello        90                                 │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│                      [Guardar]      [Cancelar]                  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+3.  Agregar los siguientes controles:
+
+    '--- Controles Base (visibles según el maestro) ---
+    Label: Name=lbl1, Caption="Campo 1"
+    TextBox: Name=txt1
+    ComboBox: Name=cboRef (Dibujar encima de txt1, Visible=False)
+
+    Label: Name=lbl2, Caption="Campo 2"
+    TextBox: Name=txt2
+    ComboBox: Name=cboColor (Dibujar encima de txt2, Visible=False)
+
+    Label: Name=lbl3, Caption="Campo 3"
+    TextBox: Name=txt3
+    ComboBox: Name=cboTalla (Dibujar encima de txt3, Visible=False)
+
+    Label: Name=lbl4, Caption="Campo 4"
+    TextBox: Name=txt4
+
+    Label: Name=lbl5, Caption="Campo 5"
+    TextBox: Name=txt5
+
+    Label: Name=lbl6, Caption="Campo 6"
+    TextBox: Name=txt6
+
+    '--- Controles Detalle para Referencias (Visible=False por defecto) ---
+    Label: Name=lblColores, Caption="Colores Disponibles:"
+    ListBox: Name=lstColores, Height=100, Width=200
+    CommandButton: Name=btnAgregarColor, Caption="+", Width=25 BackColor=&H8000000D&
+    CommandButton: Name=btnQuitarColor, Caption="-", Width=25 BackColor=&H8000000F&
+
+    Label: Name=lblTallas, Caption="Tallas Disponibles:"
+    ListBox: Name=lstTallas, Height=100, Width=200
+    CommandButton: Name=btnAgregarTalla, Caption="+", Width=25 BackColor=&H8000000D&
+    CommandButton: Name=btnQuitarTalla, Caption="-", Width=25 BackColor=&H8000000F&
+
+    Label: Name=lblTareas, Caption="Tareas (N°, Nombre, Tiempo):"
+    ListBox: Name=lstTareas, Height=120, Width=350
+    CommandButton: Name=btnAgregarTarea, Caption="+", Width=25 BackColor=&H8000000D&
+    CommandButton: Name=btnQuitarTarea, Caption="-", Width=25 BackColor=&H8000000F&
+
+    '--- Botón de Lotes ---
+    CommandButton: Name=btnGestionarLotes, Caption="Gestionar Lotes", Width=120
+
+    '--- Botones Principales ---
+    CommandButton: Name=btnGuardar, Caption="Guardar"
+    CommandButton: Name=btnCancelar, Caption="Cancelar"
+
+4.  Pegar el código de UserForm_frmMaestros.txt
+
+═══════════════════════════════════════════════════════════════════════════════════
+PASO 2.6: CREAR EL USERFORM DE GESTIÓN DE LOTES (frmGestionLotes) - NUEVO
+═══════════════════════════════════════════════════════════════════════════════════
+
+Este formulario se abrirá desde el gestor de Referencias.
+
+1.  Insertar > UserForm
+2.  Propiedades: Name = frmGestionLotes, Caption = "Gestión de Lotes"
+3.  Agregar los siguientes controles:
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Gestión de Lotes para Referencia: [REF001]                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ ┌─Lote──┬─Color──┬─Talla─┬─Cantidad─┬─Estado──────────┐         │
+│ │ L001A │ Rojo   │ M     │ 150      │ EN PROCESO      │         │
+│ │ L001B │ Rojo   │ L     │ 200      │ PENDIENTE       │         │
+│ │ L002A │ Azul   │ M     │ 100      │ COMPLETADO      │         │
+│ └───────┴────────┴───────┴──────────┴─────────────────┘         │
+│                                                                 │
+│ [Nuevo Lote]  [Editar Lote]  [Eliminar Lote]      [Cerrar]      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+    ListBox: Name=lstLotes, Width=400, Height=200
+    CommandButton: Name=btnNuevoLote, Caption="Nuevo Lote"
+    CommandButton: Name=btnEditarLote, Caption="Editar Lote"
+    CommandButton: Name=btnEliminarLote, Caption="Eliminar Lote"
+    CommandButton: Name=btnCerrar, Caption="Cerrar"
+
+4.  Crear un nuevo archivo de texto llamado `UserForm_frmGestionLotes.txt`
+5.  Pegar el código correspondiente (ver respuesta de Gemini).
+
+═══════════════════════════════════════════════════════════════════════════════════
+PASO 2.7: CONFIGURAR THISWORKBOOK (Auto-carga caché v3.1) - NUEVO CRÍTICO
+═══════════════════════════════════════════════════════════════════════════════════
+
+Auto-carga caché al abrir archivo sin intervención manual (VERSIÓN 3.1 MEJORADA)
+
+1. En el editor VBA: Doble clic en "ThisWorkbook" (Microsoft Excel Objects)
+2. Borra TODO y pega este código completo:
+
+```
+Option Explicit
+
+Private Sub Workbook_Open()
+    ' Auto-carga caché al abrir (mejora v3.1 - CRÍTICO)
+    ' Prioriza rendimiento: caché listo inmediatamente sin intervención manual
+    If Not EsCacheActualizado() Then
+        Application.ScreenUpdating = False
+        Call CargarCacheEnMemoria
+        Application.ScreenUpdating = True
+        MsgBox "✅ Caché cargado automáticamente. Sistema v3.1 listo para usar.", vbInformation, "Sistema v3.1"
+    End If
+End Sub
+
+Private Sub Workbook_BeforeClose(Cancel As Boolean)
+    ' Opcional: Limpieza al cerrar (libera memoria)
+    Call InvalidarCache
+End Sub
+```
+
+3. Guardar (Ctrl+G)
+4. CIERRA Y ABRE el archivo Excel:
+   - Verás MsgBox confirmando caché cargado
+   - Sistema 100% funcional sin pasos manuales
+
+BENEFICIO v3.1:
+├─ Auto-carga: ✓ Abre Excel → caché listo inmediatamente
+├─ UX mejorada: ✓ Sin intervención manual (Alt+F8 CargarCacheEnMemoria)
+├─ Productividad: ✓ Operarias abren y asignan al instante
+└─ Robustez: ✓ Manejo automático de recargas
+
+═══════════════════════════════════════════════════════════════════════════════════
+PASO 3: CONFIGURACIÓN DE BOTONES EN LA HOJA
+═══════════════════════════════════════════════════════════════════════════════════
+
+1. Cerrar el editor VBA
+2. Ir a ASIGNACIONES_DIARIAS
+3. Desarrollador > Insertar > Controles ActiveX > Botón de Comando
+4. Dibujar en P1
+5. Click derecho > Propiedades
+   - Name = btnEditarAsignacion
+   - Caption = "EDITAR"
+6. Doble clic en el botón
+7. En el código que aparece, pegar:
+
+   Private Sub btnEditarAsignacion_Click()
+       Call RegistrarFilaEnFormulario
+   End Sub
+
+8. Repetir pasos 3-7 para crear el botón "NUEVA":
+   - Dibujar en O1 (al lado de EDITAR)
+   - Name = btnNuevaAsignacion
+   - Caption = "NUEVA"
+   - Código:
+     Private Sub btnNuevaAsignacion_Click()
+         Call CrearNuevaAsignacionUI
+     End Sub
+
+9. Cerrar VBA (Alt + Q)
+10. Desarrollador > Modo diseño (desactivar)
+11. [OK] Botones listos
+
+═══════════════════════════════════════════════════════════════════════════════════
+PASO 4: EJECUTAR EL INICIALIZADOR
+═══════════════════════════════════════════════════════════════════════════════════
+
+1. Cerrar VBA (Alt + Q)
+2. Ir a cualquier celda en Excel
+3. Alt + F8
+4. Seleccionar: InicializarSistema
+5. Ejecutar
+6. Esperar a que termine
+7. [OK] Verás el mensaje: "[OK] SISTEMA INICIALIZADO"
+
+RESULTADO:
+─────────────────────────────────────────────────────────────────────────────────
+• Se crearán automáticamente 11 hojas (incluyendo INICIO)
+• Se configurarán los headers correctamente
+• Se cargarán los datos maestros
+• El sistema estará listo para usar
+
+═══════════════════════════════════════════════════════════════════════════════════
+PASO 5: CARGAR DATOS MAESTROS (EJEMPLO)
+═══════════════════════════════════════════════════════════════════════════════════
+
+Ir a hoja OPERARIAS e insertar:
+─────────────────────────────────────────────────────────────────────────────────
+ID_OP   | Nombre              | Horas_Disponibles | Estado   | Especialidad
+OP001   | María García López  | 8                 | Activa   | Costura
+OP002   | Ana Rodríguez       | 8                 | Activa   | Estampado
+OP003   | Carmen Pérez        | 4                 | Tiempo P | Acabados
+
+Ir a hoja REFERENCIAS e insertar:
+─────────────────────────────────────────────────────────────────────────────────
+ID_REF  | Nombre_Ref         | Descripcion          | Color
+REF001  | Camiseta Básica    | Camiseta 100% algodón| Blanco
+REF002  | Pantalón Ejecutivo | Pantalón ejecutivo   | Negro
+REF003  | Sudadera Premium   | Sudadera gruesa      | Gris
+
+Ir a hoja TALLAS e insertar:
+─────────────────────────────────────────────────────────────────────────────────
+ID_REF | Talla 
+REF001 | XS    
+REF001 | S     
+REF001 | M     
+REF001 | L     
+REF001 | XL    
+
+Ir a hoja LOTES (NUEVO) e insertar:
+─────────────────────────────────────────────────────────────────────────────────
+ID_REF | Talla | Cantidad | Fecha_Rec  | Fecha_Ini
+REF001 | M     | 300      | 15/02/2026 | 16/02/2026
+
+Ir a hoja TAREAS e insertar:
+─────────────────────────────────────────────────────────────────────────────────
+ID_REF | Num_Tarea | Nombre_Tarea        | Tiempo_Segundos | Dificultad
+REF001 | 1         | Costura lateral     | 120             | Baja
+REF001 | 2         | Costura hombros     | 180             | Media
+REF001 | 3         | Ribete cuello       | 90              | Baja
+REF001 | 4         | Coser botones       | 150             | Media
+
+═══════════════════════════════════════════════════════════════════════════════════
+PASO 6: CREAR CACHÉ Y USAR EL SISTEMA
+═══════════════════════════════════════════════════════════════════════════════════
+
+1. Alt + F8
+2. Seleccionar: CargarCacheEnMemoria
+3. Ejecutar
+   ★ EN v3.1: ESTO OCURRE AUTOMÁTICO AL ABRIR (PASO 2.7)
+4. (Opcional) Clic en "ACTUALIZAR CALENDARIO" en INICIO para cargar festivos
+
+AHORA EL SISTEMA ESTÁ LISTO:
+─────────────────────────────────────────────────────────────────────────────────
+[>] Ir a la hoja INICIO
+[>] Usar los botones del panel para navegar
+[>] Clic en "NUEVA ASIGNACIÓN" para empezar
+
+FLUJO DE TRABAJO:
+[>] Seleccionar operaria → se rellena nombre automáticamente
+[>] Seleccionar referencia → se filtran tallas y tareas
+[>] Seleccionar tarea → se rellena nombre y tiempo
+[>] Cambiar cantidad → se recalculan tiempos automáticamente
+[>] Guardar → actualiza la hoja y el resumen diario
+
+═══════════════════════════════════════════════════════════════════════════════════
+PASO 7: PROTEGER EL CÓDIGO (SEGURIDAD)
+═══════════════════════════════════════════════════════════════════════════════════
+
+Para evitar que otros modifiquen o vean el código VBA:
+
+1. En el editor VBA (Alt + F11)
+2. Menú Herramientas > Propiedades de VBAProject...
+3. Pestaña "Protección"
+4. Marcar casilla "Bloquear proyecto para visualización"
+5. Escribir contraseña y confirmar
+6. Clic en Aceptar
+7. Guardar, cerrar y volver a abrir el archivo para que surta efecto.
+
+═══════════════════════════════════════════════════════════════════════════════════
+MACROS ÚTILES PARA CREAR BOTONES
+═══════════════════════════════════════════════════════════════════════════════════
+
+Crear nueva asignación:
+    Sub BotonNuevaAsignacion()
+        Call CrearNuevaAsignacionUI
+    End Sub
+
+Ver estadísticas del día:
+    Sub BotonEstadísticas()
+        Call MostrarEstadisticasDelDia
+    End Sub
+
+Aplicar formato visual:
+    Sub BotonFormatear()
+        Call AplicarFormatoAsignaciones
+    End Sub
+
+═══════════════════════════════════════════════════════════════════════════════════
+OPTIMIZACIONES IMPLEMENTADAS
+═══════════════════════════════════════════════════════════════════════════════════
+
+RENDIMIENTO:
+  • Dictionary en memoria = 100x más rápido que VLOOKUP
+  • Arrays para lectura/escritura masiva
+  • Cálculos en VBA en lugar de fórmulas Excel
+  • Caché global = búsquedas microsegundos vs milisegundos
+
+ALMACENAMIENTO:
+  • Estructura sin fórmulas masivas
+  • Valores fijos en lugar de funciones
+  • Bajo consumo de RAM (~50-100 MB)
+  • Archivo más pequeño y rápido
+
+INTEGRIDAD:
+  • Hojas maestras editables (para carga de datos)
+  • Validaciones en todos los formularios
+  • Caché se recarga cuando es necesario
+  • Índices para búsquedas rápidas
+
+═══════════════════════════════════════════════════════════════════════════════════
+SOLUCIÓN DE PROBLEMAS
+═══════════════════════════════════════════════════════════════════════════════════
+
+[X] Error: "Variable no definida" al abrir formulario
+[OK] Solución: Verificar que los 5 módulos están instalados en orden
+
+[X] Error: "No se puede encontrar la hoja OPERARIAS"
+[OK] Solución: Ejecutar InicializarSistema primero
+
+[X] Error: "El formulario no actualiza nombres automáticamente"
+[OK] Solución: Verificar que CargarCacheEnMemoria fue ejecutado
+    EN v3.1: Debe ocurrir automático al abrir (PASO 2.7)
+
+[X] Error: "El botón EDITAR no funciona"
+[OK] Solución: Verificar que está asignada la macro RegistrarFilaEnFormulario
+
+[X] Error: "El caché está desactualizado"
+[OK] Solución: Alt + F8 > ActualizarCacheCompleto
+    EN v3.1: Intenta cerrar/abrir archivo (auto-recarga PASO 2.7)
+
+[X] Error al abrir archivo: "Caché no actualizado"
+[OK] Solución v3.1: Verificar que PASO 2.7 ThisWorkbook se instaló correctamente
+    1. Alt+F11 → ThisWorkbook → Debe tener dos Subs (Open, BeforeClose)
+    2. Si no aparecen: Crear manualmente (ver PASO 2.7)
+
+═══════════════════════════════════════════════════════════════════════════════════
+FIN DE LA GUÍA - LISTO PARA PRODUCCIÓN!
+═══════════════════════════════════════════════════════════════════════════════════
+
+Versión: 3.1 Optimizada + Auto-carga caché
+Estado: ✅ PRODUCCIÓN
+Última actualización: March 2026 v3.1

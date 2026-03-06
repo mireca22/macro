@@ -1,0 +1,146 @@
+Option Explicit
+
+Public idRef As String
+
+Private Sub UserForm_Initialize()
+    Me.Caption = "Gestión de Lotes para Referencia: " & idRef
+    
+    With lstLotes
+        .ColumnCount = 5
+        .ColumnWidths = "80;80;50;60;80" ' Lote, Color, Talla, Cant, Estado
+    End With
+    
+    Call CargarLotes
+End Sub
+
+Private Sub CargarLotes()
+    Dim wsRecep As Worksheet
+    Dim i As Long, ultFila As Long
+    
+    Set wsRecep = ThisWorkbook.Sheets("LOTES")
+    ultFila = wsRecep.Cells(wsRecep.Rows.Count, 1).End(xlUp).Row
+    
+    lstLotes.Clear
+    
+    For i = 4 To ultFila
+        ' Col 2 is ID_Referencia
+        If Trim(CStr(wsRecep.Cells(i, 2).Value)) = Me.idRef Then
+            lstLotes.AddItem wsRecep.Cells(i, 1).Value ' ID_Lote
+            lstLotes.List(lstLotes.ListCount - 1, 1) = wsRecep.Cells(i, 3).Value ' Color
+            lstLotes.List(lstLotes.ListCount - 1, 2) = wsRecep.Cells(i, 4).Value ' Talla
+            lstLotes.List(lstLotes.ListCount - 1, 3) = wsRecep.Cells(i, 5).Value ' Cantidad
+            lstLotes.List(lstLotes.ListCount - 1, 4) = wsRecep.Cells(i, 10).Value ' Estado
+        End If
+    Next i
+End Sub
+
+Private Sub btnNuevoLote_Click()
+    ' Set globals to open frmMaestros for a new reception, pre-selecting the reference
+    PreselectRefID = Me.idRef
+    TipoMaestroActual = "LOTES"
+    ModoEdicion = False
+    
+    Dim frmNewRecep As New frmMaestros
+    
+    Me.Hide
+    frmNewRecep.Show
+    Me.Show
+    
+    ' Refresh the list
+    Call CargarLotes
+End Sub
+
+Private Sub btnEditarLote_Click()
+    Call EditarLoteSeleccionado
+End Sub
+
+Private Sub lstLotes_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+    Call EditarLoteSeleccionado
+End Sub
+
+Private Sub EditarLoteSeleccionado()
+    If lstLotes.ListIndex = -1 Then
+        MsgBox "Por favor, seleccione un lote de la lista para editar.", vbInformation
+        Exit Sub
+    End If
+    
+    Dim idLote As String
+    idLote = lstLotes.Value ' Gets value from the first column
+    
+    ' Find the row in the LOTES sheet
+    Dim wsRecep As Worksheet
+    Dim findRow As Long, i As Long, ultFila As Long
+    
+    Set wsRecep = ThisWorkbook.Sheets("LOTES")
+    ultFila = wsRecep.Cells(wsRecep.Rows.Count, 1).End(xlUp).Row
+    findRow = 0
+    
+    For i = 4 To ultFila
+        If Trim(CStr(wsRecep.Cells(i, 1).Value)) = idLote And Trim(CStr(wsRecep.Cells(i, 2).Value)) = Me.idRef Then
+            findRow = i
+            Exit For
+        End If
+    Next i
+    
+    If findRow > 0 Then
+        ' Set globals to open frmMaestros in edit mode for LOTES
+        FilaEdicion = findRow
+        TipoMaestroActual = "LOTES"
+        ModoEdicion = True
+        
+        Dim frmEditRecep As New frmMaestros
+        
+        Me.Hide
+        frmEditRecep.Show
+        Me.Show
+        
+        ' Refresh the list
+        Call CargarLotes
+    Else
+        MsgBox "No se pudo encontrar el lote '" & idLote & "' para editar. El caché podría estar desactualizado.", vbExclamation
+    End If
+End Sub
+
+Private Sub btnEliminarLote_Click()
+    If lstLotes.ListIndex = -1 Then
+        MsgBox "Por favor, seleccione un lote de la lista para eliminar.", vbInformation
+        Exit Sub
+    End If
+    
+    Dim idLote As String
+    idLote = lstLotes.Value
+    
+    ' Crucial validation
+    If TieneHijosLote(idLote) Then
+        MsgBox "ACCIÓN BLOQUEADA" & vbCrLf & vbCrLf & "El lote '" & idLote & "' no se puede eliminar porque ya tiene asignaciones de trabajo registradas.", vbCritical
+        Exit Sub
+    End If
+    
+    If MsgBox("¿Está seguro que desea eliminar permanentemente el lote '" & idLote & "'? Esta acción no se puede deshacer.", vbYesNo + vbQuestion + vbDefaultButton2, "Confirmar Eliminación") = vbNo Then
+        Exit Sub
+    End If
+    
+    ' Find and delete the row
+    Dim wsRecep As Worksheet
+    Dim i As Long, ultFila As Long
+    
+    Set wsRecep = ThisWorkbook.Sheets("LOTES")
+    ultFila = wsRecep.Cells(wsRecep.Rows.Count, 1).End(xlUp).Row
+    
+    For i = ultFila To 4 Step -1
+        If Trim(CStr(wsRecep.Cells(i, 1).Value)) = idLote And Trim(CStr(wsRecep.Cells(i, 2).Value)) = Me.idRef Then
+            wsRecep.Rows(i).Delete
+            
+            ' Refresh cache and list
+            Call CargarCacheEnMemoria
+            Call CargarLotes
+            
+            MsgBox "Lote '" & idLote & "' eliminado exitosamente.", vbInformation
+            Exit Sub
+        End If
+    Next i
+End Sub
+
+Private Sub btnCerrar_Click()
+    Unload Me
+End Sub

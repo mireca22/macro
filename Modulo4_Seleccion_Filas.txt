@@ -1,0 +1,212 @@
+
+'═══════════════════════════════════════════════════════════════════════════════
+' MÓDULO 4: mod_Seleccion_Filas
+' Detectar fila seleccionada, validar, preparar para edición
+'═══════════════════════════════════════════════════════════════════════════════
+
+Option Explicit
+
+'Variables globales para la fila seleccionada
+Public FilaActual As Long
+Public FilaValida As Boolean
+
+Function ObtenerFilaSeleccionada() As Long
+    '═══════════════════════════════════════════════════════════════════════════
+    ' Obtener la fila donde está el cursor actualmente
+    '═══════════════════════════════════════════════════════════════════════════
+
+    Dim ws As Worksheet
+
+    'Debe estar en ASIGNACIONES_DIARIAS
+    On Error Resume Next
+
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+
+    If ws.Name <> "ASIGNACIONES_DIARIAS" Then
+        MsgBox "[X] Debe estar en la hoja ASIGNACIONES_DIARIAS", vbCritical
+        Exit Function
+    End If
+
+    If ActiveCell.Row < 4 Then
+        MsgBox "[X] No puede editar el header", vbCritical
+        Exit Function
+    End If
+
+    FilaActual = ActiveCell.Row
+    FilaValida = True
+
+    ObtenerFilaSeleccionada = FilaActual
+
+    On Error GoTo 0
+End Function
+
+Function ValidarFilaAsignacion(fila As Long) As Boolean
+    '═══════════════════════════════════════════════════════════════════════════
+    ' Validar que la fila contiene una asignación válida
+    '═══════════════════════════════════════════════════════════════════════════
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+
+    'Verificar que hay datos en la fila
+    If ws.Cells(fila, 1).Value = "" Then
+        MsgBox "[X] Fila vacía - no hay asignación para editar", vbCritical
+        ValidarFilaAsignacion = False
+        Exit Function
+    End If
+
+    'Verificar datos críticos
+    If ws.Cells(fila, 2).Value = "" Then  'ID Operaria (Ahora Columna 2)
+        MsgBox "[X] Fila sin operaria asignada", vbCritical
+        ValidarFilaAsignacion = False
+        Exit Function
+    End If
+
+    ValidarFilaAsignacion = True
+End Function
+
+Function ObtenerDatosAsignacion(fila As Long) As Variant
+    '═══════════════════════════════════════════════════════════════════════════
+    ' Extraer todos los datos de una asignación en un array
+    ' RÁPIDO: Todo a memoria de una vez
+    '═══════════════════════════════════════════════════════════════════════════
+
+    Dim ws As Worksheet
+    Dim datos() As Variant
+
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+
+    'Array con 21 elementos (columnas A-U)
+    ReDim datos(1 To 21)
+
+    'Seguridad: Si la fila es inválida, retornar array vacío y salir
+    If fila < 4 Then
+        ObtenerDatosAsignacion = datos
+        Exit Function
+    End If
+
+    datos(1) = ws.Cells(fila, 1).Value   'Fecha
+    datos(2) = ws.Cells(fila, 2).Value   'ID_Operaria
+    datos(3) = ws.Cells(fila, 3).Value   'Nombre_Operaria
+    datos(4) = ws.Cells(fila, 4).Value   'ID_Referencia
+    datos(5) = ws.Cells(fila, 5).Value   'Nombre_Referencia
+    datos(6) = ws.Cells(fila, 6).Value   'ID_Lote
+    datos(7) = ws.Cells(fila, 7).Value   'Color
+    datos(8) = ws.Cells(fila, 8).Value   'Talla_Asignada
+    datos(9) = ws.Cells(fila, 9).Value   'Número_Tarea
+    datos(10) = ws.Cells(fila, 10).Value 'Nombre_Tarea
+    datos(11) = ws.Cells(fila, 11).Value 'Cantidad_Unidades
+    datos(12) = ws.Cells(fila, 12).Value 'Tiempo_Unitario
+    datos(13) = ws.Cells(fila, 13).Value 'Tiempo_Total_Seg
+    datos(14) = ws.Cells(fila, 14).Value 'Tiempo_Total_Min
+    datos(15) = ws.Cells(fila, 15).Value 'Estado_Asignacion
+    datos(16) = ws.Cells(fila, 16).Value 'Unidades_Completadas
+    datos(17) = ws.Cells(fila, 17).Value 'Observaciones
+    datos(18) = ws.Cells(fila, 18).Value 'Tiempo_Libre_Operaria
+    datos(19) = ws.Cells(fila, 19).Value 'Fecha_Entrega_Real
+    datos(20) = ws.Cells(fila, 20).Value 'Tiempo_Real_Minutos
+    datos(21) = ws.Cells(fila, 21).Value 'Desviacion_Minutos
+
+    ObtenerDatosAsignacion = datos
+End Function
+
+Sub GuardarDatosAsignacion(fila As Long, datos() As Variant)
+    '═══════════════════════════════════════════════════════════════════════════
+    ' Guardar array de datos a la hoja
+    '═══════════════════════════════════════════════════════════════════════════
+
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+
+    'Escribir todas las celdas
+    ws.Cells(fila, 1) = datos(1)
+    ws.Cells(fila, 2) = datos(2)
+    ws.Cells(fila, 3) = datos(3)
+    ws.Cells(fila, 4) = datos(4)
+    ws.Cells(fila, 5) = datos(5)
+    ws.Cells(fila, 6) = datos(6)
+    ws.Cells(fila, 7) = datos(7)
+    ws.Cells(fila, 8) = datos(8)
+    ws.Cells(fila, 9) = datos(9)
+    ws.Cells(fila, 10) = datos(10)
+    ws.Cells(fila, 11) = datos(11)
+    ws.Cells(fila, 12) = datos(12)
+    ws.Cells(fila, 13) = datos(13)
+    ws.Cells(fila, 14) = datos(14)
+    ws.Cells(fila, 15) = datos(15)
+    ws.Cells(fila, 16) = datos(16)
+    ws.Cells(fila, 17) = datos(17)
+    ws.Cells(fila, 18) = datos(18)
+    ws.Cells(fila, 19) = datos(19)
+    ws.Cells(fila, 20) = datos(20)
+    ws.Cells(fila, 21) = datos(21)
+
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+
+    Call ActualizarResumenDiario
+End Sub
+
+Sub RegistrarFilaEnFormulario()
+    '═══════════════════════════════════════════════════════════════════════════
+    ' Macro para botón: Detectar fila y abrir formulario
+    '═══════════════════════════════════════════════════════════════════════════
+
+    Dim fila As Long
+
+    'Validar que estamos en la hoja correcta
+    If ActiveSheet.Name <> "ASIGNACIONES_DIARIAS" Then
+        MsgBox "[X] Debe estar en ASIGNACIONES_DIARIAS para editar", vbCritical
+        Exit Sub
+    End If
+
+    fila = ActiveCell.Row
+
+    'Validar fila
+    If Not ValidarFilaAsignacion(fila) Then
+        Exit Sub
+    End If
+
+    'Guardar fila global
+    FilaActual = fila
+    FilaValida = True
+
+    'Abrir formulario
+    frmEditarAsignacion.Show vbModeless
+End Sub
+
+Sub CrearNuevaAsignacionUI()
+    '═══════════════════════════════════════════════════════════════════════════
+    ' Macro para crear nueva asignación desde formulario
+    '═══════════════════════════════════════════════════════════════════════════
+
+    Dim ws As Worksheet
+    Dim fila As Long
+
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+
+    'Obtener siguiente fila disponible
+    fila = ObtenerProximaFilaDisponible()
+
+    'Guardar fila global
+    FilaActual = fila
+    FilaValida = False  'Nueva asignación (no edición)
+
+    'Abrir formulario en modo "crear"
+    frmEditarAsignacion.Show vbModeless
+End Sub
+
+Function EsNuevaAsignacion() As Boolean
+    '═══════════════════════════════════════════════════════════════════════════
+    ' Verificar si es creación o edición
+    '═══════════════════════════════════════════════════════════════════════════
+
+    EsNuevaAsignacion = Not FilaValida
+End Function
+
+Function ObtenerFilaActual() As Long
+    ObtenerFilaActual = FilaActual
+End Function

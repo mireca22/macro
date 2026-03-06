@@ -1,0 +1,369 @@
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║          SISTEMA DE GESTIÓN DE PRODUCCIÓN TEXTIL - VERSIÓN 3.0               ║
+║                      DOCUMENTO TÉCNICO RESUMIDO                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════════
+1. ARQUITECTURA DEL SISTEMA
+═══════════════════════════════════════════════════════════════════════════════════
+
+CAPAS DE ARQUITECTURA:
+─────────────────────────────────────────────────────────────────────────────────
+
+┌─────────────────────────────────────────────────────────────────┐
+│  CAPA DE PRESENTACIÓN                                           │
+│  └─ UserForm (frmEditarAsignacion)                             │
+│     ├─ Interfaz visual profesional                             │
+│     ├─ Validaciones en tiempo real                             │
+│     └─ Caché de datos en memoria                               │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  CAPA DE LÓGICA DE NEGOCIO                                      │
+│  └─ Módulos VBA (mod_*)                                        │
+│     ├─ Módulo 3: Gestión de asignaciones (CRUD)               │
+│     ├─ Módulo 4: Manejo de filas/selección                    │
+│     └─ Módulo 5: Utilidades y cálculos                        │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  CAPA DE DATOS MAESTROS (CACHÉ)                                 │
+│  └─ Módulo 2: Gestor de Datos Maestros                         │
+│     ├─ Dictionary de operarias en memoria                      │
+│     ├─ Dictionary de referencias en memoria                    │
+│     ├─ Dictionary de tareas filtradas                          │
+│     └─ Dictionary de tallas filtradas                          │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  CAPA DE PERSISTENCIA                                           │
+│  └─ Hojas de Excel                                             │
+│     ├─ 5 hojas maestras (editables)                           │
+│     ├─ 2 hojas operacionales                                  │
+│     └─ 3 hojas administrativas                                │
+└─────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════════
+2. ESTRUCTURA DE HOJAS
+═══════════════════════════════════════════════════════════════════════════════════
+
+HOJAS MAESTRAS (EDITABLES - Carga manual):
+─────────────────────────────────────────────────────────────────────────────────
+
+📋 OPERARIAS (Gray)
+   Columnas: ID_OP | Nombre | Horas_Disponibles | Estado | Especialidad | Teléfono
+   Uso: Caché para búsqueda rápida de nombres
+   Acceso: Solo lectura → Dictionary
+   Cambio: Raro (nuevo empleado, cambios de datos)
+
+📦 REFERENCIAS (Green)
+   Columnas: ID_REF | Nombre_Ref | Descripcion | Color
+   Uso: Caché para búsqueda de referencias
+   Acceso: Solo lectura → Dictionary
+   Cambio: Poco frecuente
+
+📐 TALLAS (Orange)
+   Columnas: ID_REF | Talla | Cantidad_Total | Cantidad_Completada | Indice_Ref_Talla
+   Uso: Caché filtrado (tallas por referencia)
+   Acceso: Lectura → Búsqueda en caché
+   Cambio: Poco frecuente
+
+⚙️ TAREAS (Yellow)
+   Columnas: ID_REF | Num_Tarea | Nombre_Tarea | Tiempo_Segundos | Dificultad | Indice_Ref_Tarea
+   Uso: Caché filtrado (tareas por referencia)
+   Acceso: Lectura → Búsqueda en caché
+   Cambio: Poco frecuente
+
+HOJAS OPERACIONALES (TRABAJO DIARIO):
+─────────────────────────────────────────────────────────────────────────────────
+
+📅 ASIGNACIONES_DIARIAS (Red)
+   Columnas: ID_Asig | Fecha | ID_Oper | Nombre_Oper | ID_Ref | Nombre_Ref | Talla | 
+             Num_Tarea | Nombre_Tarea | Cantidad | Tiempo_Unit | Tiempo_Total_Seg | 
+             Tiempo_Total_Min | Estado | Unidades_Completas | Observaciones
+   Uso: Almacenar asignaciones del día
+   Acceso: Lectura/Escritura desde formulario
+   Formato: SIN FÓRMULAS (valores calculados en VBA)
+   Indexación: ID_Asig único automático
+
+📊 RESUMEN_DIARIO (Blue)
+   Columnas: Fecha | Operaria | Minutos_Asignados
+   Uso: Resumen de cargas de trabajo diarias
+   Acceso: Escritura automática desde mod_Gestor_Asignaciones
+   Formato: Valores calculados (no fórmulas)
+   Actualización: Cada vez que se crea/edita una asignación
+
+HOJAS ADMINISTRATIVAS:
+─────────────────────────────────────────────────────────────────────────────────
+
+✅ PRODUCCION_FINALIZADA (Green)
+   Uso: Registro de producciones completadas
+   Acceso: Lectura de ASIGNACIONES_DIARIAS
+
+🗂️ ARCHIVO_ASIGNACIONES (Gray)
+   Uso: Archivo histórico de asignaciones antiguas
+   Acceso: Migración automática de datos >6 meses
+
+🔍 INDICES (Light Gray)
+   Uso: Índices para búsquedas rápidas (opcional)
+   Acceso: Lectura por caché
+
+═══════════════════════════════════════════════════════════════════════════════════
+3. FLUJO DE DATOS
+═══════════════════════════════════════════════════════════════════════════════════
+
+FLUJO EDITAR ASIGNACIÓN:
+─────────────────────────────────────────────────────────────────────────────────
+
+1. Usuario selecciona fila en ASIGNACIONES_DIARIAS
+2. Usuario hace clic en botón "✏️ EDITAR"
+   └─ Macro: RegistrarFilaEnFormulario()
+
+3. Se ejecuta:
+   ├─ ObtenerFilaSeleccionada()        → FilaActual = fila elegida
+   ├─ ValidarFilaAsignacion(fila)      → ¿Tiene datos válidos?
+   └─ ObtenerDatosAsignacion(fila)     → datosActuales[] (Array)
+
+4. Se abre UserForm (frmEditarAsignacion.Show)
+   ├─ UserForm_Initialize()
+   ├─ CargarCacheEnMemoria() si es necesario
+   ├─ CargarListasOperarias()          → Dictionary → cboOperaria
+   ├─ CargarListasReferencias()        → Dictionary → cboReferencia
+   └─ CargarDatosParaEditar()          → datosActuales[] → Controles
+
+5. Usuario hace cambios:
+   ├─ Cambia cboOperaria
+   │  └─ cboOperaria_Change()          → ObtenerNombreOperaria()
+   │     └─ txtNombreOperaria = nombre automático
+   │
+   ├─ Cambia cboReferencia
+   │  └─ cboReferencia_Change()        → ObtenerNombreReferencia()
+   │     ├─ CargarTallasDeReferencia() → Filtrar Dictionary
+   │     ├─ CargarTareasDeReferencia() → Filtrar Dictionary
+   │     └─ cboTalla, cboNumeroTarea se llenan
+   │
+   ├─ Cambia cboNumeroTarea
+   │  └─ cboNumeroTarea_Change()       → ObtenerNombreTarea()
+   │     ├─ ObtenerTiempoUnitario()
+   │     └─ RecalcularTiempos()        → tiempoTotalSeg, tiempoTotalMin
+   │
+   └─ Cambia txtCantidad
+      └─ txtCantidad_Change()          → RecalcularTiempos()
+
+6. Usuario hace clic en "Guardar"
+   ├─ Validaciones de todos los campos
+   └─ ActualizarAsignacion(fila, ...)
+      ├─ ObtenerNombreReferencia()
+      ├─ ObtenerNombreTarea()
+      ├─ ObtenerTiempoUnitario()
+      ├─ Calcular tiempoTotalSeg = cantidad * tiempoUnit
+      ├─ Calcular tiempoTotalMin = tiempoTotalSeg / 60
+      ├─ GuardarDatosAsignacion(fila, datos[])
+      │  └─ Escribir 16 celdas en la hoja
+      ├─ ActualizarResumenDiario()
+      │  ├─ Acumular tiempos por operaria del día
+      │  └─ Escribir en RESUMEN_DIARIO
+      └─ Unload Me (cerrar formulario)
+
+FLUJO CREAR ASIGNACIÓN:
+─────────────────────────────────────────────────────────────────────────────────
+
+1. Usuario hace clic en botón "➕ NUEVA"
+   └─ Macro: CrearNuevaAsignacionUI()
+
+2. Se ejecuta:
+   ├─ ObtenerProximaFilaDisponible()   → fila = siguiente disponible
+   ├─ FilaActual = fila
+   ├─ FilaValida = False               → Modo creación
+   └─ frmEditarAsignacion.Show
+
+3. UserForm_Initialize() en modo creación
+   ├─ Me.Caption = "✨ CREAR NUEVA ASIGNACIÓN"
+   ├─ Me.BackColor = RGB(240, 250, 240) Verde claro
+   ├─ CargarCacheEnMemoria()
+   ├─ CargarListasOperarias()
+   ├─ CargarListasReferencias()
+   ├─ CargarListasEstados()
+   └─ txtFecha.Value = Format(Date, "dd/mm/yyyy")
+
+4. (Usuario llena los campos como en edición)
+
+5. Usuario hace clic en "Guardar"
+   ├─ Validaciones
+   └─ CrearAsignacion(...)
+      ├─ ObtenerIdAsignacion()         → ASG + Fecha + Secuencial
+      ├─ Calcular tiempos
+      ├─ ObtenerProximaFilaDisponible()
+      ├─ Escribir 16 celdas en la hoja
+      └─ ActualizarResumenDiario()
+
+═══════════════════════════════════════════════════════════════════════════════════
+4. FUNCIONES PRINCIPALES POR MÓDULO
+═══════════════════════════════════════════════════════════════════════════════════
+
+MÓDULO 1 - INICIALIZADOR:
+─────────────────────────────────────────────────────────────────────────────────
+✓ InicializarSistema()        Crear todas las hojas
+✓ CrearHojas()               Crear 10 hojas con colores
+✓ CrearHeaders()             Headers para cada hoja
+✓ ConfigurarProtecciones()              Proteger hojas maestras
+
+MÓDULO 2 - GESTOR DE DATOS MAESTROS (CACHÉ):
+─────────────────────────────────────────────────────────────────────────────────
+✓ CargarCacheEnMemoria()                Cargar Dictionary global
+✓ ObtenerNombreOperaria(id)             Búsqueda en caché
+✓ ObtenerNombreReferencia(id)           Búsqueda en caché
+✓ ObtenerNombreTarea(idRef, numTarea)   Búsqueda con clave compuesta
+✓ ObtenerTiempoUnitario(idRef, numTarea) Obtener tiempo
+✓ ObtenerTallasDeReferencia(idRef)      Retornar Collection filtrada
+✓ ObtenerTareasDeReferencia(idRef)      Retornar Collection filtrada
+✓ ObtenerAllOperarias()                 Retornar Collection de IDs
+✓ ObtenerAllReferencias()               Retornar Collection de IDs
+✓ EsCacheActualizado()                  Verificar si caché es válido
+✓ ActualizarCacheCompleto()             Recargar caché
+
+MÓDULO 3 - GESTOR DE ASIGNACIONES:
+─────────────────────────────────────────────────────────────────────────────────
+✓ ObtenerProximaFilaDisponible()        Siguiente fila libre
+✓ ObtenerIdAsignacion()                 ID único: ASG+Fecha+Secuencial
+✓ CrearAsignacion(...)                  CRUD Create - con cálculos VBA
+✓ ActualizarAsignacion(fila, ...)       CRUD Update - recalcula tiempos
+✓ ActualizarResumenDiario()             Recalcular resumen (sin fórmulas)
+✓ ObtenerAsignacionesDia(fecha)         Contar asignaciones
+✓ EliminarAsignacion(fila)              Borrar con confirmación
+
+MÓDULO 4 - SELECCIÓN DE FILAS:
+─────────────────────────────────────────────────────────────────────────────────
+✓ ObtenerFilaSeleccionada()             Fila actual del cursor
+✓ ValidarFilaAsignacion(fila)           Verificar datos válidos
+✓ ObtenerDatosAsignacion(fila)          Array de 16 elementos
+✓ GuardarDatosAsignacion(fila, datos[]) Escribir 16 celdas
+✓ RegistrarFilaEnFormulario()           Macro del botón EDITAR
+✓ CrearNuevaAsignacionUI()              Macro del botón NUEVA
+✓ EsNuevaAsignacion()                   Verificar modo creación
+
+MÓDULO 5 - UTILIDADES:
+─────────────────────────────────────────────────────────────────────────────────
+✓ IsNumericValue(valor)                 Validar número
+✓ ConvertirANumero(valor)               Conversión segura a número
+✓ FormatearSegundosAMinutos(seg)        Formato MM:SS
+✓ ObtenerDiaDelaSemana(fecha)           Nombre del día
+✓ CalcularPorcentajeCompletado(c, t)    Cálculo de progreso
+✓ LimpiarControles(frm)                 Reset del formulario
+✓ ObtenerProximoColorFila(fila)         Alternancia de colores
+✓ AplicarFormatoAsignaciones()          Ancho columnas + colores
+✓ ConfigurarValidacionesExcel()         Listas en columnas
+✓ ObtenerEstadisticasHoy()              Array con estadísticas
+✓ MostrarEstadisticasDelDia()           MsgBox con resumen
+
+═══════════════════════════════════════════════════════════════════════════════════
+5. OPTIMIZACIONES IMPLEMENTADAS
+═══════════════════════════════════════════════════════════════════════════════════
+
+⚡ VELOCIDAD:
+─────────────────────────────────────────────────────────────────────────────────
+• Dictionary en memoria:
+  └─ Búsqueda VLOOKUP:     20-50 ms
+  └─ Búsqueda Dictionary:  0.1-0.5 ms    (100-500x más rápido)
+
+• Cálculos en VBA:
+  └─ Fórmula Excel:        Evaluación en cada cambio
+  └─ VBA:                  Cálculo directo (microsegundos)
+
+• Arrays vs lectura celda a celda:
+  └─ Lectura individual:   ~1-5 ms por celda × 16 = 16-80 ms
+  └─ Array:                ~5-10 ms para 16 celdas (5-10x más rápido)
+
+💾 ALMACENAMIENTO:
+─────────────────────────────────────────────────────────────────────────────────
+• Sin fórmulas masivas:
+  └─ Archivo v2.0 (con fórmulas):   ~15-20 MB
+  └─ Archivo v3.0 (sin fórmulas):   ~2-3 MB    (75-90% menos)
+
+• Valores fijos en lugar de funciones:
+  └─ Tiempo_Total_Seg = valor (no =A*B)
+  └─ Reduce tiempo de guardado en 50%
+
+🔄 CONCURRENCIA:
+─────────────────────────────────────────────────────────────────────────────────
+• Usuario único (actual):       ✓ Perfecto
+• 2 usuarios simultáneos:       ⚠️ Posible (con compartir archivo)
+• 3+ usuarios:                  ✗ Requeriría SQL Server
+
+═══════════════════════════════════════════════════════════════════════════════════
+6. RENDIMIENTO ESPERADO
+═══════════════════════════════════════════════════════════════════════════════════
+
+En equipos con 4 GB RAM + procesador básico (Intel Pentium/Celeron):
+
+Operación                          | Tiempo esperado | Descripción
+─────────────────────────────────────────────────────────────────────────────────
+Abrir archivo Excel                | 2-3 seg         | Carga normal
+CargarCacheEnMemoria()             | 1-2 seg         | Primera vez
+Abrir formulario                   | 0.5-1 seg       | Instantáneo prácticamente
+Cambiar operaria                   | <0.1 seg        | Búsqueda en Dictionary
+Cambiar referencia                 | <0.1 seg        | Filtrado en memoria
+Seleccionar tarea                  | <0.1 seg        | Actualiza tiempos
+Guardar asignación                 | 0.5-1 seg       | Cálculos + escritura + resumen
+Actualizar resumen diario          | 0.5-1 seg       | Recalcular todos los datos
+Generar estadísticas               | <0.1 seg        | Array en memoria
+
+═══════════════════════════════════════════════════════════════════════════════════
+7. LIMITACIONES Y CONSIDERACIONES
+═══════════════════════════════════════════════════════════════════════════════════
+
+LIMITACIONES ACTUALES:
+─────────────────────────────────────────────────────────────────────────────────
+✓ 1 usuario simultáneo           (diseño para supervisor local)
+✓ ~50,000 registros máximo       (Excel maneja 1M+ filas)
+✓ Sin sincronización externa     (totalmente local)
+✓ Sin respaldo automático        (debe hacerse manualmente)
+✓ Sin análisis histórico avanzado (Archivo_Asignaciones es manual)
+
+ESCALABILIDAD FUTURA:
+─────────────────────────────────────────────────────────────────────────────────
+Si el negocio crece:
+  Año 1:  Excel Local             (actual)      ← Aquí estamos
+  Año 2:  Excel + Backup USB      (simple)
+  Año 3:  SQL Server Express      (si >50k registros)
+  Año 4:  SQL Server Full         (si múltiples usuarios)
+
+═══════════════════════════════════════════════════════════════════════════════════
+8. RESUMEN TÉCNICO
+═══════════════════════════════════════════════════════════════════════════════════
+
+STACK TECNOLÓGICO:
+─────────────────────────────────────────────────────────────────────────────────
+• Platform:     Excel 2016+ (compatible con versiones recientes)
+• Language:     VBA 7.0+
+• Database:     Excel sheets + Scripting.Dictionary
+• UI:           UserForm (VB Forms)
+• Architecture: MVC (Model-View-Controller)
+• Optimization: In-memory cache, no formulas, manual calculations
+
+REQUISITOS MÍNIMOS:
+─────────────────────────────────────────────────────────────────────────────────
+• OS:           Windows 7+
+• RAM:          2 GB mínimo (4 GB recomendado)
+• CPU:          Pentium 4+ o equivalente
+• Disk:         ~50 MB libres
+• Excel:        2016 o superior
+
+DIAGRAMA DE RELACIONES:
+─────────────────────────────────────────────────────────────────────────────────
+
+    OPERARIAS              REFERENCIAS
+        ↓                       ↓
+        └───────────┬───────────┘
+                    ↓
+             ASIGNACIONES_DIARIAS
+                    ↓
+        ┌───────────┴───────────┐
+        ↓                       ↓
+    RESUMEN_DIARIO     PRODUCCION_FINALIZADA
+
+        ↓
+    ARCHIVO_ASIGNACIONES (>6 meses)
+
+═══════════════════════════════════════════════════════════════════════════════════
