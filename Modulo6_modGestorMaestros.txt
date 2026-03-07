@@ -1,0 +1,448 @@
+'==============================================================================
+' MODULO 6: modGestorMaestros
+' Funciones auxiliares: 
+' Sistema de Gestion de Produccion Textil v3.0
+'==============================================================================
+
+Option Explicit
+
+Public TipoMaestroActual As String
+Public ModoEdicion As Boolean
+Public FilaEdicion As Long
+Public PreselectRefID As String 'Para pre-seleccionar referencia al crear tarea
+
+Sub AbrirGestorOperarias()
+    TipoMaestroActual = "OPERARIAS"
+    ModoEdicion = False
+    frmMaestros.Show
+End Sub
+
+Sub AbrirGestorReferencias()
+    TipoMaestroActual = "REFERENCIAS"
+    ModoEdicion = False
+    frmMaestros.Show
+End Sub
+
+Sub AbrirGestorColores()
+    TipoMaestroActual = "COLORES"
+    ModoEdicion = False
+    frmMaestros.Show
+End Sub
+
+Sub AbrirGestorTallas()
+    TipoMaestroActual = "TALLAS"
+    ModoEdicion = False
+    frmMaestros.Show
+End Sub
+
+Sub AbrirGestorLotes()
+    TipoMaestroActual = "LOTES"
+    ModoEdicion = False
+    frmMaestros.Show
+End Sub
+
+Sub AbrirGestorTareas()
+    TipoMaestroActual = "TAREAS"
+    ModoEdicion = False
+    frmMaestros.Show
+End Sub
+
+Sub EditarMaestroSeleccionado()
+    Dim ws As Worksheet
+    Set ws = ActiveSheet
+    
+    If Selection.Row < 2 Or Selection.Cells(1, 1).Value = "" Then
+        MsgBox "Seleccione un registro válido para editar.", vbExclamation
+        Exit Sub
+    End If
+    
+    FilaEdicion = Selection.Row
+    ModoEdicion = True
+    
+    Select Case ws.Name
+        Case "OPERARIAS": TipoMaestroActual = "OPERARIAS"
+        Case "REFERENCIAS": TipoMaestroActual = "REFERENCIAS"
+        Case "COLORES": TipoMaestroActual = "COLORES"
+        Case "TALLAS": TipoMaestroActual = "TALLAS"
+        Case "LOTES": TipoMaestroActual = "LOTES"
+        Case "TAREAS": TipoMaestroActual = "TAREAS"
+        Case Else: Exit Sub
+    End Select
+    
+    frmMaestros.Show
+End Sub
+
+Sub BuscarYEditarReferencia()
+    Dim wsInicio As Worksheet, wsRefs As Worksheet
+    Dim idBusqueda As String
+    Dim celdaEncontrada As Range
+    
+    Set wsInicio = ThisWorkbook.Sheets("INICIO")
+    Set wsRefs = ThisWorkbook.Sheets("REFERENCIAS")
+    
+    On Error Resume Next
+    idBusqueda = wsInicio.OLEObjects("cboBuscarRef").Object.Value
+    On Error GoTo 0
+    
+    If idBusqueda = "" Then
+        MsgBox "Por favor, ingrese un ID de referencia para buscar.", vbInformation
+        Exit Sub
+    End If
+    
+    'Buscar en la columna A de la hoja de Referencias
+    Set celdaEncontrada = wsRefs.Columns("A").Find(What:=idBusqueda, LookIn:=xlValues, LookAt:=xlWhole)
+    
+    If Not celdaEncontrada Is Nothing Then
+        'Encontrado. Preparar para editar.
+        FilaEdicion = celdaEncontrada.Row
+        ModoEdicion = True
+        TipoMaestroActual = "REFERENCIAS"
+        frmMaestros.Show
+    Else
+        MsgBox "No se encontró la referencia '" & idBusqueda & "'.", vbExclamation
+    End If
+End Sub
+
+Function TieneRegistrosHijos(idRef As String, ByRef tipoHijo As String) As Boolean
+    'Verifica si una referencia tiene registros en tablas dependientes
+    Dim ws As Worksheet
+    Dim celda As Range
+    
+    TieneRegistrosHijos = False
+    
+    '1. Verificar en LOTES
+    Set ws = ThisWorkbook.Sheets("LOTES")
+    Set celda = ws.Columns("B").Find(idRef, LookIn:=xlValues, LookAt:=xlWhole)
+    If Not celda Is Nothing Then
+        tipoHijo = "Lotes (Recepción)"
+        TieneRegistrosHijos = True
+        Exit Function
+    End If
+    
+    '2. Verificar en ASIGNACIONES_DIARIAS
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    Set celda = ws.Columns("D").Find(idRef, LookIn:=xlValues, LookAt:=xlWhole)
+    If Not celda Is Nothing Then
+        tipoHijo = "Asignaciones"
+        TieneRegistrosHijos = True
+        Exit Function
+    End If
+End Function
+
+Function TieneHijosLote(idLote As String) As Boolean
+    Dim ws As Worksheet, i As Long, ultFila As Long
+    TieneHijosLote = False
+    
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        ' Col 6 is ID_Lote
+        If ws.Cells(i, 6).Value = idLote Then
+            TieneHijosLote = True
+            Exit Function
+        End If
+    Next i
+End Function
+
+Function TieneHijosColor(idRef As String, color As String) As Boolean
+    Dim ws As Worksheet, i As Long, ultFila As Long
+    TieneHijosColor = False
+    
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        If ws.Cells(i, 4).Value = idRef And ws.Cells(i, 7).Value = color Then
+            TieneHijosColor = True
+            Exit Function
+        End If
+    Next i
+End Function
+
+Function TieneHijosTalla(idRef As String, talla As String) As Boolean
+    Dim ws As Worksheet, i As Long, ultFila As Long
+    TieneHijosTalla = False
+    
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        If ws.Cells(i, 4).Value = idRef And ws.Cells(i, 8).Value = talla Then
+            TieneHijosTalla = True
+            Exit Function
+        End If
+    Next i
+End Function
+
+Function TieneHijosTarea(idRef As String, numTarea As String) As Boolean
+    Dim ws As Worksheet, i As Long, ultFila As Long
+    TieneHijosTarea = False
+    
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        If ws.Cells(i, 4).Value = idRef And ws.Cells(i, 9).Value = numTarea Then
+            TieneHijosTarea = True
+            Exit Function
+        End If
+    Next i
+End Function
+
+Function GenerarNuevoID(nombreHoja As String, columnaID As Long, prefijo As String) As String
+    'Genera un ID consecutivo automático (ej: OP005 -> OP006)
+    Dim ws As Worksheet
+    Dim i As Long, ultFila As Long
+    Dim maxId As Long, currId As Long
+    Dim valor As String
+    
+    Set ws = ThisWorkbook.Sheets(nombreHoja)
+    ultFila = ws.Cells(ws.Rows.Count, columnaID).End(xlUp).Row
+    maxId = 0
+    
+    For i = 4 To ultFila
+        valor = ws.Cells(i, columnaID).Value
+        If Left(valor, Len(prefijo)) = prefijo Then
+            On Error Resume Next
+            currId = CLng(Mid(valor, Len(prefijo) + 1))
+            If currId > maxId Then maxId = currId
+            On Error GoTo 0
+        End If
+    Next i
+    
+    GenerarNuevoID = prefijo & Format(maxId + 1, "000")
+End Function
+
+Sub GuardarRegistroMaestro(datos As Variant)
+    'Guarda los datos en la hoja correspondiente según el tipo
+    Dim ws As Worksheet
+    Dim fila As Long
+    
+    Application.ScreenUpdating = False
+    
+    Select Case TipoMaestroActual
+        Case "OPERARIAS"
+            Set ws = ThisWorkbook.Sheets("OPERARIAS")
+            If ModoEdicion Then
+                fila = FilaEdicion
+            Else
+                fila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1
+            End If
+            ws.Cells(fila, 1).Value = datos(0) 'ID
+            ws.Cells(fila, 2).Value = datos(1) 'Nombre
+            ws.Cells(fila, 3).Value = datos(2) 'Tiempo
+            ws.Cells(fila, 4).Value = datos(3) 'Estado
+            ws.Cells(fila, 5).Value = datos(4) 'Especialidad
+            ws.Cells(fila, 6).Value = datos(5) 'Contacto
+            
+        Case "REFERENCIAS"
+            Set ws = ThisWorkbook.Sheets("REFERENCIAS")
+            If ModoEdicion Then
+                fila = FilaEdicion
+                'Detectar cambio de ID para actualización en cascada
+                Dim oldID As String
+                oldID = ws.Cells(fila, 1).Value
+                If oldID <> CStr(datos(0)) And oldID <> "" Then 'Si el ID cambió
+                    Dim tipoHijo As String
+                    If TieneRegistrosHijos(oldID, tipoHijo) Then
+                        Dim respuesta As VbMsgBoxResult
+                        respuesta = MsgBox("¡ADVERTENCIA!" & vbCrLf & vbCrLf & _
+                                           "La referencia '" & oldID & "' ya tiene registros relacionados (" & tipoHijo & ")." & vbCrLf & _
+                                           "Cambiar el ID actualizará TODOS los registros dependientes." & vbCrLf & vbCrLf & _
+                                           "¿Desea continuar con la actualización en cascada?", vbYesNo + vbExclamation, "Actualización en Cascada")
+                        If respuesta = vbYes Then
+                            Call ActualizarCascadaReferencia(oldID, CStr(datos(0)))
+                        End If
+                    End If
+                End If
+            Else
+                fila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1
+            End If
+            ws.Cells(fila, 1).Value = datos(0) 'ID
+            ws.Cells(fila, 2).Value = datos(1) 'Nombre
+            ws.Cells(fila, 3).Value = datos(2) 'Descripción
+            ws.Cells(fila, 4).Value = datos(3) 'Color
+            
+        Case "COLORES"
+            Set ws = ThisWorkbook.Sheets("COLORES")
+            If ModoEdicion Then
+                fila = FilaEdicion
+            Else
+                fila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1
+            End If
+            ws.Cells(fila, 1).Value = datos(0) 'ID_Ref
+            ws.Cells(fila, 2).Value = datos(1) 'Color
+            
+        Case "TALLAS"
+            Set ws = ThisWorkbook.Sheets("TALLAS")
+            If ModoEdicion Then
+                fila = FilaEdicion
+            Else
+                fila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1
+            End If
+            ws.Cells(fila, 1).Value = datos(0) 'ID_Ref
+            ws.Cells(fila, 2).Value = datos(1) 'Talla
+            
+        Case "LOTES"
+            Set ws = ThisWorkbook.Sheets("LOTES")
+            'Buscar si ya existe para sumar
+            Dim existe As Boolean
+            
+            'Si estamos editando, sobrescribimos directamente
+            If ModoEdicion Then
+                fila = FilaEdicion
+                ws.Cells(fila, 1).Value = datos(0) 'ID_Lote
+                ws.Cells(fila, 2).Value = datos(1) 'ID_Ref
+                ws.Cells(fila, 3).Value = datos(2) 'Color
+                ws.Cells(fila, 4).Value = datos(3) 'Talla
+                ws.Cells(fila, 5).Value = datos(4) 'Cantidad
+                ws.Cells(fila, 6).Value = datos(5) 'Fecha Rec
+                ws.Cells(fila, 7).Value = datos(6) 'Fecha Ini
+                GoTo FinRecepcion
+            End If
+            
+            Dim i As Long
+            existe = False
+            For i = 2 To ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+                'Comparar Lote, ID, Color y Talla
+                If ws.Cells(i, 1).Value = datos(0) And ws.Cells(i, 2).Value = datos(1) And ws.Cells(i, 3).Value = datos(2) And ws.Cells(i, 4).Value = datos(3) Then
+                    ws.Cells(i, 5).Value = ws.Cells(i, 5).Value + CLng(datos(4)) 'Sumar cantidad
+                    ws.Cells(i, 6).Value = datos(5) 'Actualizar Fecha Recepcion
+                    ws.Cells(i, 7).Value = datos(6) 'Actualizar Fecha Inicio
+                    existe = True
+                    Exit For
+                End If
+            Next i
+            
+            If Not existe Then
+                fila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1
+                ws.Cells(fila, 1).Value = datos(0) 'ID_Lote
+                ws.Cells(fila, 2).Value = datos(1) 'ID_Ref
+                ws.Cells(fila, 3).Value = datos(2) 'Color
+                ws.Cells(fila, 4).Value = datos(3) 'Talla
+                ws.Cells(fila, 5).Value = datos(4) 'Cantidad
+                ws.Cells(fila, 6).Value = datos(5) 'Fecha Recepcion
+                ws.Cells(fila, 7).Value = datos(6) 'Fecha Inicio
+                ws.Cells(fila, 8).Value = 0        'Completadas
+                ws.Cells(fila, 9).Value = 0        'Avance
+                ws.Cells(fila, 10).Value = "Pendiente" 'Estado
+                ws.Cells(fila, 11).Value = CalcularFechaFinEstimada(CStr(datos(1)), CLng(datos(4)), CDate(datos(6))) 'Fecha Fin Estimada
+            End If
+FinRecepcion:
+            
+        Case "TAREAS"
+            Set ws = ThisWorkbook.Sheets("TAREAS")
+            If ModoEdicion Then
+                fila = FilaEdicion
+            Else
+                fila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1
+            End If
+            ws.Cells(fila, 1).Value = datos(0) 'ID_Ref
+            ws.Cells(fila, 2).Value = datos(1) 'Num Tarea
+            ws.Cells(fila, 3).Value = datos(2) 'Nombre
+            ws.Cells(fila, 4).Value = datos(3) 'Tiempo
+            ws.Cells(fila, 5).Value = datos(4) 'Descripción
+            ws.Cells(fila, 6).Value = datos(5) 'Dificultad
+            
+            Call ActualizarTiempoTotalReferencia(CStr(datos(0)))
+            
+    End Select
+    
+    'Aplicar formato inteligente a la hoja modificada
+    If Not ws Is Nothing Then Call AjustarAnchoColumnasInteligente(ws)
+    
+    'Actualizar caché para que los cambios se reflejen inmediatamente
+    Call CargarCacheEnMemoria
+    
+    Application.ScreenUpdating = True
+    MsgBox "[OK] Registro agregado a " & TipoMaestroActual, vbInformation
+End Sub
+
+Function ObtenerSiguienteNumeroTarea(idRef As String) As Long
+    'Calcula el siguiente número de tarea para una referencia
+    Dim ws As Worksheet
+    Dim i As Long, ultFila As Long
+    Dim maxNum As Long
+    
+    Set ws = ThisWorkbook.Sheets("TAREAS")
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    maxNum = 0
+    
+    For i = 4 To ultFila
+        If ws.Cells(i, 1).Value = idRef Then
+            If IsNumeric(ws.Cells(i, 2).Value) Then
+                If CLng(ws.Cells(i, 2).Value) > maxNum Then maxNum = CLng(ws.Cells(i, 2).Value)
+            End If
+        End If
+    Next i
+    
+    ObtenerSiguienteNumeroTarea = maxNum + 1
+End Function
+
+Sub ActualizarTiempoTotalReferencia(idRef As String)
+    'Suma los tiempos de todas las tareas de una referencia y lo guarda en la hoja REFERENCIAS
+    Dim wsTareas As Worksheet, wsRefs As Worksheet
+    Dim i As Long, ultFilaTareas As Long, ultFilaRefs As Long
+    Dim tiempoTotal As Long
+    
+    Set wsTareas = ThisWorkbook.Sheets("TAREAS")
+    Set wsRefs = ThisWorkbook.Sheets("REFERENCIAS")
+    
+    ' 1. Sumar tiempos de todas las tareas para la referencia
+    tiempoTotal = 0
+    ultFilaTareas = wsTareas.Cells(wsTareas.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFilaTareas
+        If wsTareas.Cells(i, 1).Value = idRef Then
+            'Columna 4 es Tiempo_Segundos
+            tiempoTotal = tiempoTotal + Val(wsTareas.Cells(i, 4).Value)
+        End If
+    Next i
+    
+    ' 2. Encontrar la referencia y actualizar el campo
+    ultFilaRefs = wsRefs.Cells(wsRefs.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFilaRefs
+        If wsRefs.Cells(i, 1).Value = idRef Then
+            'Columna 5 (E) es la nueva columna "Tiempo_Total_Unidad_Seg"
+            wsRefs.Cells(i, 5).Value = tiempoTotal
+            Exit For
+        End If
+    Next i
+End Sub
+
+Sub ActualizarCascadaReferencia(oldID As String, newID As String)
+    'Actualiza el ID de referencia en todas las tablas relacionadas cuando se edita el código
+    Dim ws As Worksheet
+    Dim i As Long, ultFila As Long
+    
+    '0. COLORES
+    Set ws = ThisWorkbook.Sheets("COLORES")
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        If ws.Cells(i, 1).Value = oldID Then ws.Cells(i, 1).Value = newID
+    Next i
+    
+    '1. TALLAS
+    Set ws = ThisWorkbook.Sheets("TALLAS")
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        If ws.Cells(i, 1).Value = oldID Then ws.Cells(i, 1).Value = newID
+    Next i
+    
+    '2. TAREAS
+    Set ws = ThisWorkbook.Sheets("TAREAS")
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        If ws.Cells(i, 1).Value = oldID Then ws.Cells(i, 1).Value = newID
+    Next i
+    
+    '3. ASIGNACIONES_DIARIAS
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        If ws.Cells(i, 4).Value = oldID Then ws.Cells(i, 4).Value = newID
+    Next i
+    
+    '4. LOTES
+    Set ws = ThisWorkbook.Sheets("LOTES")
+    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        If ws.Cells(i, 2).Value = oldID Then ws.Cells(i, 2).Value = newID
+    Next i
+End Sub
