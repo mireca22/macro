@@ -522,33 +522,7 @@ Private Sub EscribirSeccionManual(ws As Worksheet, ByRef fila As Long, _
     End With
     fila = fila + 2
 End Sub
-
-Private Sub EscribirSeccionManual(ws As Worksheet, ByRef fila As Long, _
-    titulo As String, contenido As String)
-    With ws.Cells(fila, 2)
-        .Value = titulo
-        .Font.Size = 12
-        .Font.Bold = True
-        .Font.Color = RGB(255, 255, 255)
-        .Interior.Color = RGB(0, 122, 204)
-        .RowHeight = 25
-        .VerticalAlignment = xlVAlignCenter
-        .HorizontalAlignment = xlHAlignLeft
-        .IndentLevel = 1
-    End With
-    fila = fila + 1
-    With ws.Cells(fila, 2)
-        .Value = contenido
-        .Font.Size = 11
-        .Font.Color = RGB(50, 50, 50)
-        .VerticalAlignment = xlTop
-        .Interior.Color = RGB(245, 245, 245)
-        .Borders.LineStyle = xlContinuous
-        .Borders.Color = RGB(220, 220, 220)
-        .EntireRow.AutoFit
-    End With
-    fila = fila + 2
-End Sub
+ 
 
 '==============================================================================
 ' BOTONES EN HOJAS OPERACIONALES

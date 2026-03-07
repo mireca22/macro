@@ -177,7 +177,6 @@ End Sub
 '==============================================================================
 ' GENERADOR PRINCIPAL DE REPORTES
 '==============================================================================
-
 Public Sub GenerarReporteEnHoja(fecha As Date, tipoReporte As String)
     Dim wsResumen As Worksheet, wsAsig As Worksheet, wsOp As Worksheet
     Dim dictOp As Object
@@ -193,9 +192,12 @@ Public Sub GenerarReporteEnHoja(fecha As Date, tipoReporte As String)
     Set wsAsig    = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
     Set wsOp      = ThisWorkbook.Sheets("OPERARIAS")
     Set dictOp    = CreateObject("Scripting.Dictionary")
+
     esMes         = (tipoReporte = "MENSUAL")
     diasLaborales = 22
+
     Application.ScreenUpdating = False
+    Application.EnableEvents   = False
 
     ' 1. Cargar Operarias
     ultFila = wsOp.Cells(wsOp.Rows.Count, 1).End(xlUp).Row
@@ -204,112 +206,40 @@ Public Sub GenerarReporteEnHoja(fecha As Date, tipoReporte As String)
         nomOp = wsOp.Cells(i, 2).Value
         cap   = Val(wsOp.Cells(i, 3).Value)
         If esMes Then cap = cap * diasLaborales
-        If idOp <> "" Then
-            dictOp(idOp) = Array(nomOp, cap, 0, 0, 0)
-        End If
+        If idOp <> "" Then dictOp(idOp) = Array(nomOp, cap, 0, 0, 0)
     Next i
 
-    ' 2. Leer asignaciones
+    ' 2. Leer ASIGNACIONESDIARIAS completo en array (1 acceso en lugar de N x columnas)
     Dim collDetalles As Collection
     Set collDetalles = New Collection
-    Dim rowData As Variant
-    Dim incluirFila As Boolean
+    Dim rowData      As Variant
+    Dim incluirFila  As Boolean
 
     ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
-    For i = 4 To ultFila
-        If IsDate(wsAsig.Cells(i, 1).Value) Then
-            fechaFila = wsAsig.Cells(i, 1).Value
-            incluirFila = False
-            If esMes Then
-                If Month(fechaFila) = Month(fecha) And Year(fechaFila) = Year(fecha) Then incluirFila = True
-            Else
-                If Int(fechaFila) = Int(fecha) Then incluirFila = True
-            End If
-            If incluirFila Then
-                idOp = wsAsig.Cells(i, 2).Value
-                asig = wsAsig.Cells(i, 14).Value
-                plan = wsAsig.Cells(i, 11).Value
-                ejec = wsAsig.Cells(i, 16).Value
-                If dictOp.Exists(idOp) Then
-                    Dim arr As Variant
-                    arr = dictOp(idOp)
-                    arr(2) = arr(2) + asig
-                    arr(3) = arr(3) + plan
-                    arr(4) = arr(4) + ejec
-                    dictOp(idOp) = arr
+
+    If ultFila >= 4 Then
+        Dim dataArr    As Variant
+        Dim totalFilas As Long
+        dataArr    = wsAsig.Range(wsAsig.Cells(4, 1), wsAsig.Cells(ultFila, 21)).Value
+        totalFilas = UBound(dataArr, 1)
+
+        For i = 1 To totalFilas
+            If IsDate(dataArr(i, 1)) Then
+                fechaFila   = dataArr(i, 1)
+                incluirFila = False
+
+                If esMes Then
+                    If Month(fechaFila) = Month(fecha) And Year(fechaFila) = Year(fecha) Then
+                        incluirFila = True
+                    End If
+                Else
+                    If Int(fechaFila) = Int(fecha) Then incluirFila = True
                 End If
-                rowData = Array(wsAsig.Cells(i, 3).Value, wsAsig.Cells(i, 5).Value, _
-                                wsAsig.Cells(i, 9).Value, plan, ejec)
-                collDetalles.Add rowData
-            End If
-        End If
-    Next i
 
-    ' 3. Escribir reporte
-    wsResumen.Cells.Clear
-    wsResumen.Range("A1").Value = "REPORTE DE PRODUCCION - " & tipoReporte & " - " & _
-                                  Format(fecha, IIf(esMes, "mmmm yyyy", "dd/mm/yyyy"))
-    wsResumen.Range("A1").Font.Size = 16
-    wsResumen.Range("A1").Font.Bold = True
+                If incluirFila Then
+                    idOp  = dataArr(i
 
-    wsResumen.Range("A3").Value = "RESUMEN DE OCUPACION POR OPERARIA" & _
-                                  IIf(esMes, " (Base 22 dias)", "")
-    wsResumen.Range("A3").Font.Bold = True
-    wsResumen.Range("A4:F4").Value = Array("Operaria", "Capacidad (min)", "Asignado (min)", _
-                                           "Ocupacion %", "Disponible (min)", "Estado")
-    wsResumen.Range("A4:F4").Interior.Color = RGB(220, 220, 220)
-    wsResumen.Range("A4:F4").Font.Bold = True
 
-    Dim fila As Long
-    fila = 5
-    Dim key As Variant
-    For Each key In dictOp.Keys
-        Dim datos As Variant
-        datos = dictOp(key)
-        wsResumen.Cells(fila, 1).Value = datos(0)
-        wsResumen.Cells(fila, 2).Value = datos(1)
-        wsResumen.Cells(fila, 3).Value = datos(2)
-        If datos(1) > 0 Then
-            wsResumen.Cells(fila, 4).Value = datos(2) / datos(1)
-            wsResumen.Cells(fila, 5).Value = datos(1) - datos(2)
-            If wsResumen.Cells(fila, 4).Value > 1 Then
-                wsResumen.Cells(fila, 6).Value = "SOBRECARGA"
-                wsResumen.Cells(fila, 6).Font.Color = vbRed
-            ElseIf wsResumen.Cells(fila, 4).Value > 0.85 Then
-                wsResumen.Cells(fila, 6).Value = "OPTIMO"
-                wsResumen.Cells(fila, 6).Font.Color = RGB(0, 100, 0)
-            Else
-                wsResumen.Cells(fila, 6).Value = "DISPONIBLE"
-                wsResumen.Cells(fila, 6).Font.Color = RGB(0, 0, 255)
-            End If
-        End If
-        fila = fila + 1
-    Next key
-    wsResumen.Range("D5:E" & fila).NumberFormat = "0%"
-
-    ' Tabla 2: Detalle
-    fila = fila + 2
-    wsResumen.Cells(fila, 1).Value = "DETALLE DE ACTIVIDADES PLANEADAS VS EJECUTADAS"
-    wsResumen.Cells(fila, 1).Font.Bold = True
-    fila = fila + 1
-    wsResumen.Range("A" & fila & ":F" & fila).Value = Array("Operaria", "Referencia", _
-        "Tarea", "Planeado", "Ejecutado", "Cumplimiento")
-    wsResumen.Range("A" & fila & ":F" & fila).Interior.Color = RGB(220, 220, 220)
-    wsResumen.Range("A" & fila & ":F" & fila).Font.Bold = True
-    fila = fila + 1
-    Dim item As Variant
-    For Each item In collDetalles
-        wsResumen.Cells(fila, 1).Value = item(0)
-        wsResumen.Cells(fila, 2).Value = item(1)
-        wsResumen.Cells(fila, 3).Value = item(2)
-        wsResumen.Cells(fila, 4).Value = item(3)
-        wsResumen.Cells(fila, 5).Value = item(4)
-        If item(3) > 0 Then wsResumen.Cells(fila, 6).Value = item(4) / item(3)
-        fila = fila + 1
-    Next item
-    wsResumen.Columns.AutoFit
-    Application.ScreenUpdating = True
-End Sub
 
 '==============================================================================
 ' FUNCIONES AUXILIARES: PARAMETROS, FECHAS ESTIMADAS
@@ -515,67 +445,93 @@ End Function
 
 Public Sub GenerarReporteEficiencia()
     Dim wsReporte As Worksheet, wsAsig As Worksheet
-    Dim dictPerf As Object
+    Dim dictPerf  As Object
     Dim i As Long, ultFila As Long
     Dim fechaInicio As Date, fechaFin As Date
     Dim fechaStr As String
 
-    fechaStr = InputBox("Fecha de INICIO del reporte (dd/mm/yyyy):", "Reporte de Eficiencia", _
-                        Format(Date - 30, "dd/mm/yyyy"))
+    fechaStr = InputBox("Fecha de INICIO del reporte (dd/mm/yyyy)", _
+                        "Reporte de Eficiencia", Format(Date - 30, "dd/mm/yyyy"))
     If Not IsDate(fechaStr) Then Exit Sub
     fechaInicio = CDate(fechaStr)
-    fechaStr = InputBox("Fecha de FIN del reporte (dd/mm/yyyy):", "Reporte de Eficiencia", _
-                        Format(Date, "dd/mm/yyyy"))
+
+    fechaStr = InputBox("Fecha de FIN del reporte (dd/mm/yyyy)", _
+                        "Reporte de Eficiencia", Format(Date, "dd/mm/yyyy"))
     If Not IsDate(fechaStr) Then Exit Sub
     fechaFin = CDate(fechaStr)
 
     Set wsReporte = ThisWorkbook.Sheets("EFICIENCIAOPERARIAS")
     Set wsAsig    = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
     Set dictPerf  = CreateObject("Scripting.Dictionary")
+
     Application.ScreenUpdating = False
+    Application.EnableEvents   = False
 
+    ' Leer toda la hoja en un array (1 acceso en lugar de N x columnas)
     ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
-    For i = 4 To ultFila
-        If IsDate(wsAsig.Cells(i, 1).Value) Then
-            Dim fechaAsig As Date
-            fechaAsig = wsAsig.Cells(i, 1).Value
-            If fechaAsig >= fechaInicio And fechaAsig <= fechaFin Then
-                Dim idOp As String, nomOp As String
-                Dim idRef As String, nomRef As String
-                Dim numTarea As String, nomTarea As String
-                Dim key As String
-                idOp    = wsAsig.Cells(i, 2).Value
-                nomOp   = wsAsig.Cells(i, 3).Value
-                idRef   = wsAsig.Cells(i, 4).Value
-                nomRef  = wsAsig.Cells(i, 5).Value
-                numTarea = wsAsig.Cells(i, 9).Value
-                nomTarea = wsAsig.Cells(i, 10).Value
-                key = idOp & idRef & numTarea
-                Dim minAsig As Double, unidComp As Long, tiempoUnitSeg As Long, minProd As Double
-                minAsig      = Val(wsAsig.Cells(i, 14).Value)
-                unidComp     = Val(wsAsig.Cells(i, 16).Value)
-                tiempoUnitSeg = Val(wsAsig.Cells(i, 12).Value)
-                minProd      = unidComp * tiempoUnitSeg / 60
-                If Not dictPerf.Exists(key) Then dictPerf(key) = Array(nomOp, nomRef, nomTarea, 0, 0)
-                Dim arrP As Variant
-                arrP = dictPerf(key)
-                arrP(3) = arrP(3) + minAsig
-                arrP(4) = arrP(4) + minProd
-                dictPerf(key) = arrP
+
+    If ultFila >= 4 Then
+        Dim dataArr    As Variant
+        Dim totalFilas As Long
+        dataArr    = wsAsig.Range(wsAsig.Cells(4, 1), wsAsig.Cells(ultFila, 21)).Value
+        totalFilas = UBound(dataArr, 1)
+
+        For i = 1 To totalFilas
+            If IsDate(dataArr(i, 1)) Then
+                Dim fechaAsig As Date
+                fechaAsig = dataArr(i, 1)
+
+                If fechaAsig >= fechaInicio And fechaAsig <= fechaFin Then
+                    Dim idOp     As String, nomOp     As String
+                    Dim idRef    As String, nomRef    As String
+                    Dim numTarea As String, nomTarea  As String
+                    Dim key      As String
+
+                    idOp     = dataArr(i, 2)
+                    nomOp    = dataArr(i, 3)
+                    idRef    = dataArr(i, 4)
+                    nomRef   = dataArr(i, 5)
+                    numTarea = dataArr(i, 9)
+                    nomTarea = dataArr(i, 10)
+                    key      = idOp & idRef & numTarea
+
+                    Dim minAsig       As Double
+                    Dim unidComp      As Long
+                    Dim tiempoUnitSeg As Long
+                    Dim minProd       As Double
+
+                    minAsig       = Val(dataArr(i, 14))
+                    unidComp      = CLng(Val(dataArr(i, 16)))
+                    tiempoUnitSeg = CLng(Val(dataArr(i, 12)))
+                    minProd       = unidComp * tiempoUnitSeg / 60
+
+                    If Not dictPerf.Exists(key) Then
+                        dictPerf(key) = Array(nomOp, nomRef, nomTarea, 0, 0)
+                    End If
+
+                    Dim arrP As Variant
+                    arrP    = dictPerf(key)
+                    arrP(3) = arrP(3) + minAsig
+                    arrP(4) = arrP(4) + minProd
+                    dictPerf(key) = arrP
+                End If
             End If
-        End If
-    Next i
+        Next i
+    End If
 
+    ' Escribir reporte
     wsReporte.Cells.Clear
-    wsReporte.Range("A1").Value = "Reporte de Eficiencia y Desviacion de Tiempos"
-    wsReporte.Range("A2").Value = "Periodo: " & Format(fechaInicio, "dd/mm/yyyy") & _
-                                  " al " & Format(fechaFin, "dd/mm/yyyy")
+    wsReporte.Range("A1").Value        = "Reporte de Eficiencia y Desviacion de Tiempos"
+    wsReporte.Range("A2").Value        = "Periodo: " & Format(fechaInicio, "dd/mm/yyyy") & _
+                                         " al " & Format(fechaFin, "dd/mm/yyyy")
     wsReporte.Range("A1:A2").Font.Bold = True
-    wsReporte.Range("A4:G4").Value = Array("Operaria", "Referencia", "Tarea", _
-        "Min. Asignados", "Min. Producidos (Est.)", "Desviacion (min)", "Eficiencia %")
-    wsReporte.Range("A4:G4").Font.Bold = True
+    wsReporte.Range("A4:G4").Value     = Array("Operaria", "Referencia", "Tarea", _
+        "Min. Asignados", "Min. Producidos Est.", "Desviacion min", "Eficiencia")
+    wsReporte.Range("A4:G4").Font.Bold      = True
+    wsReporte.Range("A4:G4").Interior.Color = RGB(220, 220, 220)
 
-    Dim fila As Long, k As Variant
+    Dim fila As Long
+    Dim k    As Variant
     fila = 5
     For Each k In dictPerf.Keys
         Dim d As Variant
@@ -589,12 +545,16 @@ Public Sub GenerarReporteEficiencia()
         If d(3) > 0 Then wsReporte.Cells(fila, 7).Value = d(4) / d(3)
         fila = fila + 1
     Next k
+
     wsReporte.Range("G5:G" & fila).NumberFormat = "0.0%"
     wsReporte.Columns.AutoFit
     wsReporte.Activate
+
+    Application.EnableEvents   = True
     Application.ScreenUpdating = True
     MsgBox "Reporte de Eficiencia generado con " & dictPerf.Count & " registros.", vbInformation
 End Sub
+
 
 Public Sub GenerarReporteAvanceProduccion()
     Dim wsAvance As Worksheet, wsRecep As Worksheet

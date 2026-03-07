@@ -1,3 +1,9 @@
+'==============================================================================
+' MODULO 6: modGestorDatosMaestros
+' Funciones auxiliares: 
+' Sistema de Gestion de Produccion Textil v3.0
+'==============================================================================
+
 Option Explicit
 
 Public TipoMaestroActual As String
