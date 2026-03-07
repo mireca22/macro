@@ -1,15 +1,15 @@
 
 Option Explicit
 
-'══════════════════════════════════════════════════════════════════════════════════
-' MÓDULO 1 – modInicializador 
+'----------------------------------------------------------------------------------
+' MÓDULO 1 – modInicializador
 ' Instalador Maestro del Sistema de Gestion de Produccion Textil v3.0
 ' Crea hojas, headers, botones, dashboard y parametros iniciales
 ' AJUSTES GENERALES:
 ' 1. Headers TODAS las hojas en FILA 3 (incluidos REPORTES)
 ' 2. Botón VOLVER A INICIO en FILA 2 para TODAS las hojas (incluidos REPORTES)
 ' 3. Estructura unificada como ASIGNACIONESDIARIAS
-'══════════════════════════════════════════════════════════════════════════════════
+'----------------------------------------------------------------------------------
 
 ' PUNTO DE ENTRADA - INICIALIZADOR MAESTRO
 Public Sub InicializarSistema()
@@ -30,7 +30,7 @@ Public Sub InicializarSistema()
     Application.ScreenUpdating = False
 
     Call CrearHojas(reinicioTotal)
-    Call CrearHeaders                    ' ✅ AHORA TODOS LOS HEADERS EN FILA 3
+    Call CrearHeaders                    ' ? AHORA TODOS LOS HEADERS EN FILA 3
     Call ConfigurarProtecciones
     Call CargarParametrosIniciales
     Call CrearDashboardInicio
@@ -38,11 +38,11 @@ Public Sub InicializarSistema()
     Call CrearBotonesAsignaciones
     Call CrearBotonesMaestros
     Call ActualizarCalendarioNoLaboral
-    Call CrearBotonesVolver             ' ✅ AHORA INCLUYE REPORTES fila 2
+    Call CrearBotonesVolver             ' ? AHORA INCLUYE REPORTES fila 2
 
     Application.ScreenUpdating = True
 
-    MsgBox "✅ OK - SISTEMA INICIALIZADO" & vbCrLf & _
+    MsgBox "? OK - SISTEMA INICIALIZADO" & vbCrLf & _
            "Modo: " & IIf(reinicioTotal, "Total (Fábrica)", "Sistema (Conservación)") & vbCrLf & _
            "Calendario actualizado.", vbInformation
 End Sub
@@ -82,12 +82,12 @@ Public Sub CrearHojas(Optional reiniciarFabrica As Boolean = False)
 
         ' Colores de pestañas
         Select Case nombresHojas(i)
-            Case "INICIO": ws.Tab.Color = RGB(0, 176, 240)
-            Case "MANUAL": ws.Tab.Color = RGB(255, 192, 0)
-            Case "OPERARIAS", "REFERENCIAS", "COLORES", "TALLAS", "TAREAS", "DIASNOLABORALES": ws.Tab.Color = RGB(0, 112, 192)
-            Case "LOTES", "ASIGNACIONESDIARIAS", "EFICIENCIAOPERARIAS": ws.Tab.Color = RGB(192, 0, 0)
-            Case "RESUMENDIARIO", "AVANCEPRODUCCION", "REPORTELOTES", "INFORMEPRODUCCION", "PRODUCCIONFINALIZADA", "ANALISISTIEMPOS": ws.Tab.Color = RGB(0, 176, 80)
-            Case "PARAMETROS", "ARCHIVOASIGNACIONES": ws.Tab.Color = RGB(128, 128, 128)
+            Case "INICIO": ws.Tab.color = RGB(0, 176, 240)
+            Case "MANUAL": ws.Tab.color = RGB(255, 192, 0)
+            Case "OPERARIAS", "REFERENCIAS", "COLORES", "TALLAS", "TAREAS", "DIASNOLABORALES": ws.Tab.color = RGB(0, 112, 192)
+            Case "LOTES", "ASIGNACIONESDIARIAS", "EFICIENCIAOPERARIAS": ws.Tab.color = RGB(192, 0, 0)
+            Case "RESUMENDIARIO", "AVANCEPRODUCCION", "REPORTELOTES", "INFORMEPRODUCCION", "PRODUCCIONFINALIZADA", "ANALISISTIEMPOS": ws.Tab.color = RGB(0, 176, 80)
+            Case "PARAMETROS", "ARCHIVOASIGNACIONES": ws.Tab.color = RGB(128, 128, 128)
         End Select
     Next i
 End Sub
@@ -98,37 +98,37 @@ Public Function ExisteHoja(nombre As String) As Boolean
     On Error GoTo 0
 End Function
 
-' ✅ HEADERS UNIFICADOS - TODAS LAS HOJAS HEADER EN FILA 3
+' ? HEADERS UNIFICADOS - TODAS LAS HOJAS HEADER EN FILA 3
 Public Sub CrearHeaders()
     Dim ws As Worksheet
 
-    ' 1. OPERARIAS - Fila 3 ✅
+    ' 1. OPERARIAS - Fila 3 ?
     Set ws = ThisWorkbook.Sheets("OPERARIAS")
     ws.Range("A3:F3").Value = Array("IDOperaria", "NombreOperaria", "TiempoDisponibleMinutosDiarios", "Estado", "Especialidad", "Contacto")
 
-    ' 2. REFERENCIAS - Fila 3 ✅
+    ' 2. REFERENCIAS - Fila 3 ?
     Set ws = ThisWorkbook.Sheets("REFERENCIAS")
     ws.Range("A3:E3").Value = Array("IDReferencia", "NombreReferencia", "Descripcion", "Color", "TiempoTotalUnidadSeg")
 
-    ' 2.1 COLORES - Fila 3 ✅
+    ' 2.1 COLORES - Fila 3 ?
     Set ws = ThisWorkbook.Sheets("COLORES")
     ws.Range("A3:B3").Value = Array("IDReferencia", "Color")
 
-    ' 3. TALLAS - Fila 3 ✅
+    ' 3. TALLAS - Fila 3 ?
     Set ws = ThisWorkbook.Sheets("TALLAS")
     ws.Range("A3:B3").Value = Array("IDReferencia", "Talla")
 
-    ' 4. LOTES - Fila 3 ✅
+    ' 4. LOTES - Fila 3 ?
     Set ws = ThisWorkbook.Sheets("LOTES")
     ws.Range("A3:K3").Value = Array("IDLote", "IDReferencia", "Color", "Talla", "CantidadRecibida", _
                                     "FechaRecepcion", "FechaInicioProduccion", "UnidadesCompletadas", _
                                     "PorcentajeAvance", "Estado", "FechaFinEstimada")
 
-    ' 5. TAREAS - Fila 3 ✅
+    ' 5. TAREAS - Fila 3 ?
     Set ws = ThisWorkbook.Sheets("TAREAS")
     ws.Range("A3:F3").Value = Array("IDReferencia", "NumeroTarea", "NombreTarea", "TiempoSegundos", "DescripcionTarea", "Dificultad")
 
-    ' 6. ASIGNACIONESDIARIAS - Fila 3 ✅
+    ' 6. ASIGNACIONESDIARIAS - Fila 3 ?
     Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
     ws.Range("A3:U3").Value = Array("Fecha", "IDOperaria", "NombreOperaria", "IDReferencia", "NombreReferencia", _
                                     "IDLote", "Color", "TallaAsignada", "NumeroTarea", "NombreTarea", _
@@ -137,7 +137,7 @@ Public Sub CrearHeaders()
                                     "Observaciones", "TiempoLibreOperariaMinutos", "FechaEntregaReal", _
                                     "TiempoRealMinutos", "DesviacionMinutos")
 
-    ' ✅ 7. REPORTES - AHORA HEADER EN FILA 3 (MOVIDO DESDE FILA 1)
+    ' ? 7. REPORTES - AHORA HEADER EN FILA 3 (MOVIDO DESDE FILA 1)
     Set ws = ThisWorkbook.Sheets("PRODUCCIONFINALIZADA")
     ws.Range("A3:G3").Value = Array("FechaFinalizacion", "IDReferencia", "NombreReferencia", "Talla", _
                                     "TotalUnidadesProducidas", "DiasProduccion", "OperariasInvolucradas")
@@ -178,7 +178,7 @@ Public Sub CrearHeaders()
         If Not rngHeader Is Nothing Then
             With rngHeader
                 .Font.Bold = True
-                .Interior.Color = RGB(220, 220, 220)
+                .Interior.color = RGB(220, 220, 220)
                 .Borders.LineStyle = xlContinuous
                 .EntireColumn.AutoFit
             End With
@@ -218,19 +218,20 @@ Public Sub CrearDashboardInicio()
 
     ws.Activate
     ws.Cells.Clear
-    ws.Cells.Interior.Color = RGB(255, 255, 255)
+    ws.Cells.Interior.color = RGB(255, 255, 255)
 
     For Each shp In ws.Shapes: shp.Delete: Next shp
 
     ' Espaciado general
     ws.Cells.ColumnWidth = 6
     ws.Cells.RowHeight = 20
-    ws.Columns("B,D,F").ColumnWidth = 30
+    ws.Range("B:B,D:D,F:F").ColumnWidth = 30
+
 
     ' Título
     With ws.Range("B2")
         .Value = "SISTEMA CONTROL DE PRODUCCION TEXTIL"
-        .Font.Size = 20: .Font.Bold = True: .Font.Color = RGB(50, 50, 50)
+        .Font.Size = 20: .Font.Bold = True: .Font.color = RGB(50, 50, 50)
     End With
 
     ' Botones principales
@@ -283,7 +284,7 @@ Private Sub CrearBotonDashboard(ws As Worksheet, texto As String, macro As Strin
         .TextFrame.HorizontalAlignment = xlHAlignCenter
         .TextFrame.VerticalAlignment = xlVAlignCenter
         .Fill.ForeColor.RGB = color
-        .Line.Visible = msoFalse
+        .Line.visible = msoFalse
         .OnAction = macro
     End With
 End Sub
@@ -298,7 +299,7 @@ Public Sub CrearBotonesAsignaciones()
     Next shp
 
     ws.Rows(1).RowHeight = 15
-    ws.Rows(2).RowHeight = 45  ' ✅ Fila 2 para botones
+    ws.Rows(2).RowHeight = 45  ' ? Fila 2 para botones
 
     Call CrearBotonDashboard(ws, "NUEVA ASIGNACION", "CrearNuevaAsignacionUI", 2, 2, RGB(0, 122, 204))
     Call CrearBotonDashboard(ws, "EDITAR ASIGNACION", "RegistrarFilaEnFormulario", 2, 6, RGB(255, 140, 0))
@@ -321,7 +322,7 @@ Public Sub CrearBotonesMaestros()
         ws.Cells.RowHeight = 20
         ws.Columns("B").ColumnWidth = 30
         ws.Rows(1).RowHeight = 15
-        ws.Rows(2).RowHeight = 45  ' ✅ Fila 2 para botones
+        ws.Rows(2).RowHeight = 45  ' ? Fila 2 para botones
 
         Select Case hoja
             Case "OPERARIAS": macroNuevo = "AbrirGestorOperarias"
@@ -337,7 +338,7 @@ Public Sub CrearBotonesMaestros()
     Next hoja
 End Sub
 
-' ✅ BOTONES VOLVER CORREGIDO - INCLUYE REPORTES EN FILA 2
+' ? BOTONES VOLVER CORREGIDO - INCLUYE REPORTES EN FILA 2
 Public Sub CrearBotonesVolver()
     Dim ws As Worksheet
     Dim colBtn As Integer, filaBtn As Integer
@@ -353,7 +354,7 @@ Public Sub CrearBotonesVolver()
                 End If
             Next i
 
-            ' ✅ ESTRUCTURA UNIFICADA - TODAS las hojas tienen botones en FILA 2
+            ' ? ESTRUCTURA UNIFICADA - TODAS las hojas tienen botones en FILA 2
             filaBtn = 2
             colBtn = 10
 
@@ -401,18 +402,18 @@ Public Sub CrearHojaManual()
     Dim ws As Worksheet, fila As Long
     Set ws = ThisWorkbook.Sheets("MANUAL")
 
-    ws.Activate: ws.Cells.Clear: ws.Cells.Interior.Color = RGB(255, 255, 255)
+    ws.Activate: ws.Cells.Clear: ws.Cells.Interior.color = RGB(255, 255, 255)
     ws.Columns("A").ColumnWidth = 2: ws.Columns("B").ColumnWidth = 90: fila = 2
 
     With ws.Cells(fila, 2)
         .Value = "MANUAL DE USO - SISTEMA DE PRODUCCION TEXTIL"
-        .Font.Size = 20: .Font.Bold = True: .Font.Color = RGB(0, 51, 102)
+        .Font.Size = 20: .Font.Bold = True: .Font.color = RGB(0, 51, 102)
     End With
     fila = fila + 1
 
     With ws.Cells(fila, 2)
         .Value = "Guia paso a paso para el uso diario - No necesita conocimientos de computador"
-        .Font.Size = 11: .Font.Italic = True: .Font.Color = RGB(100, 100, 100)
+        .Font.Size = 11: .Font.Italic = True: .Font.color = RGB(100, 100, 100)
     End With
     fila = fila + 3
 
@@ -445,8 +446,8 @@ Private Sub EscribirSeccionManual(ws As Worksheet, ByRef fila As Long, titulo As
     With ws.Cells(fila, 2)
         .Value = titulo
         .Font.Size = 12: .Font.Bold = True
-        .Font.Color = RGB(255, 255, 255)
-        .Interior.Color = RGB(0, 122, 204)
+        .Font.color = RGB(255, 255, 255)
+        .Interior.color = RGB(0, 122, 204)
         .RowHeight = 28
         .VerticalAlignment = xlVAlignCenter
         .HorizontalAlignment = xlHAlignLeft
@@ -456,11 +457,13 @@ Private Sub EscribirSeccionManual(ws As Worksheet, ByRef fila As Long, titulo As
 
     With ws.Cells(fila, 2)
         .Value = contenido
-        .Font.Size = 11: .Font.Color = RGB(30, 30, 30)
+        .Font.Size = 11: .Font.color = RGB(30, 30, 30)
         .VerticalAlignment = xlTop
-        .Interior.Color = RGB(245, 245, 245)
-        .Borders.LineStyle = xlContinuous: .Borders.Color = RGB(200, 200, 200)
+        .Interior.color = RGB(245, 245, 245)
+        .Borders.LineStyle = xlContinuous: .Borders.color = RGB(200, 200, 200)
         .EntireRow.AutoFit
     End With
     fila = fila + 2
 End Sub
+
+
