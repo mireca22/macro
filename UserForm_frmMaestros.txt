@@ -378,14 +378,10 @@ End Sub
 
 Private Sub btnGestionarLotes_Click()
     Dim frmLotes As New frmGestionLotes
-    frmLotes.idRef = Me.txt1.Value
-    
     Me.Hide
+    frmLotes.IniciarConReferencia Me.txt1.Value   ' <-- asigna idRef y carga ANTES de Show
     frmLotes.Show
     Me.Show
-    
-    ' Forzar recarga de caché y detalles, ya que los lotes pueden haber cambiado
-    ' y esto afecta los colores y tallas disponibles.
     Call CargarCacheEnMemoria
     Call CargarDetallesReferencia(Me.txt1.Value)
 End Sub

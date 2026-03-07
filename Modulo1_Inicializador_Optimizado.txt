@@ -1,26 +1,28 @@
+'==============================================================================
+' MODULO 1: modInicializadorOptimizado
+' Instalador Maestro del Sistema de Gestion de Produccion Textil v3.0
+' Crea hojas, headers, botones, dashboard y parametros iniciales
+'==============================================================================
+
 Option Explicit
 
-Sub InicializarSistema()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Inicializador Maestro del Sistema
-    '═══════════════════════════════════════════════════════════════════════════
-    
+'==============================================================================
+' PUNTO DE ENTRADA: INICIALIZADOR MAESTRO
+'==============================================================================
+
+Public Sub InicializarSistema()
     Dim respuesta As VbMsgBoxResult
     Dim reinicioTotal As Boolean
-    
-    respuesta = MsgBox("¿Qué tipo de reinicio desea realizar?" & vbCrLf & vbCrLf & _
-                       "• SÍ: REINICIO TOTAL (Borra todos los datos y hojas)." & vbCrLf & _
-                       "• NO: REINICIO DE SISTEMA (Mantiene datos, repara formatos).", _
-                       vbYesNoCancel + vbExclamation, "Inicialización del Sistema")
-    
+
+    respuesta = MsgBox("Que tipo de reinicio desea realizar?" & vbCrLf & vbCrLf & _
+                       "SI  = REINICIO TOTAL (Borra todos los datos y hojas)." & vbCrLf & _
+                       "NO  = REINICIO DE SISTEMA (Mantiene datos, repara formatos).", _
+                       vbYesNoCancel + vbExclamation, "Inicializacion del Sistema")
     If respuesta = vbCancel Then Exit Sub
     reinicioTotal = (respuesta = vbYes)
-    
-    'Invalidar el caché para forzar una recarga completa desde las hojas de Excel.
+
     Call InvalidarCache
-    
     Application.ScreenUpdating = False
-    
     Call CrearHojas(reinicioTotal)
     Call CrearHeaders
     Call ConfigurarProtecciones
@@ -31,36 +33,44 @@ Sub InicializarSistema()
     Call CrearBotonesMaestros
     Call ActualizarCalendarioNoLaboral
     Call CrearBotonesVolver
-    
     Application.ScreenUpdating = True
-    
-    MsgBox "[OK] SISTEMA INICIALIZADO" & vbCrLf & _
-           "Modo: " & IIf(reinicioTotal, "Total (Fábrica)", "Sistema (Conservación)") & vbCrLf & _
+
+    MsgBox "OK: SISTEMA INICIALIZADO" & vbCrLf & _
+           "Modo: " & IIf(reinicioTotal, "Total Fabrica", "Sistema Conservacion") & vbCrLf & _
            "Calendario actualizado.", vbInformation
 End Sub
 
-Sub CrearHojas(Optional reiniciarFabrica As Boolean = False)
+'==============================================================================
+' CREACION DE HOJAS
+'==============================================================================
+
+Public Sub CrearHojas(Optional reiniciarFabrica As Boolean = False)
     Dim ws As Worksheet
     Dim nombresHojas As Variant
     Dim i As Long
-    
-    nombresHojas = Array("INICIO", "MANUAL", "ASIGNACIONES_DIARIAS", "OPERARIAS", "REFERENCIAS", "COLORES", "TALLAS", "TAREAS", "LOTES", "EFICIENCIA_OPERARIAS", _
-                         "DIAS_NO_LABORALES", "AVANCE_PRODUCCION", "REPORTE_LOTES", "INFORME_PRODUCCION", "RESUMEN_DIARIO", _
-                         "PRODUCCION_FINALIZADA", "ANALISIS_TIEMPOS", "ARCHIVO_ASIGNACIONES", "PARAMETROS")
-    
+
+    nombresHojas = Array("INICIO", "MANUAL", "ASIGNACIONESDIARIAS", "OPERARIAS", _
+                         "REFERENCIAS", "COLORES", "TALLAS", "TAREAS", "LOTES", _
+                         "EFICIENCIAOPERARIAS", "DIASNOLABORALES", "AVANCEPRODUCCION", _
+                         "REPORTELOTES", "INFORMEPRODUCCION", "RESUMENDIARIO", _
+                         "PRODUCCIONFINALIZADA", "ANALISISTIEMPOS", "ARCHIVOASIGNACIONES", _
+                         "PARAMETROS")
+
     If reiniciarFabrica Then
         Application.DisplayAlerts = False
         On Error Resume Next
         For i = LBound(nombresHojas) To UBound(nombresHojas)
             If ExisteHoja(CStr(nombresHojas(i))) Then
-                If ThisWorkbook.Sheets.Count = 1 Then ThisWorkbook.Sheets.Add
-                ThisWorkbook.Sheets(nombresHojas(i)).Delete
+                If ThisWorkbook.Sheets.Count > 1 Then
+                    ThisWorkbook.Sheets.Add
+                    ThisWorkbook.Sheets(nombresHojas(i)).Delete
+                End If
             End If
         Next i
         On Error GoTo 0
         Application.DisplayAlerts = True
     End If
-    
+
     For i = LBound(nombresHojas) To UBound(nombresHojas)
         If Not ExisteHoja(CStr(nombresHojas(i))) Then
             Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
@@ -68,97 +78,125 @@ Sub CrearHojas(Optional reiniciarFabrica As Boolean = False)
         Else
             Set ws = ThisWorkbook.Sheets(nombresHojas(i))
         End If
-        
-        'Colores de pestañas
+        ' Colores de pestanas
         Select Case nombresHojas(i)
-            Case "INICIO": ws.Tab.Color = RGB(0, 176, 240)       'Principal (Cyan)
-            Case "MANUAL": ws.Tab.Color = RGB(255, 192, 0)       'Ayuda (Amarillo)
-            Case "OPERARIAS", "REFERENCIAS", "COLORES", "TALLAS", "TAREAS", "DIAS_NO_LABORALES": ws.Tab.Color = RGB(0, 112, 192) 'Maestros (Azul)
-            Case "LOTES", "ASIGNACIONES_DIARIAS", "EFICIENCIA_OPERARIAS": ws.Tab.Color = RGB(192, 0, 0) 'Procesos (Rojo)
-            Case "RESUMEN_DIARIO", "AVANCE_PRODUCCION", "REPORTE_LOTES", "INFORME_PRODUCCION", "PRODUCCION_FINALIZADA", "ANALISIS_TIEMPOS": ws.Tab.Color = RGB(0, 176, 80) 'Reportes (Verde)
-            Case "PARAMETROS", "ARCHIVO_ASIGNACIONES": ws.Tab.Color = RGB(128, 128, 128) 'Sistema (Gris)
+            Case "INICIO":              ws.Tab.Color = RGB(0, 176, 240)
+            Case "MANUAL":              ws.Tab.Color = RGB(255, 192, 0)
+            Case "OPERARIAS", "REFERENCIAS", "COLORES", "TALLAS", "TAREAS", "DIASNOLABORALES"
+                ws.Tab.Color = RGB(0, 112, 192)
+            Case "LOTES", "ASIGNACIONESDIARIAS", "EFICIENCIAOPERARIAS"
+                ws.Tab.Color = RGB(192, 0, 0)
+            Case "RESUMENDIARIO", "AVANCEPRODUCCION", "REPORTELOTES", _
+                 "INFORMEPRODUCCION", "PRODUCCIONFINALIZADA", "ANALISISTIEMPOS"
+                ws.Tab.Color = RGB(0, 176, 80)
+            Case "PARAMETROS", "ARCHIVOASIGNACIONES"
+                ws.Tab.Color = RGB(128, 128, 128)
         End Select
     Next i
 End Sub
 
-Sub CrearHeaders()
+Public Function ExisteHoja(nombre As String) As Boolean
+    On Error Resume Next
+    ExisteHoja = Not (ThisWorkbook.Sheets(nombre) Is Nothing)
+    On Error GoTo 0
+End Function
+
+'==============================================================================
+' HEADERS DE TODAS LAS HOJAS
+'==============================================================================
+
+Public Sub CrearHeaders()
     Dim ws As Worksheet
-    
-    '1. OPERARIAS
+
+    ' 1. OPERARIAS
     Set ws = ThisWorkbook.Sheets("OPERARIAS")
-    ws.Range("A3:F3").Value = Array("ID_Operaria", "Nombre_Operaria", "Tiempo_Disponible_Minutos_Diarios", "Estado", "Especialidad", "Contacto")
-    
-    '2. REFERENCIAS
+    ws.Range("A3:F3").Value = Array("IDOperaria", "NombreOperaria", _
+        "TiempoDisponibleMinutosDiarios", "Estado", "Especialidad", "Contacto")
+
+    ' 2. REFERENCIAS
     Set ws = ThisWorkbook.Sheets("REFERENCIAS")
-    ws.Range("A3:E3").Value = Array("ID_Referencia", "Nombre_Referencia", "Descripción", "Color", "Tiempo_Total_Unidad_Seg")
-    
-    '2.1 COLORES (NUEVO)
+    ws.Range("A3:E3").Value = Array("IDReferencia", "NombreReferencia", _
+        "Descripcion", "Color", "TiempoTotalUnidadSeg")
+
+    ' 2.1 COLORES
     Set ws = ThisWorkbook.Sheets("COLORES")
-    ws.Range("A3:B3").Value = Array("ID_Referencia", "Color")
-    
-    '3. TALLAS
+    ws.Range("A3:B3").Value = Array("IDReferencia", "Color")
+
+    ' 3. TALLAS
     Set ws = ThisWorkbook.Sheets("TALLAS")
-    ws.Range("A3:B3").Value = Array("ID_Referencia", "Talla")
-    
-    '4 LOTES (NUEVA)
+    ws.Range("A3:B3").Value = Array("IDReferencia", "Talla")
+
+    ' 4. LOTES
     Set ws = ThisWorkbook.Sheets("LOTES")
-    ws.Range("A3:K3").Value = Array("ID_Lote", "ID_Referencia", "Color", "Talla", "Cantidad_Recibida", "Fecha_Recepcion", "Fecha_Inicio_Produccion", "Unidades_Completadas", "Porcentaje_Avance", "Estado", "Fecha_Fin_Estimada")
-    
-    '5. TAREAS
+    ws.Range("A3:K3").Value = Array("IDLote", "IDReferencia", "Color", "Talla", _
+        "CantidadRecibida", "FechaRecepcion", "FechaInicioProduccion", _
+        "UnidadesCompletadas", "PorcentajeAvance", "Estado", "FechaFinEstimada")
+
+    ' 5. TAREAS
     Set ws = ThisWorkbook.Sheets("TAREAS")
-    ws.Range("A3:F3").Value = Array("ID_Referencia", "Número_Tarea", "Nombre_Tarea", "Tiempo_Segundos", "Descripción_Tarea", "Dificultad")
-    
-    '6. ASIGNACIONES_DIARIAS
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    ws.Range("A3:U3").Value = Array("Fecha", "ID_Operaria", "Nombre_Operaria", "ID_Referencia", "Nombre_Referencia", _
-                                    "ID_Lote", "Color", "Talla_Asignada", "Número_Tarea", "Nombre_Tarea", "Cantidad_Unidades_Asignadas", _
-                                    "Tiempo_Unitario_Segundos", "Tiempo_Total_Asignado_Segundos", "Tiempo_Total_Asignado_Minutos", _
-                                    "Estado_Asignacion", "Unidades_Completadas_Hoy", "Observaciones", "Tiempo_Libre_Operaria_Minutos", _
-                                    "Fecha_Entrega_Real", "Tiempo_Real_Minutos", "Desviacion_Minutos")
-    
-    '7. PRODUCCION_FINALIZADA
-    Set ws = ThisWorkbook.Sheets("PRODUCCION_FINALIZADA")
-    ws.Range("A1:G1").Value = Array("Fecha_Finalizacion", "ID_Referencia", "Nombre_Referencia", "Talla", "Total_Unidades_Producidas", "Dias_Produccion", "Operarias_Involucradas")
+    ws.Range("A3:F3").Value = Array("IDReferencia", "NumeroTarea", "NombreTarea", _
+        "TiempoSegundos", "DescripcionTarea", "Dificultad")
 
-    '8. DIAS_NO_LABORALES
-    Set ws = ThisWorkbook.Sheets("DIAS_NO_LABORALES")
-    ws.Range("A1:C1").Value = Array("Fecha", "Día_Semana", "Descripción")
+    ' 6. ASIGNACIONESDIARIAS
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    ws.Range("A3:U3").Value = Array("Fecha", "IDOperaria", "NombreOperaria", _
+        "IDReferencia", "NombreReferencia", "IDLote", "Color", "TallaAsignada", _
+        "NumeroTarea", "NombreTarea", "CantidadUnidadesAsignadas", _
+        "TiempoUnitarioSegundos", "TiempoTotalAsignadoSegundos", _
+        "TiempoTotalAsignadoMinutos", "EstadoAsignacion", "UnidadesCompletadasHoy", _
+        "Observaciones", "TiempoLibreOperariaMinutos", "FechaEntregaReal", _
+        "TiempoRealMinutos", "DesviacionMinutos")
 
-    '9. AVANCE_PRODUCCION
-    Set ws = ThisWorkbook.Sheets("AVANCE_PRODUCCION")
-    ws.Range("A1:I1").Value = Array("ID_Referencia", "Nombre_Referencia", "Nombre_Tarea", "Tiempo_Unit_Seg", "Total_Unidades_Req", "Unidades_Asignadas", "Unidades_Pendientes", "Tiempo_Pendiente_Min", "Estado_Asignacion")
+    ' 7. PRODUCCIONFINALIZADA
+    Set ws = ThisWorkbook.Sheets("PRODUCCIONFINALIZADA")
+    ws.Range("A1:G1").Value = Array("FechaFinalizacion", "IDReferencia", _
+        "NombreReferencia", "Talla", "TotalUnidadesProducidas", _
+        "DiasProduccion", "OperariasInvolucradas")
 
-    '10. ANALISIS_TIEMPOS (NUEVO)
-    Set ws = ThisWorkbook.Sheets("ANALISIS_TIEMPOS")
-    ws.Range("A1:H1").Value = Array("ID_Referencia", "Nombre_Referencia", "Tarea", "Tiempo_Estándar_Unit (seg)", "Tiempo_Real_Promedio (seg)", "Desviación (%)", "Muestras", "Sugerencia")
+    ' 8. DIASNOLABORALES
+    Set ws = ThisWorkbook.Sheets("DIASNOLABORALES")
+    ws.Range("A1:C1").Value = Array("Fecha", "DiaSemana", "Descripcion")
 
-    '11. REPORTE_LOTES (NUEVO)
-    Set ws = ThisWorkbook.Sheets("REPORTE_LOTES")
-    ws.Range("A1:K1").Value = Array("Lote", "Referencia", "Color", "Talla", "Cantidad", "Tareas/Unidad", "Ops. Requeridas", "Ops. Completadas", "% Avance", "Tiempo Est. (Horas)", "Estado")
+    ' 9. AVANCEPRODUCCION
+    Set ws = ThisWorkbook.Sheets("AVANCEPRODUCCION")
+    ws.Range("A1:I1").Value = Array("IDReferencia", "NombreReferencia", "NombreTarea", _
+        "TiempoUnitSeg", "TotalUnidadesReq", "UnidadesAsignadas", _
+        "UnidadesPendientes", "TiempoPendienteMin", "EstadoAsignacion")
 
-    '7. PARAMETROS
+    ' 10. ANALISISTIEMPOS
+    Set ws = ThisWorkbook.Sheets("ANALISISTIEMPOS")
+    ws.Range("A1:H1").Value = Array("IDReferencia", "NombreReferencia", "Tarea", _
+        "TiempoEstandarUnit(seg)", "TiempoRealPromedio(seg)", _
+        "Desviacion(%)", "Muestras", "Sugerencia")
+
+    ' 11. REPORTELOTES
+    Set ws = ThisWorkbook.Sheets("REPORTELOTES")
+    ws.Range("A1:K1").Value = Array("Lote", "Referencia", "Color", "Talla", "Cantidad", _
+        "TareasUnidad", "Ops.Requeridas", "Ops.Completadas", "Avance", _
+        "Tiempo Est.(Horas)", "Estado")
+
+    ' 12. PARAMETROS
     Set ws = ThisWorkbook.Sheets("PARAMETROS")
-    ws.Range("A1:D1").Value = Array("Parámetro", "Valor_Actual", "Descripción", "Tipo")
-    
-    'Formato general headers
+    ws.Range("A1:D1").Value = Array("Parametro", "ValorActual", "Descripcion", "Tipo")
+
+    ' Aplicar formato general a todos los headers
+    Dim rngHeader As Range
+    Dim ultCol As Long
     For Each ws In ThisWorkbook.Worksheets
-        Dim rngHeader As Range
         Set rngHeader = Nothing
-        Dim ultCol As Long
-        
+        On Error Resume Next
         Select Case ws.Name
-            Case "ASIGNACIONES_DIARIAS", "OPERARIAS", "REFERENCIAS", "COLORES", "TALLAS", "LOTES", "TAREAS"
-                'Headers en fila 3: Buscar última columna real
+            Case "ASIGNACIONESDIARIAS", "OPERARIAS", "REFERENCIAS", "COLORES", _
+                 "TALLAS", "LOTES", "TAREAS"
                 ultCol = ws.Cells(3, ws.Columns.Count).End(xlToLeft).Column
-                If ultCol >= 1 Then Set rngHeader = ws.Range(ws.Cells(3, 1), ws.Cells(3, ultCol))
+                If ultCol > 1 Then Set rngHeader = ws.Range(ws.Cells(3, 1), ws.Cells(3, ultCol))
             Case Else
-                'Headers en fila 1: Buscar última columna real
                 If ws.Cells(1, 1).Value <> "" Then
                     ultCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column
-                    If ultCol >= 1 Then Set rngHeader = ws.Range(ws.Cells(1, 1), ws.Cells(1, ultCol))
+                    If ultCol > 1 Then Set rngHeader = ws.Range(ws.Cells(1, 1), ws.Cells(1, ultCol))
                 End If
         End Select
-        
+        On Error GoTo 0
         If Not rngHeader Is Nothing Then
             With rngHeader
                 .Font.Bold = True
@@ -170,125 +208,117 @@ Sub CrearHeaders()
     Next ws
 End Sub
 
-Function ExisteHoja(nombre As String) As Boolean
-    On Error Resume Next
-    ExisteHoja = Not ThisWorkbook.Sheets(nombre) Is Nothing
-    On Error GoTo 0
-End Function
+'==============================================================================
+' CONFIGURACION Y PARAMETROS
+'==============================================================================
 
-Sub ConfigurarProtecciones()
+Public Sub ConfigurarProtecciones()
     Dim ws As Worksheet
-    
-    'Desproteger hojas para permitir carga de datos manual
-    'NOTA: Se ha desactivado la protección automática para facilitar la carga inicial
     On Error Resume Next
-    
-    Set ws = ThisWorkbook.Sheets("OPERARIAS")
-    ws.Unprotect Password:="admin123"
-    
-    Set ws = ThisWorkbook.Sheets("REFERENCIAS")
-    ws.Unprotect Password:="admin123"
-    
-    Set ws = ThisWorkbook.Sheets("TALLAS")
-    ws.Unprotect Password:="admin123"
-    
-    Set ws = ThisWorkbook.Sheets("TAREAS")
-    ws.Unprotect Password:="admin123"
-    
+    Set ws = ThisWorkbook.Sheets("OPERARIAS"):   ws.Unprotect Password:="admin123"
+    Set ws = ThisWorkbook.Sheets("REFERENCIAS"): ws.Unprotect Password:="admin123"
+    Set ws = ThisWorkbook.Sheets("TALLAS"):      ws.Unprotect Password:="admin123"
+    Set ws = ThisWorkbook.Sheets("TAREAS"):      ws.Unprotect Password:="admin123"
     On Error GoTo 0
 End Sub
 
-Sub CargarParametrosIniciales()
+Public Sub CargarParametrosIniciales()
     Dim ws As Worksheet
     Set ws = ThisWorkbook.Sheets("PARAMETROS")
-    
     If ws.Range("A2").Value = "" Then
-        ws.Range("A2:D2").Value = Array("Tiempo_Disponible_Base_Minutos", 480, "Tiempo en minutos diarios base para operarias nuevas", "Número")
-        ws.Range("A3:D3").Value = Array("Dias_Rotacion_Archivo", 30, "Días antes de archivar", "Número")
-        ws.Range("A4:D4").Value = Array("Habilitar_Advertencias", "VERDADERO", "Mostrar advertencias de capacidad", "Booleano")
-        ws.Range("A5:D5").Value = Array("Redondeo_Tiempo", 1, "Redondeo de tiempo", "Número")
-        ws.Range("A6:D6").Value = Array("Horas_Semanales_Legales", 44, "Horas legales por semana", "Número")
-        ws.Range("A7:D7").Value = Array("Dias_Laborales_Semana", 5, "Días laborales por semana", "Número")
+        ws.Range("A2:D2").Value = Array("TiempoDisponibleBaseMinutos", 480, _
+            "Tiempo en minutos diarios base para operarias nuevas", "Numero")
+        ws.Range("A3:D3").Value = Array("DiasRotacionArchivo", 30, _
+            "Dias antes de archivar", "Numero")
+        ws.Range("A4:D4").Value = Array("HabilitarAdvertencias", "VERDADERO", _
+            "Mostrar advertencias de capacidad", "Booleano")
+        ws.Range("A5:D5").Value = Array("RedondeoTiempo", 1, _
+            "Redondeo de tiempo", "Numero")
+        ws.Range("A6:D6").Value = Array("HorasSemanalesLegales", 44, _
+            "Horas legales por semana", "Numero")
+        ws.Range("A7:D7").Value = Array("DiasLaboralesSemana", 5, _
+            "Dias laborales por semana", "Numero")
         ws.Range("A2:D7").Columns.AutoFit
     End If
 End Sub
 
-Sub CrearDashboardInicio()
+'==============================================================================
+' DASHBOARD PRINCIPAL (Hoja INICIO)
+'==============================================================================
+
+Public Sub CrearDashboardInicio()
     Dim ws As Worksheet
     Dim shp As Shape
-    
     Set ws = ThisWorkbook.Sheets("INICIO")
     ws.Activate
-    
-    'Limpiar hoja
     ws.Cells.Clear
     ws.Cells.Interior.Color = RGB(255, 255, 255)
     For Each shp In ws.Shapes
         shp.Delete
     Next shp
-    
-    '1. Ajuste general (espaciado)
+
+    ' Espaciado general
     ws.Cells.ColumnWidth = 6
     ws.Cells.RowHeight = 20
-    
-    '2. Ajuste columnas de botones
     ws.Columns("B").ColumnWidth = 30
     ws.Columns("D").ColumnWidth = 30
     ws.Columns("F").ColumnWidth = 30
-    
-    'Título
+
+    ' Titulo
     With ws.Range("B2")
-        .Value = "SISTEMA CONTROL DE PRODUCCIÓN STELLA"
+        .Value = "SISTEMA CONTROL DE PRODUCCION TEXTIL"
         .Font.Size = 20
         .Font.Bold = True
-        .Font.Color = RGB(50, 50, 50) 
+        .Font.Color = RGB(50, 50, 50)
     End With
-    
-    'Botones Principales
-    CrearBotonDashboard ws, "NUEVA ASIGNACIÓN", "CrearNuevaAsignacionUI", 5, 2, RGB(0, 122, 204)
-    CrearBotonDashboard ws, "VER RESUMEN DIARIO", "MostrarEstadisticasDelDia", 8, 2, RGB(0, 122, 204)
-    CrearBotonDashboard ws, "REPORTE DE EFICIENCIA", "GenerarReporteEficiencia", 5, 4, RGB(204, 102, 0) 'NUEVO REPORTE
-    CrearBotonDashboard ws, "REPORTE MENSUAL", "MostrarReporteMensual", 8, 4, RGB(0, 122, 204) 
-    CrearBotonDashboard ws, "AVANCE PRODUCCIÓN", "GenerarReporteAvanceProduccion", 8, 6, RGB(0, 122, 204)
-    CrearBotonDashboard ws, "ANÁLISIS DE TIEMPOS", "GenerarAnalisisTiempos", 5, 6, RGB(204, 102, 0) 'NUEVO BOTON
-    
-    'Búsqueda Rápida
-    ws.Range("B10").Value = "Búsqueda Rápida de Referencia:"
+
+    ' Botones principales - Reportes
+    CrearBotonDashboard ws, "NUEVA ASIGNACION",       "CrearNuevaAsignacionUI",      5, 2, RGB(0, 122, 204)
+    CrearBotonDashboard ws, "VER RESUMEN DIARIO",     "MostrarEstadisticasDelDia",   8, 2, RGB(0, 122, 204)
+    CrearBotonDashboard ws, "REPORTE DE EFICIENCIA",  "GenerarReporteEficiencia",    5, 4, RGB(204, 102, 0)
+    CrearBotonDashboard ws, "REPORTE MENSUAL",        "MostrarReporteMensual",       8, 4, RGB(0, 122, 204)
+    CrearBotonDashboard ws, "AVANCE PRODUCCION",      "GenerarReporteAvanceProduccion", 8, 6, RGB(0, 122, 204)
+    CrearBotonDashboard ws, "ANALISIS DE TIEMPOS",    "GenerarAnalisisTiempos",      5, 6, RGB(204, 102, 0)
+
+    ' Busqueda rapida
+    ws.Range("B10").Value = "Busqueda Rapida de Referencia"
     ws.Range("B10").Font.Bold = True
     Dim oleObj As OLEObject
-    Set oleObj = ws.OLEObjects.Add(ClassType:="Forms.ComboBox.1", Left:=ws.Cells(10, 4).Left, Top:=ws.Cells(10, 4).Top, Width:=150, Height:=35)
+    Set oleObj = ws.OLEObjects.Add(ClassType:="Forms.ComboBox.1", _
+        Left:=ws.Cells(10, 4).Left, Top:=ws.Cells(10, 4).Top, Width:=150, Height:=35)
     oleObj.Name = "cboBuscarRef"
     oleObj.Object.Font.Size = 12
     CrearBotonDashboard ws, "EDITAR REFERENCIA", "BuscarYEditarReferencia", 10, 6, RGB(255, 140, 0)
-    
-    'Botones Maestros
-    CrearBotonDashboard ws, "GESTIONAR OPERARIAS", "AbrirGestorOperarias", 12, 2, RGB(100, 100, 100)
-    CrearBotonDashboard ws, "GESTIONAR REFERENCIAS", "AbrirGestorReferencias", 12, 4, RGB(100, 100, 100)
-    CrearBotonDashboard ws, "GESTIONAR COLORES", "AbrirGestorColores", 12, 6, RGB(100, 100, 100)
-    
-    CrearBotonDashboard ws, "GESTIONAR TALLAS", "AbrirGestorTallas", 14, 2, RGB(100, 100, 100)
-    CrearBotonDashboard ws, "GESTIONAR TAREAS", "AbrirGestorTareas", 14, 4, RGB(100, 100, 100)
-    CrearBotonDashboard ws, "ACTUALIZAR CALENDARIO", "ActualizarCalendarioNoLaboral", 14, 6, RGB(100, 100, 100)
-    
-    CrearBotonDashboard ws, "GESTIONAR LOTES", "AbrirGestorLotes", 16, 2, RGB(0, 100, 0)
-    CrearBotonDashboard ws, "REPORTE DE LOTES", "GenerarReporteLotes", 16, 4, RGB(0, 122, 204)
-    CrearBotonDashboard ws, "INFORME PRODUCCIÓN", "GenerarInformeProduccion", 16, 6, RGB(0, 122, 204)
-    
-    'Botones Sistema
-    CrearBotonDashboard ws, "RECARGAR CACHÉ", "CargarCacheEnMemoria", 18, 2, RGB(255, 140, 0)
-    CrearBotonDashboard ws, "REINICIALIZAR SISTEMA", "InicializarSistema", 18, 4, RGB(192, 0, 0)
-    
-    'Botones manual
+
+    ' Botones Maestros (gris)
+    CrearBotonDashboard ws, "GESTIONAR OPERARIAS",    "AbrirGestorOperarias",   12, 2, RGB(100, 100, 100)
+    CrearBotonDashboard ws, "GESTIONAR REFERENCIAS",  "AbrirGestorReferencias", 12, 4, RGB(100, 100, 100)
+    CrearBotonDashboard ws, "GESTIONAR COLORES",      "AbrirGestorColores",     12, 6, RGB(100, 100, 100)
+    CrearBotonDashboard ws, "GESTIONAR TALLAS",       "AbrirGestorTallas",      14, 2, RGB(100, 100, 100)
+    CrearBotonDashboard ws, "GESTIONAR TAREAS",       "AbrirGestorTareas",      14, 4, RGB(100, 100, 100)
+    CrearBotonDashboard ws, "ACTUALIZAR CALENDARIO",  "ActualizarCalendarioNoLaboral", 14, 6, RGB(100, 100, 100)
+
+    ' Botones Lotes/Reportes avanzados
+    CrearBotonDashboard ws, "GESTIONAR LOTES",   "AbrirGestorLotes",              16, 2, RGB(0, 100, 0)
+    CrearBotonDashboard ws, "REPORTE DE LOTES",  "GenerarReporteLotes",           16, 4, RGB(0, 122, 204)
+    CrearBotonDashboard ws, "INFORME PRODUCCION","GenerarInformeProduccion",       16, 6, RGB(0, 122, 204)
+
+    ' Botones Sistema
+    CrearBotonDashboard ws, "RECARGAR CACHE",      "CargarCacheEnMemoria", 18, 2, RGB(255, 140, 0)
+    CrearBotonDashboard ws, "REINICIALIZAR SISTEMA","InicializarSistema",  18, 4, RGB(192, 0, 0)
+
+    ' Manual
     CrearBotonDashboard ws, "VER MANUAL DE USO", "IrAHojaManual", 21, 2, RGB(255, 192, 0)
-    
+
     Call PopulateRefSearchCombo
-    
     ws.Range("A1").Select
 End Sub
 
-Private Sub CrearBotonDashboard(ws As Worksheet, texto As String, macro As String, fila As Integer, col As Integer, color As Long)
+Private Sub CrearBotonDashboard(ws As Worksheet, texto As String, macro As String, _
+    fila As Integer, col As Integer, color As Long)
     Dim btn As Shape
-    Set btn = ws.Shapes.AddShape(msoShapeRoundedRectangle, ws.Cells(fila, col).Left, ws.Cells(fila, col).Top, 180, 35)
+    Set btn = ws.Shapes.AddShape(msoShapeRoundedRectangle, _
+        ws.Cells(fila, col).Left, ws.Cells(fila, col).Top, 180, 35)
     With btn
         .Placement = xlMove
         .TextFrame.Characters.Text = texto
@@ -300,70 +330,201 @@ Private Sub CrearBotonDashboard(ws As Worksheet, texto As String, macro As Strin
     End With
 End Sub
 
-Sub IrAHojaManual()
+Public Sub IrAHojaManual()
     ThisWorkbook.Sheets("MANUAL").Activate
 End Sub
 
-Sub CrearHojaManual()
+Public Sub IrAInicio()
+    ThisWorkbook.Sheets("INICIO").Activate
+End Sub
+
+'==============================================================================
+' HOJA MANUAL DE USO
+'==============================================================================
+
+Public Sub CrearHojaManual()
     Dim ws As Worksheet
     Dim fila As Long
-    
     Set ws = ThisWorkbook.Sheets("MANUAL")
     ws.Activate
     ws.Cells.Clear
     ws.Cells.Interior.Color = RGB(255, 255, 255)
-    
-    'Configurar ancho de columnas
     ws.Columns("A").ColumnWidth = 2
     ws.Columns("B").ColumnWidth = 90
-    
     fila = 2
-    
-    'Título
+
     With ws.Cells(fila, 2)
-        .Value = "SISTEMA CONTROL DE PRODUCCIÓN STELLA"
+        .Value = "MANUAL DE USO - SISTEMA DE PRODUCCION TEXTIL"
         .Font.Size = 20
         .Font.Bold = True
         .Font.Color = RGB(0, 51, 102)
     End With
+    fila = fila + 1
+
+    With ws.Cells(fila, 2)
+        .Value = "Guia paso a paso para el uso diario - No necesita conocimientos de computador"
+        .Font.Size = 11
+        .Font.Italic = True
+        .Font.Color = RGB(100, 100, 100)
+    End With
     fila = fila + 3
-    
-    'Contenido
-    EscribirSeccionManual ws, fila, "1. INTRODUCCIÓN", "Bienvenido al Sistema de Gestión de Producción. Este sistema controla el flujo de trabajo desde la recepción de corte hasta la finalización, gestionando la capacidad de las operarias."
-    
-    EscribirSeccionManual ws, fila, "2. PRIMEROS PASOS (MAESTROS)", "Antes de trabajar, asegúrese de cargar los datos maestros usando los botones grises en INICIO:" & vbCrLf & _
-        "• OPERARIAS: Registre su personal y tiempo disponible." & vbCrLf & _
-        "• REFERENCIAS: Cree los modelos de ropa." & vbCrLf & _
-        "• COLORES: Defina los colores disponibles por referencia." & vbCrLf & _
-        "• TALLAS: Defina qué tallas existen (S, M, L) para cada referencia." & vbCrLf & _
-        "• TAREAS: Defina los procesos y tiempos por referencia." & vbCrLf & _
-        "• CALENDARIO: Clic en 'ACTUALIZAR CALENDARIO' para cargar festivos y domingos."
-        
-    EscribirSeccionManual ws, fila, "3. GESTIÓN DE LOTES", "Cuando llega trabajo (corte):" & vbCrLf & _
-        "1. Vaya a INICIO > GESTIONAR LOTES." & vbCrLf & _
-        "2. Ingrese el Lote, Referencia, Color, Talla y Cantidad recibida." & vbCrLf & _
-        "Esto carga el inventario por producir. El sistema no permitirá asignar más de lo recibido."
-        
-    EscribirSeccionManual ws, fila, "4. ASIGNACIÓN DIARIA", "Para programar el trabajo:" & vbCrLf & _
-        "1. Vaya a INICIO > NUEVA ASIGNACIÓN." & vbCrLf & _
-        "2. Seleccione Operaria, Referencia, Lote, Color, Talla y Tarea." & vbCrLf & _
-        "3. Ingrese la cantidad. El sistema validará capacidad y stock automáticamente."
-        
-    EscribirSeccionManual ws, fila, "5. REPORTES", "• RESUMEN DIARIO: Vea la ocupación de operarias." & vbCrLf & _
-        "• AVANCE PRODUCCIÓN: Vea qué falta por asignar." & vbCrLf & _
-        "• REPORTE DE LOTES: Estado de avance por lote." & vbCrLf & _
-        "• ANÁLISIS DE TIEMPOS: Comparativa de tiempos estimados vs reales." & vbCrLf & _
-        "• PRODUCCIÓN FINALIZADA: Histórico de lotes terminados."
-        
-    EscribirSeccionManual ws, fila, "6. DÍAS NO LABORALES", "El sistema respeta automáticamente los días no laborales:" & vbCrLf & _
-        "• Al dividir una carga de trabajo grande, saltará sábados, domingos y festivos." & vbCrLf & _
-        "• Puede ver la lista de días bloqueados en la hoja DIAS_NO_LABORALES."
-        
-    ws.Range("B:B").WrapText = True
+
+    EscribirSeccionManual ws, fila, _
+        "1. PARA EMPEZAR CADA DIA", _
+        "Antes de comenzar a trabajar, haga esto UNA sola vez al dia:" & vbCrLf & _
+        "" & vbCrLf & _
+        "   PASO 1: Abra el archivo de Excel normalmente." & vbCrLf & _
+        "   PASO 2: Haga clic en la pestana INICIO (abajo, de color azul claro)." & vbCrLf & _
+        "   PASO 3: Haga clic en el boton naranja que dice  RECARGAR CACHE ." & vbCrLf & _
+        "   PASO 4: Espere el mensaje 'OK' y haga clic en Aceptar." & vbCrLf & _
+        "" & vbCrLf & _
+        "   Eso es todo. El sistema ya esta listo para usar."
+
+    EscribirSeccionManual ws, fila, _
+        "2. COMO ASIGNAR TRABAJO A UNA OPERARIA", _
+        "Use esto cuando quiera decirle a una operaria que tarea debe hacer hoy." & vbCrLf & _
+        "" & vbCrLf & _
+        "   PASO 1: En la pantalla INICIO, haga clic en  NUEVA ASIGNACION ." & vbCrLf & _
+        "   PASO 2: Aparece un formulario. Llene los campos de arriba hacia abajo:" & vbCrLf & _
+        "           - FECHA: ya aparece la de hoy. No la cambie." & vbCrLf & _
+        "           - OPERARIA: elija el nombre de la operaria en la lista." & vbCrLf & _
+        "           - REFERENCIA: elija el modelo de ropa (ej: Camiseta Basica)." & vbCrLf & _
+        "           - LOTE: elija el numero del paquete de corte que llego." & vbCrLf & _
+        "           - COLOR y TALLA: elija los que corresponden a ese lote." & vbCrLf & _
+        "           - TAREA: elija que parte del proceso va a hacer (ej: Costura lateral)." & vbCrLf & _
+        "           - CANTIDAD: escriba cuantas prendas le va a asignar." & vbCrLf & _
+        "   PASO 3: Haga clic en  Guardar ." & vbCrLf & _
+        "" & vbCrLf & _
+        "   El tiempo estimado aparece automaticamente. No tiene que calcular nada."
+
+    EscribirSeccionManual ws, fila, _
+        "3. COMO ACTUALIZAR EL AVANCE DE UNA OPERARIA", _
+        "Use esto cuando una operaria termina su trabajo o quiere reportar cuanto lleva." & vbCrLf & _
+        "" & vbCrLf & _
+        "   PASO 1: Vaya a la pestana  ASIGNACIONESDIARIAS  (borde rojo, abajo)." & vbCrLf & _
+        "   PASO 2: Haga clic en la fila de la operaria que quiere actualizar." & vbCrLf & _
+        "   PASO 3: Haga clic en el boton naranja  EDITAR ASIGNACION ." & vbCrLf & _
+        "   PASO 4: En el formulario, cambie estos dos campos:" & vbCrLf & _
+        "           - UNIDADES COMPLETADAS: escriba cuantas lleva hasta ahora." & vbCrLf & _
+        "           - ESTADO: cambie a  En Proceso  o  Completada  segun corresponda." & vbCrLf & _
+        "   PASO 5: Haga clic en  Guardar ."
+
+    EscribirSeccionManual ws, fila, _
+        "4. COMO VER EL RESUMEN DEL DIA", _
+        "Use esto al final de la jornada para saber cuanto se produjo hoy." & vbCrLf & _
+        "" & vbCrLf & _
+        "   PASO 1: En INICIO, haga clic en  VER RESUMEN DIARIO ." & vbCrLf & _
+        "   PASO 2: Confirme la fecha del dia (ya aparece la de hoy)." & vbCrLf & _
+        "   PASO 3: El sistema abre la hoja RESUMENDIARIO con una tabla que muestra:" & vbCrLf & _
+        "           - Nombre de cada operaria." & vbCrLf & _
+        "           - Minutos asignados vs minutos usados." & vbCrLf & _
+        "           - Si esta DISPONIBLE, OPTIMA o con SOBRECARGA." & vbCrLf & _
+        "" & vbCrLf & _
+        "   CONSEJO: OPTIMO (verde) es lo ideal. SOBRECARGA (rojo) significa que le asigno" & vbCrLf & _
+        "   mas trabajo del que puede hacer en el dia."
+
+    EscribirSeccionManual ws, fila, _
+        "5. CUANDO LLEGA CORTE NUEVO (LOTES)", _
+        "Haga esto cuando llega material nuevo del almacen para producir." & vbCrLf & _
+        "" & vbCrLf & _
+        "   PASO 1: En INICIO, haga clic en  GESTIONAR LOTES  (boton verde)." & vbCrLf & _
+        "   PASO 2: Haga clic en  NUEVO ." & vbCrLf & _
+        "   PASO 3: Llene los datos del corte que llego:" & vbCrLf & _
+        "           - LOTE: escriba el numero o codigo del paquete (ej: L001)." & vbCrLf & _
+        "           - REFERENCIA: elija el modelo de ropa." & vbCrLf & _
+        "           - COLOR y TALLA: los del corte recibido." & vbCrLf & _
+        "           - CANTIDAD RECIBIDA: cuantas prendas vienen en el corte." & vbCrLf & _
+        "           - FECHA DE RECEPCION: la de hoy ya aparece." & vbCrLf & _
+        "   PASO 4: Haga clic en  Guardar ." & vbCrLf & _
+        "" & vbCrLf & _
+        "   IMPORTANTE: Si no registra el lote, el sistema no lo dejara asignar ese trabajo."
+
+    EscribirSeccionManual ws, fila, _
+        "6. COMO VER EL AVANCE DE PRODUCCION POR REFERENCIA", _
+        "Use esto para saber cuanto falta por hacer de cada modelo de ropa." & vbCrLf & _
+        "" & vbCrLf & _
+        "   PASO 1: En INICIO, haga clic en  AVANCE PRODUCCION ." & vbCrLf & _
+        "   PASO 2: Se abre una tabla con cada referencia y tarea." & vbCrLf & _
+        "   PASO 3: Revise la columna  Estado Asignacion :" & vbCrLf & _
+        "           - Pendiente   = aun no se ha asignado nada de eso." & vbCrLf & _
+        "           - En Curso    = ya hay operarias trabajando en eso." & vbCrLf & _
+        "           - Completo    = ya se asigno todo."
+
+    EscribirSeccionManual ws, fila, _
+        "7. PROBLEMAS FRECUENTES Y SOLUCIONES", _
+        "PROBLEMA: Los combos (listas desplegables) aparecen vacios." & vbCrLf & _
+        "SOLUCION: Vaya a INICIO y haga clic en  RECARGAR CACHE . Espere el OK." & vbCrLf & _
+        "" & vbCrLf & _
+        "PROBLEMA: Al guardar una asignacion sale un aviso de  stock insuficiente ." & vbCrLf & _
+        "SOLUCION: Esta intentando asignar mas prendas de las que llegaron en ese lote." & vbCrLf & _
+        "          Reduzca la cantidad o registre un nuevo lote con mas unidades." & vbCrLf & _
+        "" & vbCrLf & _
+        "PROBLEMA: Al guardar sale aviso de  capacidad excedida ." & vbCrLf & _
+        "SOLUCION: La operaria ya tiene demasiado trabajo para hoy. El sistema le" & vbCrLf & _
+        "          preguntara si quiere dividir el trabajo en varios dias automaticamente." & vbCrLf & _
+        "          Haga clic en SI para que el sistema lo distribuya solo." & vbCrLf & _
+        "" & vbCrLf & _
+        "PROBLEMA: El formulario no me deja editar un campo (aparece sombreado)." & vbCrLf & _
+        "SOLUCION: Los campos sombreados se llenan solos. No necesita escribir en ellos."
+
+    EscribirSeccionManual ws, fila, _
+        "8. DATOS QUE NUNCA DEBE BORRAR", _
+        "Estas hojas tienen informacion importante. NO las borre ni las edite a mano:" & vbCrLf & _
+        "" & vbCrLf & _
+        "   - OPERARIAS:         nombres y tiempos de las trabajadoras." & vbCrLf & _
+        "   - REFERENCIAS:       los modelos de ropa del sistema." & vbCrLf & _
+        "   - TAREAS:            los procesos y tiempos de cada modelo." & vbCrLf & _
+        "   - LOTES:             los cortes registrados." & vbCrLf & _
+        "   - ASIGNACIONESDIARIAS: el registro diario de trabajo." & vbCrLf & _
+        "" & vbCrLf & _
+        "   Si necesita corregir algo en esas hojas, hagalo desde los botones del INICIO," & vbCrLf & _
+        "   no editando directamente las celdas."
+
+    EscribirSeccionManual ws, fila, _
+        "9. COMO HACER COPIA DE SEGURIDAD", _
+        "Haga esto al final de cada semana para no perder la informacion." & vbCrLf & _
+        "" & vbCrLf & _
+        "   PASO 1: Cierre el formulario si tiene alguno abierto." & vbCrLf & _
+        "   PASO 2: Haga clic en Archivo > Guardar Como." & vbCrLf & _
+        "   PASO 3: Cambie el nombre agregando la fecha, por ejemplo:" & vbCrLf & _
+        "           SistemaProduccion_06marzo2026.xlsm" & vbCrLf & _
+        "   PASO 4: Guarde en una carpeta de respaldo o en una USB." & vbCrLf & _
+        "" & vbCrLf & _
+        "   RECUERDE: Una copia de seguridad semanal puede salvarle de perder meses de datos."
+
+    ws.Columns("B").WrapText = True
     ws.Range("A1").Select
 End Sub
 
-Sub EscribirSeccionManual(ws As Worksheet, ByRef fila As Long, titulo As String, contenido As String)
+Private Sub EscribirSeccionManual(ws As Worksheet, ByRef fila As Long, _
+    titulo As String, contenido As String)
+    With ws.Cells(fila, 2)
+        .Value = titulo
+        .Font.Size = 12
+        .Font.Bold = True
+        .Font.Color = RGB(255, 255, 255)
+        .Interior.Color = RGB(0, 122, 204)
+        .RowHeight = 28
+        .VerticalAlignment = xlVAlignCenter
+        .HorizontalAlignment = xlHAlignLeft
+        .IndentLevel = 1
+    End With
+    fila = fila + 1
+    With ws.Cells(fila, 2)
+        .Value = contenido
+        .Font.Size = 11
+        .Font.Color = RGB(30, 30, 30)
+        .VerticalAlignment = xlTop
+        .Interior.Color = RGB(245, 245, 245)
+        .Borders.LineStyle = xlContinuous
+        .Borders.Color = RGB(200, 200, 200)
+        .EntireRow.AutoFit
+    End With
+    fila = fila + 2
+End Sub
+
+Private Sub EscribirSeccionManual(ws As Worksheet, ByRef fila As Long, _
+    titulo As String, contenido As String)
     With ws.Cells(fila, 2)
         .Value = titulo
         .Font.Size = 12
@@ -376,7 +537,6 @@ Sub EscribirSeccionManual(ws As Worksheet, ByRef fila As Long, titulo As String,
         .IndentLevel = 1
     End With
     fila = fila + 1
-    
     With ws.Cells(fila, 2)
         .Value = contenido
         .Font.Size = 11
@@ -390,92 +550,68 @@ Sub EscribirSeccionManual(ws As Worksheet, ByRef fila As Long, titulo As String,
     fila = fila + 2
 End Sub
 
-Sub CrearBotonesAsignaciones()
+'==============================================================================
+' BOTONES EN HOJAS OPERACIONALES
+'==============================================================================
+
+Public Sub CrearBotonesAsignaciones()
     Dim ws As Worksheet
     Dim shp As Shape
-    
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    
-    'Limpiar botones anteriores si existen para evitar duplicados
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
     For Each shp In ws.Shapes
         If shp.Type = msoAutoShape Then
             If shp.AutoShapeType = msoShapeRoundedRectangle Then shp.Delete
         End If
     Next shp
-    
-    'Ajustar altura de filas para evitar superposición con encabezados (Fila 3)
     ws.Rows(1).RowHeight = 15
     ws.Rows(2).RowHeight = 45
-    
-    'Botón Nueva (Azul como en Inicio) 
-    CrearBotonDashboard ws, "NUEVA ASIGNACIÓN", "CrearNuevaAsignacionUI", 2, 2, RGB(0, 122, 204)
-    
-    'Botón Editar (Naranja para diferenciar) 
-    CrearBotonDashboard ws, "EDITAR ASIGNACIÓN", "RegistrarFilaEnFormulario", 2, 6, RGB(255, 140, 0)
+    CrearBotonDashboard ws, "NUEVA ASIGNACION", "CrearNuevaAsignacionUI",    2, 2, RGB(0, 122, 204)
+    CrearBotonDashboard ws, "EDITAR ASIGNACION", "RegistrarFilaEnFormulario", 2, 6, RGB(255, 140, 0)
 End Sub
 
-Sub CrearBotonesMaestros()
+Public Sub CrearBotonesMaestros()
     Dim hojas As Variant
     Dim hoja As Variant
     Dim ws As Worksheet
     Dim macroNuevo As String
-    Dim colBtn As Integer
-    
+    Dim shp As Shape
+
     hojas = Array("OPERARIAS", "REFERENCIAS", "COLORES", "TALLAS", "LOTES", "TAREAS")
-    
     For Each hoja In hojas
         Set ws = ThisWorkbook.Sheets(hoja)
-        
-
-        'Limpiar botones anteriores
-        Dim shp As Shape
         For Each shp In ws.Shapes
             If shp.Type = msoAutoShape Then
                 If shp.AutoShapeType = msoShapeRoundedRectangle Then shp.Delete
             End If
         Next shp
-        
-        'Ajuste general (espaciado)
         ws.Cells.ColumnWidth = 6
         ws.Cells.RowHeight = 20
-        colBtn = 2
-        
-        'Ajuste columnas de botones
         ws.Columns("B").ColumnWidth = 30
-
-        'Ajustar altura de filas para evitar superposición con encabezados (Fila 3)
         ws.Rows(1).RowHeight = 15
-        ws.Rows(2).RowHeight = 45 
-        
-        'Determinar macro Nuevo
+        ws.Rows(2).RowHeight = 45
         Select Case hoja
-            Case "OPERARIAS": macroNuevo = "AbrirGestorOperarias"
+            Case "OPERARIAS":   macroNuevo = "AbrirGestorOperarias"
             Case "REFERENCIAS": macroNuevo = "AbrirGestorReferencias"
-            Case "COLORES": macroNuevo = "AbrirGestorColores"
-            Case "TALLAS": macroNuevo = "AbrirGestorTallas"
-            Case "LOTES": macroNuevo = "AbrirGestorLotes"
-            Case "TAREAS": macroNuevo = "AbrirGestorTareas"
+            Case "COLORES":     macroNuevo = "AbrirGestorColores"
+            Case "TALLAS":      macroNuevo = "AbrirGestorTallas"
+            Case "LOTES":       macroNuevo = "AbrirGestorLotes"
+            Case "TAREAS":      macroNuevo = "AbrirGestorTareas"
         End Select
-        
-        'Crear botones en la fila 1
-        CrearBotonDashboard ws, "NUEVO", macroNuevo, 2, colBtn, RGB(0, 122, 204)
-        CrearBotonDashboard ws, "EDITAR", "EditarMaestroSeleccionado", 2, colBtn + 3, RGB(255, 140, 0)
+        CrearBotonDashboard ws, "NUEVO",  macroNuevo,                2, 2, RGB(0, 122, 204)
+        CrearBotonDashboard ws, "EDITAR", "EditarMaestroSeleccionado", 2, 5, RGB(255, 140, 0)
     Next hoja
 End Sub
 
-Sub CrearBotonesVolver()
+Public Sub CrearBotonesVolver()
     Dim ws As Worksheet
-    Dim colBtn As Integer
-    Dim filaBtn As Integer
-    Dim i As Long
-    
+    Dim colBtn As Integer, filaBtn As Integer
+    Dim i As Long, txt As String
+
     For Each ws In ThisWorkbook.Worksheets
         If ws.Name <> "INICIO" Then
-            'Eliminar botón anterior si existe para evitar duplicados
             For i = ws.Shapes.Count To 1 Step -1
                 If ws.Shapes(i).Type = msoAutoShape Then
                     If ws.Shapes(i).AutoShapeType = msoShapeRoundedRectangle Then
-                        Dim txt As String
                         txt = ""
                         On Error Resume Next
                         txt = ws.Shapes(i).TextFrame.Characters.Text
@@ -484,52 +620,38 @@ Sub CrearBotonesVolver()
                     End If
                 End If
             Next i
-            
-            filaBtn = 1
-            colBtn = 10 'Posición por defecto (Columna J)
-            
+            filaBtn = 1: colBtn = 10
             Select Case ws.Name
-                Case "ASIGNACIONES_DIARIAS"
-                    filaBtn = 2
-                    colBtn = 10 'J (A la derecha de Editar)
+                Case "ASIGNACIONESDIARIAS": filaBtn = 2: colBtn = 10
                 Case "OPERARIAS", "REFERENCIAS", "COLORES", "TALLAS", "LOTES", "TAREAS"
-                    filaBtn = 2
-                    colBtn = 12 'I (A la derecha de los botones maestros)
-                Case "MANUAL"
-                    filaBtn = 1
-                    colBtn = 5
-                Case "DIAS_NO_LABORALES", "PARAMETROS"
-                    colBtn = 6
+                    filaBtn = 2: colBtn = 12
+                Case "MANUAL": filaBtn = 1: colBtn = 5
+                Case "DIASNOLABORALES", "PARAMETROS": colBtn = 6
             End Select
-            
             CrearBotonDashboard ws, "VOLVER A INICIO", "IrAInicio", filaBtn, colBtn, RGB(105, 105, 105)
         End If
     Next ws
 End Sub
 
-Sub IrAInicio()
-    ThisWorkbook.Sheets("INICIO").Activate
-End Sub
+'==============================================================================
+' COMBO DE BUSQUEDA EN INICIO
+'==============================================================================
 
 Public Sub PopulateRefSearchCombo()
     Dim wsInicio As Worksheet
     Dim cbo As OLEObject
     Dim refs As Collection
     Dim ref As Variant
-    
-    On Error Resume Next ' In case the sheet or object doesn't exist yet
+
+    On Error Resume Next
     Set wsInicio = ThisWorkbook.Sheets("INICIO")
     Set cbo = wsInicio.OLEObjects("cboBuscarRef")
     If cbo Is Nothing Then Exit Sub
     On Error GoTo 0
-    
+
     cbo.Object.Clear
-    
-    ' Ensure cache is loaded
     If Not EsCacheActualizado() Then CargarCacheEnMemoria
-    
     Set refs = ObtenerAllReferencias()
-    
     For Each ref In refs
         cbo.Object.AddItem ref
     Next ref
