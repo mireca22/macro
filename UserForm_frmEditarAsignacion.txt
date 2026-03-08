@@ -1,82 +1,67 @@
-
 '═══════════════════════════════════════════════════════════════════════════════
 ' USERFORM: frmEditarAsignacion
-' Formulario optimizado para edición y creación de asignaciones
-' RENDIMIENTO MÁXIMO: Caché, arrays, sin búsquedas innecesarias
+' Formulario optimizado para edicion y creacion de asignaciones
+' RENDIMIENTO MAXIMO: Cache, arrays, sin busquedas innecesarias
+' CORRECCIÓN v3.2.2: btnGuardar_Click pasa CDate(txtFecha) a ActualizarAsignacion
 '═══════════════════════════════════════════════════════════════════════════════
 
 Option Explicit
 
-'Variables del formulario
-Private datosActuales As Variant 'Sin paréntesis () para evitar error de matriz
+Private datosActuales   As Variant
 Private isNewAssignment As Boolean
-Private fila As Long
-Private cacheOperarias As Collection
+Private fila            As Long
+Private cacheOperarias  As Collection
 Private cacheReferencias As Collection
 
 Private Sub UserForm_Initialize()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Inicializar formulario: cargar caché y datos
-    '═══════════════════════════════════════════════════════════════════════════
-
-    'On Error Resume Next 'DESACTIVADO PARA DEBUG
     Application.ScreenUpdating = False
 
-    'Asegurarse que caché está cargado
-    If Not EsCacheActualizado() Then
-        Call CargarCacheEnMemoria
-    End If
+    If Not EsCacheActualizado() Then Call CargarCacheEnMemoria
 
-    'Obtener datos globales
     fila = ObtenerFilaActual()
-    
-    'Validación de seguridad: Si la fila es 0 o inválida, FORZAR modo nueva asignación
+
     If fila < 4 Then
         isNewAssignment = True
     Else
         isNewAssignment = EsNuevaAsignacion()
     End If
 
-    'Configurar formulario
     If isNewAssignment Then
-        Me.Caption = "CREAR NUEVA ASIGNACIÓN"
-        Me.BackColor = RGB(240, 250, 240)  'Verde claro
+        Me.Caption  = "CREAR NUEVA ASIGNACION"
+        Me.BackColor = RGB(240, 250, 240)
     Else
-        Me.Caption = "EDITAR ASIGNACIÓN"
-        Me.BackColor = RGB(250, 250, 240)  'Blanco ligeramente amarillo
+        Me.Caption  = "EDITAR ASIGNACION"
+        Me.BackColor = RGB(250, 250, 240)
     End If
 
-    txtFecha.Enabled = True
-    txtFecha.Locked = False
-
-    'Cargar listas desplegables
     Call CargarListasOperarias
     Call CargarListasReferencias
     Call CargarListasEstados
 
-    'Si es edición, cargar datos
     If Not isNewAssignment Then
         Call CargarDatosParaEditar
     Else
-        'Nueva asignación: poner fecha actual
         txtFecha.Value = Format(Date, "dd/mm/yyyy")
-        'Inicializar datosActuales como array vacío para evitar error "Se esperaba una matriz"
         ReDim datosActuales(1 To 21)
+    End If
+
+    ' Preseleccion desde frmGestionLotes
+    If PreselectRefID <> "" Then
+        cboReferencia.Value = PreselectRefID
+        PreselectRefID = ""
+    End If
+    If PreselectLoteID <> "" Then
+        cboLote.Value = PreselectLoteID
+        PreselectLoteID = ""
     End If
 
     Application.ScreenUpdating = True
 End Sub
 
 Private Sub CargarListasOperarias()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Cargar IDs de operarias desde caché
-    '═══════════════════════════════════════════════════════════════════════════
-
     Set cacheOperarias = ObtenerAllOperarias()
-
     Dim id As Variant
     cboOperaria.Clear
-
     If Not cacheOperarias Is Nothing Then
         For Each id In cacheOperarias
             cboOperaria.AddItem id
@@ -85,15 +70,9 @@ Private Sub CargarListasOperarias()
 End Sub
 
 Private Sub CargarListasReferencias()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Cargar IDs de referencias desde caché
-    '═══════════════════════════════════════════════════════════════════════════
-
     Set cacheReferencias = ObtenerAllReferencias()
-
     Dim id As Variant
     cboReferencia.Clear
-
     If Not cacheReferencias Is Nothing Then
         For Each id In cacheReferencias
             cboReferencia.AddItem id
@@ -102,10 +81,6 @@ Private Sub CargarListasReferencias()
 End Sub
 
 Private Sub CargarListasEstados()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Cargar estados disponibles
-    '═══════════════════════════════════════════════════════════════════════════
-
     cboEstado.Clear
     cboEstado.AddItem "Pendiente"
     cboEstado.AddItem "En Proceso"
@@ -114,57 +89,42 @@ Private Sub CargarListasEstados()
 End Sub
 
 Private Sub CargarDatosParaEditar()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Cargar datos de la asignación actual para edición
-    '═══════════════════════════════════════════════════════════════════════════
-
     datosActuales = ObtenerDatosAsignacion(fila)
 
-    'Cargar en controles
-    txtFecha.Value = Format(datosActuales(1), "dd/mm/yyyy")
-    cboOperaria.Value = datosActuales(2)
+    txtFecha.Value          = Format(datosActuales(1), "dd/mm/yyyy")
+    cboOperaria.Value       = datosActuales(2)
     txtNombreOperaria.Value = datosActuales(3)
-    cboReferencia.Value = datosActuales(4)
+    cboReferencia.Value     = datosActuales(4)
     txtNombreReferencia.Value = datosActuales(5)
 
-    'Cargar Lotes
     Call CargarLotesDeReferencia(CStr(datosActuales(4)))
     cboLote.Value = datosActuales(6)
 
-    'Cargar colores
     Call CargarColoresDeReferencia(CStr(datosActuales(4)), CStr(datosActuales(6)))
     cboColor.Value = datosActuales(7)
 
-    'Cargar tallas de esta referencia
     Call CargarTallasDeReferencia(CStr(datosActuales(4)), CStr(datosActuales(6)), CStr(datosActuales(7)))
     cboTalla.Value = datosActuales(8)
 
-    'Cargar tareas de esta referencia
     Call CargarTareasDeReferencia(CStr(datosActuales(4)))
     cboNumeroTarea.Value = datosActuales(9)
 
-    txtNombreTarea.Value = datosActuales(10)
-    txtCantidad.Value = datosActuales(11)
+    txtNombreTarea.Value    = datosActuales(10)
+    txtCantidad.Value       = datosActuales(11)
     txtTiempoUnitario.Value = datosActuales(12)
 
-    'Mostrar tiempos calculados
     lblTiempoTotalSegundos.Caption = "Tiempo Total: " & Format(datosActuales(13), "#,##0") & " seg"
-    lblTiempoTotalMinutos.Caption = "(" & Format(datosActuales(14), "#,##0.00") & " min)"
+    lblTiempoTotalMinutos.Caption  = "(" & Format(datosActuales(14), "#,##0.00") & " min)"
 
-    cboEstado.Value = datosActuales(15)
-    txtUnidadesCompletadas.Value = datosActuales(16)
-    txtObservaciones.Value = datosActuales(17)
-    
-    'Datos reales
+    cboEstado.Value               = datosActuales(15)
+    txtUnidadesCompletadas.Value  = datosActuales(16)
+    txtObservaciones.Value        = datosActuales(17)
+
     If IsDate(datosActuales(19)) Then txtFechaReal.Value = Format(datosActuales(19), "dd/mm/yyyy")
     txtTiempoReal.Value = datosActuales(20)
 End Sub
 
 Private Sub cboOperaria_Change()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Al cambiar operaria, actualizar nombre automáticamente
-    '═══════════════════════════════════════════════════════════════════════════
-
     If cboOperaria.Value <> "" Then
         txtNombreOperaria.Value = ObtenerNombreOperaria(cboOperaria.Value)
     Else
@@ -173,22 +133,11 @@ Private Sub cboOperaria_Change()
 End Sub
 
 Private Sub cboReferencia_Change()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Al cambiar referencia, actualizar nombre, tallas y tareas
-    '═══════════════════════════════════════════════════════════════════════════
-
     If cboReferencia.Value <> "" Then
-        'Actualizar nombre
         txtNombreReferencia.Value = ObtenerNombreReferencia(cboReferencia.Value)
-
-        'Limpiar campos dependientes ANTES de recargar para no borrar la autoselección
-        txtNombreTarea.Value = ""
-        txtTiempoUnitario.Value = ""
-
-        'Recargar Lotes
+        txtNombreTarea.Value      = ""
+        txtTiempoUnitario.Value   = ""
         Call CargarLotesDeReferencia(cboReferencia.Value)
-
-        'Recargar tareas disponibles
         Call CargarTareasDeReferencia(cboReferencia.Value)
     Else
         txtNombreReferencia.Value = ""
@@ -215,31 +164,6 @@ Private Sub cboColor_Change()
     End If
 End Sub
 
-Private Sub CargarTallasDeReferencia(idRef As String, idLote As String, Optional color As String = "")
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Cargar tallas filtradas para una referencia específica
-    '═══════════════════════════════════════════════════════════════════════════
-
-    Dim tallasCol As Collection
-    Dim talla As Variant
-
-    If color <> "" And idLote <> "" Then
-        Set tallasCol = ObtenerTallasDeReferenciaLoteColor(idRef, idLote, color)
-    Else
-        Set tallasCol = New Collection
-    End If
-
-    cboTalla.Clear
-    For Each talla In tallasCol
-        cboTalla.AddItem talla
-    Next talla
-
-    'Seleccionar primera si hay
-    If cboTalla.ListCount > 0 Then
-        cboTalla.ListIndex = 0
-    End If
-End Sub
-
 Private Sub CargarLotesDeReferencia(idRef As String)
     Dim lotesCol As Collection
     Dim l As Variant
@@ -254,13 +178,11 @@ End Sub
 Private Sub CargarColoresDeReferencia(idRef As String, Optional idLote As String = "")
     Dim coloresCol As Collection
     Dim c As Variant
-    
     If idLote <> "" Then
         Set coloresCol = ObtenerColoresDeReferenciaYLote(idRef, idLote)
     Else
         Set coloresCol = ObtenerColoresDeReferencia(idRef)
     End If
-    
     cboColor.Clear
     For Each c In coloresCol
         cboColor.AddItem c
@@ -268,178 +190,120 @@ Private Sub CargarColoresDeReferencia(idRef As String, Optional idLote As String
     If cboColor.ListCount > 0 Then cboColor.ListIndex = 0
 End Sub
 
-Private Sub CargarTareasDeReferencia(idRef As String)
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Cargar tareas filtradas para una referencia específica
-    '═══════════════════════════════════════════════════════════════════════════
+Private Sub CargarTallasDeReferencia(idRef As String, idLote As String, Optional color As String = "")
+    Dim tallasCol As Collection
+    Dim talla As Variant
+    If color <> "" And idLote <> "" Then
+        Set tallasCol = ObtenerTallasDeReferenciaLoteColor(idRef, idLote, color)
+    Else
+        Set tallasCol = New Collection
+    End If
+    cboTalla.Clear
+    For Each talla In tallasCol
+        cboTalla.AddItem talla
+    Next talla
+    If cboTalla.ListCount > 0 Then cboTalla.ListIndex = 0
+End Sub
 
+Private Sub CargarTareasDeReferencia(idRef As String)
     Dim tareasCol As Collection
     Dim tarea As Variant
-
     Set tareasCol = ObtenerTareasDeReferencia(idRef)
-
     cboNumeroTarea.Clear
     For Each tarea In tareasCol
         cboNumeroTarea.AddItem tarea
     Next tarea
-
-    'Seleccionar primera si hay
     If cboNumeroTarea.ListCount > 0 Then
         cboNumeroTarea.ListIndex = 0
-        'Forzar actualización de datos dependientes (nombre, tiempo)
         Call cboNumeroTarea_Change
     End If
 End Sub
 
 Private Sub cboNumeroTarea_Change()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Al cambiar número de tarea, actualizar nombre y tiempo unitario
-    '═══════════════════════════════════════════════════════════════════════════
-
     If cboNumeroTarea.Value <> "" And cboReferencia.Value <> "" Then
-        Dim nombreTarea As String
-        Dim tiempoUnit As Long
-
-        nombreTarea = ObtenerNombreTarea(cboReferencia.Value, cboNumeroTarea.Value)
-        tiempoUnit = ObtenerTiempoUnitario(cboReferencia.Value, cboNumeroTarea.Value)
-
-        txtNombreTarea.Value = nombreTarea
-        txtTiempoUnitario.Value = tiempoUnit
-
+        txtNombreTarea.Value    = ObtenerNombreTarea(cboReferencia.Value, cboNumeroTarea.Value)
+        txtTiempoUnitario.Value = ObtenerTiempoUnitario(cboReferencia.Value, cboNumeroTarea.Value)
         Call RecalcularTiempos
     End If
 End Sub
 
 Private Sub txtCantidad_Change()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Al cambiar cantidad, recalcular tiempos totales
-    '═══════════════════════════════════════════════════════════════════════════
-
     Call RecalcularTiempos
 End Sub
 
 Private Sub RecalcularTiempos()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Calcular tiempos totales en VBA (NO fórmulas)
-    '═══════════════════════════════════════════════════════════════════════════
-
-    Dim cantidad As Long
-    Dim tiempoUnit As Long
+    Dim cantidad       As Long
+    Dim tiempoUnit     As Long
     Dim tiempoTotalSeg As Long
     Dim tiempoTotalMin As Double
-
     On Error Resume Next
-
-    If IsNumeric(txtCantidad.Value) And IsNumeric(txtTiempoUnitario.Value) Then
-        cantidad = CLng(txtCantidad.Value)
-        tiempoUnit = CLng(txtTiempoUnitario.Value)
-
+    If IsNumericValue(txtCantidad.Value) And IsNumericValue(txtTiempoUnitario.Value) Then
+        cantidad       = CLng(txtCantidad.Value)
+        tiempoUnit     = CLng(txtTiempoUnitario.Value)
         tiempoTotalSeg = cantidad * tiempoUnit
         tiempoTotalMin = tiempoTotalSeg / 60
-
         lblTiempoTotalSegundos.Caption = "Tiempo Total: " & Format(tiempoTotalSeg, "#,##0") & " seg"
-        lblTiempoTotalMinutos.Caption = "(" & Format(tiempoTotalMin, "#,##0.00") & " min)"
+        lblTiempoTotalMinutos.Caption  = "(" & Format(tiempoTotalMin, "#,##0.00") & " min)"
     End If
-
     On Error GoTo 0
 End Sub
 
 Private Sub btnGuardar_Click()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Guardar cambios: validar y llamar módulo de asignaciones
-    '═══════════════════════════════════════════════════════════════════════════
-
-    'Validaciones
+    ' ── Validaciones ────────────────────────────────────────────────────────
     If cboOperaria.Value = "" Then
-        MsgBox "[X] Seleccione una operaria", vbCritical
-        cboOperaria.SetFocus
-        Exit Sub
+        MsgBox "[X] Seleccione una operaria", vbCritical: cboOperaria.SetFocus: Exit Sub
     End If
-
     If cboReferencia.Value = "" Then
-        MsgBox "[X] Seleccione una referencia", vbCritical
-        cboReferencia.SetFocus
-        Exit Sub
+        MsgBox "[X] Seleccione una referencia", vbCritical: cboReferencia.SetFocus: Exit Sub
     End If
-
     If cboLote.Value = "" Then
-        MsgBox "[X] Seleccione un Lote", vbCritical
-        cboLote.SetFocus
-        Exit Sub
+        MsgBox "[X] Seleccione un Lote", vbCritical: cboLote.SetFocus: Exit Sub
     End If
-
     If cboColor.Value = "" Then
-        MsgBox "[X] Seleccione un color", vbCritical
-        cboColor.SetFocus
-        Exit Sub
+        MsgBox "[X] Seleccione un color", vbCritical: cboColor.SetFocus: Exit Sub
     End If
-
     If cboTalla.Value = "" Then
-        MsgBox "[X] Seleccione una talla", vbCritical
-        cboTalla.SetFocus
-        Exit Sub
+        MsgBox "[X] Seleccione una talla", vbCritical: cboTalla.SetFocus: Exit Sub
     End If
-
-    If Not IsDate(txtFecha.Value) Then
-        MsgBox "[X] La fecha de asignación no es válida", vbCritical
-        txtFecha.SetFocus
-        Exit Sub
-    End If
-
     If cboNumeroTarea.Value = "" Then
-        MsgBox "[X] Seleccione un número de tarea", vbCritical
-        cboNumeroTarea.SetFocus
-        Exit Sub
+        MsgBox "[X] Seleccione un numero de tarea", vbCritical: cboNumeroTarea.SetFocus: Exit Sub
+    End If
+    If txtCantidad.Value = "" Or Not IsNumericValue(txtCantidad.Value) Or CLng(txtCantidad.Value) <= 0 Then
+        MsgBox "[X] La cantidad debe ser mayor a 0", vbCritical: txtCantidad.SetFocus: Exit Sub
+    End If
+    If Not IsDate(txtFecha.Value) Then
+        MsgBox "[X] La fecha no es valida (dd/mm/yyyy)", vbCritical: txtFecha.SetFocus: Exit Sub
     End If
 
-    If txtCantidad.Value = "" Then
-        MsgBox "[X] Ingrese una cantidad", vbCritical
-        txtCantidad.SetFocus
-        Exit Sub
-    End If
-
-    If Not IsNumeric(txtCantidad.Value) Then
-        MsgBox "[X] La cantidad debe ser un número válido", vbCritical
-        txtCantidad.SetFocus
-        Exit Sub
-    End If
-
-    If CLng(txtCantidad.Value) <= 0 Then
-        MsgBox "[X] La cantidad debe ser mayor a 0", vbCritical
-        txtCantidad.SetFocus
-        Exit Sub
-    End If
-
-    'Guardar
+    ' ── Guardar ─────────────────────────────────────────────────────────────
     Dim resultado As Boolean
-    resultado = False 'Iniciar en falso
+    resultado = False
 
     If isNewAssignment Then
-        resultado = CrearAsignacion(cboOperaria.Value, cboReferencia.Value, cboLote.Value, cboColor.Value, cboTalla.Value, _
-                             cboNumeroTarea.Value, CLng(txtCantidad.Value), txtObservaciones.Value)
-        
+        resultado = CrearAsignacion( _
+            cboOperaria.Value, cboReferencia.Value, cboLote.Value, _
+            cboColor.Value, cboTalla.Value, cboNumeroTarea.Value, _
+            CLng(txtCantidad.Value), txtObservaciones.Value)
+
         If resultado Then
-            'Preguntar si quiere agregar otro, como en los maestros
-            If MsgBox("¿Desea crear otra asignación?", vbYesNo + vbQuestion, "Continuar") = vbYes Then
-                Call btnLimpiar_Click 'Reiniciar formulario
+            If MsgBox("Desea crear otra asignacion?", vbYesNo + vbQuestion, "Continuar") = vbYes Then
+                Call btnLimpiar_Click
             Else
-                Unload Me 'Cerrar
+                Unload Me
             End If
         End If
-        
     Else
-        Dim unidadesCompletadas As Long
-        ' Conversión segura para unidades completadas. Si está vacío o no es numérico, se asume 0.
-        If IsNumeric(txtUnidadesCompletadas.Value) And txtUnidadesCompletadas.Value <> "" Then
-            unidadesCompletadas = CLng(txtUnidadesCompletadas.Value)
-        Else
-            unidadesCompletadas = 0
-        End If
+        ' CORRECCIÓN v3.2.2: se pasa CDate(txtFecha.Value) como segundo argumento
+        resultado = ActualizarAsignacion( _
+            fila, _
+            CDate(txtFecha.Value), _
+            cboOperaria.Value, cboReferencia.Value, cboLote.Value, _
+            cboColor.Value, cboTalla.Value, cboNumeroTarea.Value, _
+            CLng(txtCantidad.Value), cboEstado.Value, _
+            CLng(txtUnidadesCompletadas.Value), txtObservaciones.Value, _
+            txtFechaReal.Value, Val(txtTiempoReal.Value))
 
-        resultado = ActualizarAsignacion(fila, CDate(txtFecha.Value), cboOperaria.Value, cboReferencia.Value, cboLote.Value, cboColor.Value, cboTalla.Value, _
-                                  cboNumeroTarea.Value, CLng(txtCantidad.Value), cboEstado.Value, unidadesCompletadas, _
-                                  txtObservaciones.Value, txtFechaReal.Value, Val(txtTiempoReal.Value))
-        If resultado Then Unload Me 'Si la edición fue exitosa, cerrar
+        If resultado Then Unload Me
     End If
 End Sub
 
@@ -448,13 +312,9 @@ Private Sub btnCancelar_Click()
 End Sub
 
 Private Sub btnLimpiar_Click()
-    '═══════════════════════════════════════════════════════════════════════════
-    ' Botón para limpiar el formulario (solo en creación)
-    '═══════════════════════════════════════════════════════════════════════════
-
     If isNewAssignment Then
         Call LimpiarControles(Me)
-        txtFecha.Value = Format(Date, "dd/mm/yyyy")
+        txtFecha.Value  = Format(Date, "dd/mm/yyyy")
         cboEstado.Value = "Pendiente"
     End If
 End Sub
