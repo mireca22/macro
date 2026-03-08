@@ -127,7 +127,7 @@ Function TieneRegistrosHijos(idRef As String, ByRef tipoHijo As String) As Boole
         Exit Function
     End If
 
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     Set celda = ws.Columns("D").Find(idRef, LookIn:=xlValues, LookAt:=xlWhole)
     If Not celda Is Nothing Then
         tipoHijo = "Asignaciones"
@@ -140,7 +140,7 @@ Function TieneHijosLote(idLote As String) As Boolean
     Dim ws As Worksheet
     Dim i As Long, ultFila As Long
     TieneHijosLote = False
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
     For i = 4 To ultFila
         If ws.Cells(i, 6).Value = idLote Then
@@ -154,7 +154,7 @@ Function TieneHijosColor(idRef As String, color As String) As Boolean
     Dim ws As Worksheet
     Dim i As Long, ultFila As Long
     TieneHijosColor = False
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
     For i = 4 To ultFila
         If ws.Cells(i, 4).Value = idRef And ws.Cells(i, 7).Value = color Then
@@ -168,7 +168,7 @@ Function TieneHijosTalla(idRef As String, talla As String) As Boolean
     Dim ws As Worksheet
     Dim i As Long, ultFila As Long
     TieneHijosTalla = False
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
     For i = 4 To ultFila
         If ws.Cells(i, 4).Value = idRef And ws.Cells(i, 8).Value = talla Then
@@ -182,7 +182,7 @@ Function TieneHijosTarea(idRef As String, numTarea As String) As Boolean
     Dim ws As Worksheet
     Dim i As Long, ultFila As Long
     TieneHijosTarea = False
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
     For i = 4 To ultFila
         If ws.Cells(i, 4).Value = idRef And ws.Cells(i, 9).Value = numTarea Then
@@ -414,7 +414,7 @@ Sub ActualizarCascadaReferencia(oldID As String, newID As String)
         If ws.Cells(i, 1).Value = oldID Then ws.Cells(i, 1).Value = newID
     Next i
 
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
     For i = 4 To ultFila
         If ws.Cells(i, 4).Value = oldID Then ws.Cells(i, 4).Value = newID

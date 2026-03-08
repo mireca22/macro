@@ -184,7 +184,7 @@ PASO 4: Guardar cambios
 
 PASO 5: Validar que funciona
 ─────────────────────────────
-1. ASIGNACIONESDIARIAS
+1. ASIGNACIONES_DIARIAS
 2. Botón EDITAR en una fila
 3. ¿Se abre rápido?
 4. Cambiar campos
@@ -241,7 +241,7 @@ VI. TESTING Y VALIDACIÓN (30 MINUTOS)
 ═════════════════════════════════════════════════════════════════════════════════════
 
 TEST 1: Crear Asignación (5 minutos)
-   - Abrir ASIGNACIONESDIARIAS
+   - Abrir ASIGNACIONES_DIARIAS
    - Botón NUEVA
    - Llenar: Operaria, Referencia, Talla, Tarea, Cantidad
    - Guardar

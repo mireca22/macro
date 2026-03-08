@@ -4,7 +4,7 @@
 ' Sistema de Gestion de Produccion Textil v3.0 - OPTIMIZADO
 ' Cambios v3.1:
 '   - ValidarCapacidadOperaria: loop sobre OPERARIAS reemplazado por cache Modulo2
-'   - ValidarCapacidadOperaria: loop sobre ASIGNACIONESDIARIAS reemplazado por array
+'   - ValidarCapacidadOperaria: loop sobre ASIGNACIONES_DIARIAS reemplazado por array
 '   - ValidarStockProduccion: 2 loops reemplazados por arrays (solo columnas necesarias)
 '   - InsertarFilaAsignacion: 21 escrituras individuales reemplazadas por 1 array
 '   - InsertarFilaAsignacion: Application.EnableEvents = False durante escritura
@@ -27,7 +27,7 @@ Public Function CrearAsignacion(idOper As String, idRef As String, idLote As Str
     Dim capacidadOK     As Boolean
 
     Application.ScreenUpdating = False
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
 
     ' Obtener datos desde cache
     nombreOper    = ObtenerNombreOperaria(idOper)
@@ -156,7 +156,7 @@ Private Sub InsertarFilaAsignacion(fecha As Date, idOper As String, nombreOper A
     Dim tiempoTotalMin  As Double
     Dim tiempoDisponible As Double, tiempoAsignadoHoy As Double
 
-    Set ws          = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws          = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     tiempoTotalSeg  = cantidad * tiempoUnit
     tiempoTotalMin  = tiempoTotalSeg / 60
 
@@ -208,7 +208,7 @@ Public Function ActualizarAsignacion(fila As Long, idOper As String, idRef As St
     Dim tiempoDisponible As Double, tiempoAsignadoHoy As Double
 
     Application.ScreenUpdating = False
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
 
     ' Recalcular datos desde cache
     nombreOper     = ObtenerNombreOperaria(idOper)
@@ -277,14 +277,14 @@ End Sub
 
 Public Function ObtenerProximaFilaDisponible() As Long
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     ObtenerProximaFilaDisponible = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1
 End Function
 
 ' =============================================================================
 ' FUNCION ValidarCapacidadOperaria - OPTIMIZADA v3.1
-' Antes: loop celda a celda sobre OPERARIAS + loop sobre ASIGNACIONESDIARIAS
-' Ahora: cache Modulo2 para OPERARIAS + array para ASIGNACIONESDIARIAS
+' Antes: loop celda a celda sobre OPERARIAS + loop sobre ASIGNACIONES_DIARIAS
+' Ahora: cache Modulo2 para OPERARIAS + array para ASIGNACIONES_DIARIAS
 ' =============================================================================
 Public Function ValidarCapacidadOperaria(idOper As String, fecha As Date, minutosNuevos As Double, _
     ByRef outDisponible As Double, ByRef outAsignado As Double) As Boolean
@@ -298,7 +298,7 @@ Public Function ValidarCapacidadOperaria(idOper As String, fecha As Date, minuto
 
     ' 2. Minutos ya asignados ese dia (1 lectura en array, columnas 1-14 unicamente)
     outAsignado = 0
-    Set wsAsig  = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set wsAsig  = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     ultFila     = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
 
     If ultFila >= 4 Then
@@ -322,7 +322,7 @@ End Function
 
 ' =============================================================================
 ' FUNCION ValidarStockProduccion - OPTIMIZADA v3.1
-' Antes: 2 loops celda a celda sobre LOTES y ASIGNACIONESDIARIAS
+' Antes: 2 loops celda a celda sobre LOTES y ASIGNACIONES_DIARIAS
 ' Ahora: 2 lecturas de array (solo columnas necesarias en cada caso)
 ' =============================================================================
 Public Function ValidarStockProduccion(idRef As String, idLote As String, color As String, _
@@ -334,7 +334,7 @@ Public Function ValidarStockProduccion(idRef As String, idLote As String, color 
     Dim totalRecibido As Long, totalAsignado As Long
 
     Set wsRecep = ThisWorkbook.Sheets("LOTES")
-    Set wsAsig  = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set wsAsig  = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
 
     ' 1. Total recibido en LOTES (array hasta col 5 unicamente)
     totalRecibido = 0

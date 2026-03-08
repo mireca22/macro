@@ -12,14 +12,14 @@ Public FilaValida As Boolean
 
 '==============================================================================
 ' FUNCION: ObtenerFilaSeleccionada
-' Obtiene la fila donde esta el cursor en ASIGNACIONESDIARIAS
+' Obtiene la fila donde esta el cursor en ASIGNACIONES_DIARIAS
 '==============================================================================
 Public Function ObtenerFilaSeleccionada() As Long
     Dim ws As Worksheet
     On Error Resume Next
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
-    If ws.Name <> "ASIGNACIONESDIARIAS" Then
-        MsgBox "Debe estar en la hoja ASIGNACIONESDIARIAS.", vbCritical
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    If ws.Name <> "ASIGNACIONES_DIARIAS" Then
+        MsgBox "Debe estar en la hoja ASIGNACIONES_DIARIAS.", vbCritical
         Exit Function
     End If
     If ActiveCell.Row <= 3 Then
@@ -38,7 +38,7 @@ End Function
 '==============================================================================
 Public Function ValidarFilaAsignacion(fila As Long) As Boolean
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
 
     If ws.Cells(fila, 1).Value = "" Then
         MsgBox "Fila vacia - no hay asignacion para editar.", vbCritical
@@ -65,7 +65,7 @@ Public Function ObtenerDatosAsignacion(fila As Long) As Variant
     Dim rangoData As Variant
     ReDim datos(1 To 21) As Variant
 
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
 
     If fila <= 3 Then
         ObtenerDatosAsignacion = datos
@@ -92,7 +92,7 @@ End Function
 '==============================================================================
 Public Sub GuardarDatosAsignacion(fila As Long, datos As Variant)
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
 
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
@@ -119,8 +119,8 @@ End Sub
 Public Sub RegistrarFilaEnFormulario()
     Dim fila As Long
 
-    If ActiveSheet.Name <> "ASIGNACIONESDIARIAS" Then
-        MsgBox "Debe estar en ASIGNACIONESDIARIAS para editar.", vbCritical
+    If ActiveSheet.Name <> "ASIGNACIONES_DIARIAS" Then
+        MsgBox "Debe estar en ASIGNACIONES_DIARIAS para editar.", vbCritical
         Exit Sub
     End If
 
@@ -140,7 +140,7 @@ End Sub
 Public Sub CrearNuevaAsignacionUI()
     Dim ws As Worksheet
     Dim fila As Long
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
 
     fila = ObtenerProximaFilaDisponible()
     FilaActual = fila

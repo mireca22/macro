@@ -25,7 +25,7 @@ Private Sub UserForm_Initialize()
 
     With lstAsignaciones
         .ColumnCount = 6
-        .ColumnWidths = "160;80;80;60;60;0"   ' col 6 ancho=0: guarda FilaReal oculta
+        .ColumnWidths = "80;180;180;60;60;0"   ' col 6 ancho=0: guarda FilaReal oculta
     End With
 
     btnEditarAsignacion.Enabled = False
@@ -90,7 +90,7 @@ Private Sub CargarAsignacionesDelLote()
     End If
 
     idLote = lstLotes.List(lstLotes.ListIndex, 0)
-    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
     count = 0
 

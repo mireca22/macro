@@ -15,7 +15,7 @@ Public Function ObtenerDatosAsignacion(fila As Long) As Variant
     Dim resultado(1 To 16) As Variant
     Dim i As Long
 
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
 
     ' ❌ LEE CELDA POR CELDA (16 accesos a Excel)
     resultado(1) = ws.Cells(fila, 1).Value     ' Lectura 1
@@ -50,7 +50,7 @@ Public Function ObtenerDatosAsignacion(fila As Long) As Variant
     Dim resultado(1 To 16) As Variant
     Dim i As Long
 
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
 
     ' ✅ LEE RANGO COMPLETO A ARRAY (1 acceso a Excel)
     On Error Resume Next

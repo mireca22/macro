@@ -91,7 +91,7 @@ End Sub
 Public Sub AplicarFormatoAsignaciones()
     Dim ws As Worksheet
     Dim fila As Long, ultFila As Long
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     Application.ScreenUpdating = False
     Call AjustarAnchoColumnasInteligente(ws)
     ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
@@ -113,7 +113,7 @@ End Sub
 
 Public Sub ConfigurarValidacionesExcel()
     Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     With ws.Range("O4:O1000").Validation
         .Delete
         .Add xlList, , , "Pendiente,En Proceso,Completada"
@@ -129,7 +129,7 @@ Public Function ObtenerEstadisticasHoy() As Variant
     Dim stats(1 To 4) As Variant
     Dim totalMin As Double
     Dim completadas As Long, pendientes As Long, contador As Long
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     For fila = 4 To ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
         If Int(ws.Cells(fila, 1).Value) = Int(Date) Then
             contador = contador + 1
@@ -189,7 +189,7 @@ Public Sub GenerarReporteEnHoja(fecha As Date, tipoReporte As String)
     Dim diasLaborales As Integer
 
     Set wsResumen = ThisWorkbook.Sheets("RESUMENDIARIO")
-    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     Set wsOp = ThisWorkbook.Sheets("OPERARIAS")
     Set dictOp = CreateObject("Scripting.Dictionary")
 
@@ -213,7 +213,7 @@ Public Sub GenerarReporteEnHoja(fecha As Date, tipoReporte As String)
         End If
     Next i
 
-    ' 2. Leer ASIGNACIONESDIARIAS completo en array
+    ' 2. Leer ASIGNACIONES_DIARIAS completo en array
     Dim collDetalles As Collection
     Set collDetalles = New Collection
     Dim rowData As Variant
@@ -345,7 +345,7 @@ Public Sub GenerarReporteEficiencia()
     fechaFin = CDate(fechaStr)
 
     Set wsReporte = ThisWorkbook.Sheets("ANALISISTIEMPOS")
-    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     Set dictPerf = CreateObject("Scripting.Dictionary")
 
     Application.ScreenUpdating = False
@@ -444,7 +444,7 @@ Public Sub GenerarReporteAvanceProduccion()
     Set wsAvance = ThisWorkbook.Sheets("AVANCEPRODUCCION")
     Set wsRecep = ThisWorkbook.Sheets("LOTES")
     Set wsTareas = ThisWorkbook.Sheets("TAREAS")
-    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     Set dictUnidades = CreateObject("Scripting.Dictionary")
     Set dictAsignado = CreateObject("Scripting.Dictionary")
 
@@ -543,7 +543,7 @@ Public Sub GenerarReporteLotes()
 
     Set wsReporte = ThisWorkbook.Sheets("REPORTELOTES")
     Set wsRecep = ThisWorkbook.Sheets("LOTES")
-    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     Set wsTareas = ThisWorkbook.Sheets("TAREAS")
     Set wsRef = ThisWorkbook.Sheets("REFERENCIAS")
     Set dictRefTasks = CreateObject("Scripting.Dictionary")

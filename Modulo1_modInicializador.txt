@@ -8,7 +8,7 @@ Option Explicit
 ' AJUSTES GENERALES:
 ' 1. Headers TODAS las hojas en FILA 3 (incluidos REPORTES)
 ' 2. Botón VOLVER A INICIO en FILA 2 para TODAS las hojas (incluidos REPORTES)
-' 3. Estructura unificada como ASIGNACIONESDIARIAS
+' 3. Estructura unificada como ASIGNACIONES_DIARIAS
 '----------------------------------------------------------------------------------
 
 ' PUNTO DE ENTRADA - INICIALIZADOR MAESTRO
@@ -53,7 +53,7 @@ Public Sub CrearHojas(Optional reiniciarFabrica As Boolean = False)
     Dim nombresHojas As Variant
     Dim i As Long
 
-    nombresHojas = Array("INICIO", "MANUAL", "ASIGNACIONESDIARIAS", "OPERARIAS", "REFERENCIAS", _
+    nombresHojas = Array("INICIO", "MANUAL", "ASIGNACIONES_DIARIAS", "OPERARIAS", "REFERENCIAS", _
                         "COLORES", "TALLAS", "TAREAS", "LOTES", "EFICIENCIAOPERARIAS", _
                         "DIASNOLABORALES", "AVANCEPRODUCCION", "REPORTELOTES", "INFORMEPRODUCCION", _
                         "RESUMENDIARIO", "PRODUCCIONFINALIZADA", "ANALISISTIEMPOS", "ARCHIVOASIGNACIONES", "PARAMETROS")
@@ -85,7 +85,7 @@ Public Sub CrearHojas(Optional reiniciarFabrica As Boolean = False)
             Case "INICIO": ws.Tab.color = RGB(0, 176, 240)
             Case "MANUAL": ws.Tab.color = RGB(255, 192, 0)
             Case "OPERARIAS", "REFERENCIAS", "COLORES", "TALLAS", "TAREAS", "DIASNOLABORALES": ws.Tab.color = RGB(0, 112, 192)
-            Case "LOTES", "ASIGNACIONESDIARIAS", "EFICIENCIAOPERARIAS": ws.Tab.color = RGB(192, 0, 0)
+            Case "LOTES", "ASIGNACIONES_DIARIAS", "EFICIENCIAOPERARIAS": ws.Tab.color = RGB(192, 0, 0)
             Case "RESUMENDIARIO", "AVANCEPRODUCCION", "REPORTELOTES", "INFORMEPRODUCCION", "PRODUCCIONFINALIZADA", "ANALISISTIEMPOS": ws.Tab.color = RGB(0, 176, 80)
             Case "PARAMETROS", "ARCHIVOASIGNACIONES": ws.Tab.color = RGB(128, 128, 128)
         End Select
@@ -128,8 +128,8 @@ Public Sub CrearHeaders()
     Set ws = ThisWorkbook.Sheets("TAREAS")
     ws.Range("A3:F3").Value = Array("IDReferencia", "NumeroTarea", "NombreTarea", "TiempoSegundos", "DescripcionTarea", "Dificultad")
 
-    ' 6. ASIGNACIONESDIARIAS - Fila 3 ?
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    ' 6. ASIGNACIONES_DIARIAS - Fila 3 ?
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     ws.Range("A3:U3").Value = Array("Fecha", "IDOperaria", "NombreOperaria", "IDReferencia", "NombreReferencia", _
                                     "IDLote", "Color", "TallaAsignada", "NumeroTarea", "NombreTarea", _
                                     "CantidadUnidadesAsignadas", "TiempoUnitarioSegundos", "TiempoTotalAsignadoSegundos", _
@@ -292,7 +292,7 @@ End Sub
 ' BOTONES ESPECÍFICOS (SIN CAMBIOS)
 Public Sub CrearBotonesAsignaciones()
     Dim ws As Worksheet, shp As Shape
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
 
     For Each shp In ws.Shapes
         If shp.Type = msoAutoShape And shp.AutoShapeType = msoShapeRoundedRectangle Then shp.Delete
@@ -360,7 +360,7 @@ Public Sub CrearBotonesVolver()
 
             ' Ajustes específicos por hoja (columna)
             Select Case ws.Name
-                Case "ASIGNACIONESDIARIAS", "RESUMENDIARIO", "AVANCEPRODUCCION", "REPORTELOTES", _
+                Case "ASIGNACIONES_DIARIAS", "RESUMENDIARIO", "AVANCEPRODUCCION", "REPORTELOTES", _
                      "PRODUCCIONFINALIZADA", "ANALISISTIEMPOS", "EFICIENCIAOPERARIAS", "INFORMEPRODUCCION"
                     colBtn = 10  ' Derecha estándar para reportes
                 Case "OPERARIAS", "REFERENCIAS", "COLORES", "TALLAS", "LOTES", "TAREAS"

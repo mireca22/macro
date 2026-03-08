@@ -1,287 +1,296 @@
 
-================================================================================
-  SISTEMA DE GESTION DE PRODUCCION TEXTIL v3.2 - GUIA DE INSTALACION
-  Ultima actualizacion: March 07, 2026
-================================================================================
+╔══════════════════════════════════════════════════════════════════════════════════════╗
+║         SISTEMA DE GESTIÓN DE PRODUCCIÓN TEXTIL v3.2 — GUÍA DE INSTALACIÓN          ║
+║                      Última actualización: March 07, 2026                            ║
+╚══════════════════════════════════════════════════════════════════════════════════════╝
 
-NOTAS IMPORTANTES PARA VBA / EXCEL
-  - Todos los Caption de botones y controles usan solo texto ASCII puro.
-  - Sin tildes, sin simbolos Unicode (sin flechas, lapices, etc.)
-  - Strings de Caption: Nueva Asignacion, Editar Seleccionada, Refrescar, etc.
-  - Esto evita errores de compilacion y caracteres "?" en tiempo de ejecucion.
-
-CARACTERISTICAS v3.2
-  OK Cache en memoria - busquedas 100x mas rapidas
-  OK Calculos en VBA - sin formulas masivas en Excel
-  OK Arrays de datos - lectura/escritura optimizada
-  OK Sin conexiones externas - totalmente local
-  OK Bajo consumo de RAM - 50-100 MB
-  NUEVO v3.2 - Estructura unificada: Fila 1 sep, Fila 2 boton VOLVER, Fila 3 headers
-  NUEVO v3.2 - Asignaciones integradas en frmGestionLotes (lista + nueva + editar)
-  NUEVO v3.2 - Variable global PreselectLoteID para preseleccion automatica de lote
+CARACTERÍSTICAS DE LA VERSIÓN v3.2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✅ Caché en memoria — búsquedas 100x más rápidas
+  ✅ Cálculos en VBA — sin fórmulas masivas en Excel
+  ✅ Arrays de datos — lectura/escritura optimizada
+  ✅ Sin conexiones externas — totalmente local
+  ✅ Bajo consumo de RAM — 50–100 MB
+  ✅ Interfaz visual profesional
+  ✅ NUEVO v3.2 — Estructura unificada: Fila 1 separador, Fila 2 botón VOLVER, Fila 3 headers
+  ✅ NUEVO v3.2 — Asignaciones integradas en frmGestionLotes (lista + nueva + editar)
+  ✅ NUEVO v3.2 — Variable global PreselectLoteID para preselección automática de lote
 
 
-================================================================================
-PASO 1 - INSTALAR LOS MODULOS VBA (6 modulos)
-================================================================================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PASO 1 — INSTALAR LOS MÓDULOS VBA (6 módulos)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  1.1  Abrir Excel -> Alt+F11
-  1.2  Para cada modulo:
-         Insertar -> Modulo (Ctrl+M)
+  1.1  Abrir Excel → Alt+F11
+  1.2  Para cada archivo de módulo:
+         Insertar → Módulo (Ctrl+M)
          Copiar TODO el contenido del archivo
-         Pegar en el nuevo modulo
-         Verificar que NO hay errores de sintaxis (sin lineas rojas)
+         Pegar en el nuevo módulo
+         Verificar que NO hay errores de sintaxis
 
-  ORDEN DE INSTALACION (IMPORTANTE):
+  ORDEN DE INSTALACIÓN (IMPORTANTE):
 
-    1. Modulo1_modInicializador.txt          -> Sub InicializarSistema()      v3.2
-    2. Modulo2_modGestorDatosMaestros.txt    -> Sub CargarCacheEnMemoria()
-    3. Modulo3_modGestorAsignaciones.txt     -> Sub CrearAsignacion()
-    4. Modulo4_modSeleccionFilas.txt         -> Sub RegistrarFilaEnFormulario()
-    5. Modulo5_modUtilidadesHelpers.txt      -> Sub AplicarFormatoAsignaciones() v3.2
-    6. Modulo6_modGestorMaestros.txt         -> Sub AbrirGestorOperarias()
+    1. Modulo1_modInicializador.txt           → Sub InicializarSistema()       ← v3.2
+    2. Modulo2_modGestorDatosMaestros.txt     → Sub CargarCacheEnMemoria()
+    3. Modulo3_modGestorAsignaciones.txt      → Sub CrearAsignacion()
+    4. Modulo4_modSeleccionFilas.txt          → Sub RegistrarFilaEnFormulario()
+    5. Modulo5_modUtilidadesHelpers.txt       → Sub AplicarFormatoAsignaciones()
+    6. Modulo6_modGestorMaestros.txt          → Sub AbrirGestorOperarias()
 
-  OK Verificacion: 6 modulos visibles en VBA, sin subrayado rojo.
+  ✅ Verificación: En el editor VBA debes tener 6 módulos sin líneas rojas.
 
-  VARIABLES GLOBALES REQUERIDAS EN MODULO 6 (verificar que existen):
+  VARIABLES GLOBALES REQUERIDAS EN MÓDULO 6 (verificar que existen):
 
-    Public TipoMaestroActual  As String
-    Public ModoEdicion        As Boolean
-    Public FilaEdicion        As Long
-    Public FilaActual         As Long
-    Public FilaValida         As Boolean
-    Public PreselectRefID     As String
-    Public PreselectLoteID    As String    <- NUEVO v3.2
+    Public TipoMaestroActual As String
+    Public ModoEdicion       As Boolean
+    Public FilaEdicion       As Long
+    Public FilaActual        As Long
+    Public FilaValida        As Boolean
+    Public PreselectRefID    As String
+    Public PreselectLoteID   As String    ← NUEVO v3.2
 
 
-================================================================================
-PASO 2 - CREAR LOS USERFORMS (3 formularios)
-================================================================================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PASO 2 — CREAR LOS USERFORMS (4 formularios)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
---------------------------------------------------------------------------------
-PASO 2.1 - USERFORM: frmEditarAsignacion
---------------------------------------------------------------------------------
+─────────────────────────────────────────────────────────────────────────────────────
+PASO 2.1 — USERFORM: frmEditarAsignacion
+─────────────────────────────────────────────────────────────────────────────────────
 
   Propiedades del formulario:
-    Name    -> frmEditarAsignacion
-    Caption -> Editar Asignacion Diaria
-    Width   -> 450
-    Height  -> 600
+    Name    → frmEditarAsignacion
+    Caption → Editar Asignación Diaria
+    Width   → 450
+    Height  → 600
 
   ESTRUCTURA VISUAL:
-  +---------------------------------------------+
-  |  EDITAR ASIGNACION / CREAR NUEVA ASIGNACION  |
-  +---------------------------------------------+
-  | Fecha        [txtFecha]                      |
-  | ID Operaria  [cboOperaria]  Nombre [txt]  BLQ|
-  | ID Referencia[cboReferencia] Nombre [txt] BLQ|
-  | Lote [cboLote]    Color [cboColor]           |
-  | Talla [cboTalla]  Num Tarea [cboNumeroTarea] |
-  | Nombre Tarea [txtNombreTarea]             BLQ|
-  | Cantidad [txtCantidad]  Tiempo Unit [txt] BLQ|
-  | [lblTiempoTotalSegundos]  [lblTiempoTotalMin]|
-  | Estado [cboEstado]  Unidades [txtUnidades]   |
-  | Fecha Real [txtFechaReal]  Tiempo [txtTReal] |
-  | Observaciones [txtObservaciones] MULTILINE   |
-  |      [Guardar]   [Limpiar]   [Cancelar]      |
-  +---------------------------------------------+
+  ┌─────────────────────────────────────────────┐
+  │  EDITAR ASIGNACIÓN / CREAR NUEVA ASIGNACIÓN │
+  ├─────────────────────────────────────────────┤
+  │ Fecha        [txtFecha]                      │
+  │ ID Operaria  [cboOperaria]  Nombre [txt]  🔒 │
+  │ ID Referencia[cboReferencia] Nombre [txt] 🔒 │
+  │ Lote [cboLote]    Color [cboColor]           │
+  │ Talla [cboTalla]  Num Tarea [cboNumeroTarea] │
+  │ Nombre Tarea [txtNombreTarea]             🔒 │
+  │ Cantidad [txtCantidad]  Tiempo Unit [txt] 🔒  │
+  │ [lblTiempoTotalSegundos]  [lblTiempoTotalMin]│
+  │ Estado [cboEstado]  Unidades [txtUnidades]   │
+  │ Fecha Real [txtFechaReal]  Tiempo [txtTReal] │
+  │ Observaciones [txtObservaciones] MULTILINE   │
+  │        [Guardar] [Limpiar] [Cancelar]        │
+  └─────────────────────────────────────────────┘
 
   CONTROLES DETALLADOS:
 
-    FILA 1 - FECHA
-      Label    Name=lblFecha            Caption="Fecha"
-      TextBox  Name=txtFecha            Width=200, Height=20
+    FILA 1 — FECHA
+      Label    Name=lblFecha           Caption="Fecha"
+      TextBox  Name=txtFecha           Width=200, Height=20
 
-    FILA 2 - OPERARIA
-      Label    Name=lblIDOperaria       Caption="ID Operaria"
-      ComboBox Name=cboOperaria         Width=100, Height=20
-      Label    Name=lblNombreOperaria   Caption="Nombre"
-      TextBox  Name=txtNombreOperaria   Width=150, Height=20
-                                        Locked=True, BackColor=&H8000000F
+    FILA 2 — OPERARIA
+      Label    Name=lblIDOperaria      Caption="ID Operaria"
+      ComboBox Name=cboOperaria        Width=100, Height=20
+      Label    Name=lblNombreOperaria  Caption="Nombre"
+      TextBox  Name=txtNombreOperaria  Width=150, Height=20, Locked=True, BackColor=&H8000000F
 
-    FILA 3 - REFERENCIA
-      Label    Name=lblIDReferencia     Caption="ID Referencia"
-      ComboBox Name=cboReferencia       Width=100, Height=20
-      Label    Name=lblNombreRef        Caption="Nombre Referencia"
-      TextBox  Name=txtNombreRef        Width=150, Height=20
-                                        Locked=True, BackColor=&H8000000F
+    FILA 3 — REFERENCIA
+      Label    Name=lblIDReferencia    Caption="ID Referencia"
+      ComboBox Name=cboReferencia      Width=100, Height=20
+      Label    Name=lblNombreRef       Caption="Nombre Referencia"
+      TextBox  Name=txtNombreRef       Width=150, Height=20, Locked=True, BackColor=&H8000000F
 
-    FILA 4 - LOTE Y COLOR
-      Label    Name=lblLote             Caption="Lote",  Width=80
-      ComboBox Name=cboLote             Width=100, Height=20
-      Label    Name=lblColor            Caption="Color", Width=80
-      ComboBox Name=cboColor            Width=100, Height=20
+    FILA 4 — LOTE Y COLOR
+      Label    Name=lblLote            Caption="Lote",  Width=80
+      ComboBox Name=cboLote            Width=100, Height=20
+      Label    Name=lblColor           Caption="Color", Width=80
+      ComboBox Name=cboColor           Width=100, Height=20
 
-    FILA 5 - TALLA Y TAREA
-      Label    Name=lblTalla            Caption="Talla",     Width=80
-      ComboBox Name=cboTalla            Width=80,  Height=20
-      Label    Name=lblNumeroTarea      Caption="Num Tarea", Width=80
-      ComboBox Name=cboNumeroTarea      Width=80,  Height=20
+    FILA 5 — TALLA Y TAREA
+      Label    Name=lblTalla           Caption="Talla",    Width=80
+      ComboBox Name=cboTalla           Width=80,  Height=20
+      Label    Name=lblNumeroTarea     Caption="Num Tarea",Width=80
+      ComboBox Name=cboNumeroTarea     Width=80,  Height=20
 
-    FILA 6 - NOMBRE TAREA
-      Label    Name=lblNombreTarea      Caption="Nombre Tarea"
-      TextBox  Name=txtNombreTarea      Width=300, Height=20
-                                        Locked=True, BackColor=&H8000000F
+    FILA 6 — NOMBRE TAREA
+      Label    Name=lblNombreTarea     Caption="Nombre Tarea"
+      TextBox  Name=txtNombreTarea     Width=300, Height=20, Locked=True, BackColor=&H8000000F
 
-    FILA 7 - CANTIDAD Y TIEMPO
-      Label    Name=lblCantidad         Caption="Cantidad"
-      TextBox  Name=txtCantidad         Width=80, Height=20
-      Label    Name=lblTiempoUnitario   Caption="Tiempo Unitario seg"
-      TextBox  Name=txtTiempoUnitario   Width=80, Height=20
-                                        Locked=True, BackColor=&H8000000F
+    FILA 7 — CANTIDAD Y TIEMPO
+      Label    Name=lblCantidad        Caption="Cantidad"
+      TextBox  Name=txtCantidad        Width=80, Height=20
+      Label    Name=lblTiempoUnitario  Caption="Tiempo Unitario seg"
+      TextBox  Name=txtTiempoUnitario  Width=80, Height=20, Locked=True, BackColor=&H8000000F
 
-    FILA 8 - TIEMPOS CALCULADOS
+    FILA 8 — TIEMPOS CALCULADOS
       Label    Name=lblTiempoTotalSegundos  Caption="Tiempo Total: 0 seg", Width=150
       Label    Name=lblTiempoTotalMinutos   Caption="0.00 min",            Width=150
 
-    FILA 9 - ESTADO
-      Label    Name=lblEstado               Caption="Estado"
-      ComboBox Name=cboEstado               Width=120, Height=20
-      Label    Name=lblUnidadesCompletadas  Caption="Unidades Completadas"
-      TextBox  Name=txtUnidadesCompletadas  Width=80,  Height=20
+    FILA 9 — ESTADO
+      Label    Name=lblEstado              Caption="Estado"
+      ComboBox Name=cboEstado              Width=120, Height=20
+      Label    Name=lblUnidadesCompletadas Caption="Unidades Completadas"
+      TextBox  Name=txtUnidadesCompletadas Width=80,  Height=20
 
-    FILA 10 - DATOS REALES
-      Label    Name=lblFechaReal        Caption="Fecha Real"
-      TextBox  Name=txtFechaReal        Width=80, Height=20
-      Label    Name=lblTiempoReal       Caption="Tiempo Real min"
-      TextBox  Name=txtTiempoReal       Width=80, Height=20
+    FILA 10 — DATOS REALES
+      Label    Name=lblFechaReal       Caption="Fecha Real"
+      TextBox  Name=txtFechaReal       Width=80, Height=20
+      Label    Name=lblTiempoReal      Caption="Tiempo Real min"
+      TextBox  Name=txtTiempoReal      Width=80, Height=20
 
-    FILA 11 - OBSERVACIONES
-      Label    Name=lblObservaciones    Caption="Observaciones"
-      TextBox  Name=txtObservaciones    Width=400, Height=80
-                                        MultiLine=True, WordWrap=True
+    FILA 11 — OBSERVACIONES
+      Label    Name=lblObservaciones   Caption="Observaciones"
+      TextBox  Name=txtObservaciones   Width=400, Height=80, MultiLine=True, WordWrap=True
 
-    FILA 12 - BOTONES
-      CommandButton Name=btnGuardar     Caption="Guardar"
-      CommandButton Name=btnLimpiar     Caption="Limpiar"
-      CommandButton Name=btnCancelar    Caption="Cancelar"
+    FILA 12 — BOTONES
+      CommandButton Name=btnGuardar    Caption="Guardar"
+      CommandButton Name=btnLimpiar    Caption="Limpiar"
+      CommandButton Name=btnCancelar   Caption="Cancelar"
 
-  CODIGO:
-    Doble clic en el UserForm -> pegar UserForm_Optimizado_frmEditarAsignacion.txt
+  CÓDIGO:
+    Doble clic en el UserForm → pegar contenido de UserForm_Optimizado_frmEditarAsignacion.txt
 
-  MODIFICACION v3.2 - Preseleccion de Lote en UserForm_Initialize():
-    Agregar despues de cargar cboLote:
+  MODIFICACIÓN v3.2 — Agregar preselección de Lote en UserForm_Initialize():
+    Buscar la sección donde se carga cboLote y agregar DESPUÉS:
 
       ' Preseleccionar Lote si viene desde frmGestionLotes
       If PreselectLoteID <> "" Then
           cboLote.Value = PreselectLoteID
-          PreselectLoteID = ""
+          PreselectLoteID = ""   ' limpiar para próximos usos
       End If
 
 
---------------------------------------------------------------------------------
-PASO 2.2 - USERFORM: frmMaestros
---------------------------------------------------------------------------------
+─────────────────────────────────────────────────────────────────────────────────────
+PASO 2.2 — USERFORM: frmMaestros
+─────────────────────────────────────────────────────────────────────────────────────
 
   Propiedades del formulario:
-    Name    -> frmMaestros
-    Caption -> Gestion de Maestros
-    Height  -> 650
+    Name    → frmMaestros
+    Caption → Gestión de Maestros
+    Height  → 650
 
-  CONTROLES BASE (visibles segun el maestro):
-    Label    Name=lbl1 ... lbl6      Caption="Campo 1" ... "Campo 6"
-    TextBox  Name=txt1 ... txt6
-    ComboBox Name=cboRef             Visible=False (sobre txt1)
-    ComboBox Name=cboColor           Visible=False (sobre txt2)
-    ComboBox Name=cboTalla           Visible=False (sobre txt3)
+  ESTRUCTURA VISUAL:
+  ┌──────────────────────────────────────────────────┐
+  │              EDITAR REFERENCIAS                   │
+  ├──────────────────────────────────────────────────┤
+  │ ID Referencia  [REF001]  🔒                       │
+  │ Nombre Referencia [Camiseta Básica]               │
+  │ Descripción [Camiseta 100% algodón, ...]          │
+  │ Colores Disponibles    │ Tallas Disponibles       │
+  │ [Rojo  ]  [+][-]       │ [S   ]  [+][-]           │
+  │ [Azul  ]               │ [M   ]                   │
+  │ [Negro ]               │ [L   ]                   │
+  │ Tareas   N  │ Nombre         │ Tiempo              │
+  │ [1       │ Costura lateral  │ 120  ]  [+][-]       │
+  │ [2       │ Costura hombros  │ 180  ]               │
+  │                [Gestionar Lotes]                   │
+  │              [Guardar] [Cancelar]                  │
+  └──────────────────────────────────────────────────┘
+
+  CONTROLES BASE (visibles según el maestro):
+    Label    Name=lbl1 … lbl6   Caption="Campo 1" … "Campo 6"
+    TextBox  Name=txt1 … txt6
+    ComboBox Name=cboRef        Visible=False (dibujado sobre txt1)
+    ComboBox Name=cboColor      Visible=False (dibujado sobre txt2)
+    ComboBox Name=cboTalla      Visible=False (dibujado sobre txt3)
 
   CONTROLES DETALLE REFERENCIAS (Visible=False por defecto):
-    Label         Name=lblColores         Caption="Colores Disponibles"
-    ListBox       Name=lstColores         Height=100, Width=200
-    CommandButton Name=btnAgregarColor    Caption="+",  Width=25
-    CommandButton Name=btnQuitarColor     Caption="-",  Width=25
-    Label         Name=lblTallas          Caption="Tallas Disponibles"
-    ListBox       Name=lstTallas          Height=100, Width=200
-    CommandButton Name=btnAgregarTalla    Caption="+",  Width=25
-    CommandButton Name=btnQuitarTalla     Caption="-",  Width=25
-    Label         Name=lblTareas          Caption="Tareas (N | Nombre | Tiempo)"
-    ListBox       Name=lstTareas          Height=120, Width=350
-    CommandButton Name=btnAgregarTarea    Caption="+",  Width=25
-    CommandButton Name=btnQuitarTarea     Caption="-",  Width=25
+    Label        Name=lblColores         Caption="Colores Disponibles"
+    ListBox      Name=lstColores         Height=100, Width=200
+    CommandButton Name=btnAgregarColor   Caption="+", Width=25, BackColor=&H8000000D
+    CommandButton Name=btnQuitarColor    Caption="-", Width=25, BackColor=&H8000000F
+    Label        Name=lblTallas          Caption="Tallas Disponibles"
+    ListBox      Name=lstTallas          Height=100, Width=200
+    CommandButton Name=btnAgregarTalla   Caption="+", Width=25, BackColor=&H8000000D
+    CommandButton Name=btnQuitarTalla    Caption="-", Width=25, BackColor=&H8000000F
+    Label        Name=lblTareas          Caption="Tareas (N | Nombre | Tiempo)"
+    ListBox      Name=lstTareas          Height=120, Width=350
+    CommandButton Name=btnAgregarTarea   Caption="+", Width=25, BackColor=&H8000000D
+    CommandButton Name=btnQuitarTarea    Caption="-", Width=25, BackColor=&H8000000F
 
-  BOTON LOTES:
-    CommandButton Name=btnGestionarLotes  Caption="Gestionar Lotes", Width=120
+  BOTÓN LOTES:
+    CommandButton Name=btnGestionarLotes Caption="Gestionar Lotes", Width=120
 
   BOTONES PRINCIPALES:
-    CommandButton Name=btnGuardar         Caption="Guardar"
-    CommandButton Name=btnCancelar        Caption="Cancelar"
+    CommandButton Name=btnGuardar        Caption="Guardar"
+    CommandButton Name=btnCancelar       Caption="Cancelar"
 
-  CODIGO:
-    Doble clic en el UserForm -> pegar UserForm_frmMaestros.txt
+  CÓDIGO:
+    Doble clic en el UserForm → pegar contenido de UserForm_frmMaestros.txt
 
 
---------------------------------------------------------------------------------
-PASO 2.3 - USERFORM: frmGestionLotes  <- ACTUALIZADO v3.2
---------------------------------------------------------------------------------
+─────────────────────────────────────────────────────────────────────────────────────
+PASO 2.3 — USERFORM: frmGestionLotes  ← ACTUALIZADO v3.2
+─────────────────────────────────────────────────────────────────────────────────────
 
   Propiedades del formulario:
-    Name    -> frmGestionLotes
-    Caption -> Gestion de Lotes
-    Width   -> 520
-    Height  -> 600    <- aumentado vs v3.1 para acomodar seccion asignaciones
+    Name    → frmGestionLotes
+    Caption → Gestión de Lotes
+    Width   → 520
+    Height  → 600    ← aumentado respecto v3.1 (era ~400) para acomodar sección asignaciones
 
   ESTRUCTURA VISUAL v3.2:
-  +----------------------------------------------------------+
-  |      Gestion de Lotes - Referencia: REF001               |
-  +----------------------------------------------------------+
-  |  Lote  | Color | Talla | Cantidad | Estado               |
-  |  L001A | Rojo  |   M   |   150    | EN PROCESO           |
-  |  L001B | Rojo  |   L   |   200    | PENDIENTE            |
-  |  L002A | Azul  |   M   |   100    | COMPLETADO           |
-  |                                                          |
-  |  [Nuevo Lote]  [Editar Lote]  [Eliminar Lote]           |
-  +----------------------------------------------------------+
-  |  [ Asignaciones del Lote                               ] |
-  |  | Lote [L001A]: 3 asignacion(es)                     |  |
-  |  | Fecha  | Operaria | Tarea | Cantidad | Estado      |  |
-  |  | 01/03  | Maria G. | Cost. |    50    | Completada  |  |
-  |  | 02/03  | Ana R.   | Cost. |    50    | En Proceso  |  |
-  |  |                                                    |  |
-  |  | [Nueva Asignacion] [Editar Seleccionada] [Refrescar]  |
-  +----------------------------------------------------------+
-  |                               [Cerrar]                   |
-  +----------------------------------------------------------+
+  ┌──────────────────────────────────────────────────────────┐
+  │         Gestión de Lotes para Referencia: REF001          │
+  ├──────────────────────────────────────────────────────────┤
+  │  Lote   │ Color │ Talla │ Cantidad │ Estado               │
+  │  L001A  │ Rojo  │  M    │   150    │ EN PROCESO           │
+  │  L001B  │ Rojo  │  L    │   200    │ PENDIENTE            │
+  │  L002A  │ Azul  │  M    │   100    │ COMPLETADO           │
+  │                                                           │
+  │  [Nuevo Lote]  [Editar Lote]  [Eliminar Lote]            │
+  ├──────────────────────────────────────────────────────────┤
+  │  ╔═══ Asignaciones del Lote ═════════════════════════╗   │
+  │  ║  Asignaciones del lote [L001A]: 3 registro(s)     ║   │
+  │  ║  Fecha   │ Operaria │ Tarea │ Cantidad │ Estado   ║   │
+  │  ║  01/03   │ María G. │ Cost. │    50    │ Completada║  │
+  │  ║  02/03   │ Ana R.   │ Cost. │    50    │ En Proceso║  │
+  │  ║                                                   ║   │
+  │  ║  [+ Nueva Asignación] [✎ Editar Seleccionada] [↺] ║   │
+  │  ╚═══════════════════════════════════════════════════╝   │
+  │                              [Cerrar]                     │
+  └──────────────────────────────────────────────────────────┘
 
-  CONTROLES EXISTENTES (sin cambios vs v3.1):
-    ListBox       Name=lstLotes          ColumnCount=5
-                                         Width=480, Height=150
-                                         ColumnWidths="80;80;50;60;80"
-    CommandButton Name=btnNuevoLote      Caption="Nuevo Lote"
-    CommandButton Name=btnEditarLote     Caption="Editar Lote"
-    CommandButton Name=btnEliminarLote   Caption="Eliminar Lote"
-    CommandButton Name=btnCerrar         Caption="Cerrar"
+  CONTROLES EXISTENTES (sin cambios):
+    ListBox      Name=lstLotes         ColumnCount=5, Width=480, Height=150
+                                       ColumnWidths="80;80;50;60;80"
+    CommandButton Name=btnNuevoLote    Caption="Nuevo Lote"
+    CommandButton Name=btnEditarLote   Caption="Editar Lote"
+    CommandButton Name=btnEliminarLote Caption="Eliminar Lote"
+    CommandButton Name=btnCerrar       Caption="Cerrar"
 
-  CONTROLES NUEVOS v3.2:
-    Frame         Name=fraAsignaciones   Caption="Asignaciones del Lote"
-                                         Width=490, Height=195
+  CONTROLES NUEVOS v3.2 (agregar debajo de los botones de lote):
+    Frame        Name=fraAsignaciones  Caption="Asignaciones del Lote"
+                                       Width=490, Height=200
 
-    Label         Name=lblTituloAsig     Caption="Asignaciones: (seleccione un lote arriba)"
-                                         Width=460, Height=18
+    Label        Name=lblTituloAsig    Caption="Asignaciones: (seleccione un lote arriba)"
+                                       Width=460, Height=18
 
-    ListBox       Name=lstAsignaciones   ColumnCount=6
-                                         Height=100, Width=460
-                                         ColumnWidths="60;80;80;60;60;0"
-                                         NOTA: col 6 ancho=0 guarda FilaReal, no visible
+    ListBox      Name=lstAsignaciones  ColumnCount=6, Height=120, Width=460
+                                       ColumnWidths="60;80;80;60;60;0"
+                                       (columna 6 ancho=0: guarda FilaReal, oculta al usuario)
 
-    CommandButton Name=btnNuevaAsignacion  Caption="Nueva Asignacion"
-                                           Width=130, Height=26
+    CommandButton Name=btnNuevaAsignacion  Caption="+ Nueva Asignación"
+                                           BackColor=RGB(0,122,204) [azul]
+                                           Width=100, Height=24
 
-    CommandButton Name=btnEditarAsignacion Caption="Editar Seleccionada"
-                                           Width=130, Height=26
-                                           Enabled=False
+    CommandButton Name=btnEditarAsignacion Caption="✎ Editar Seleccionada"
+                                           BackColor=RGB(255,140,0) [naranja]
+                                           Width=100, Height=24
+                                           Enabled=False (se activa cuando hay registros)
 
-    CommandButton Name=btnRefrescarAsig    Caption="Refrescar"
-                                           Width=80,  Height=26
+    CommandButton Name=btnRefrescarAsig    Caption="↺ Refrescar"
+                                           Width=80,  Height=24
 
-  CODIGO:
-    Doble clic en el UserForm -> pegar UserForm_frmGestionLotes_v32.txt
+  CÓDIGO:
+    Doble clic en el UserForm → pegar contenido de UserForm_frmGestionLotes_v32.txt
 
 
-================================================================================
-PASO 3 - CONFIGURAR ThisWorkbook (Auto-carga cache)
-================================================================================
+─────────────────────────────────────────────────────────────────────────────────────
+PASO 2.4 — CONFIGURAR ThisWorkbook (Auto-carga caché)
+─────────────────────────────────────────────────────────────────────────────────────
 
-  1. VBA Editor -> doble clic en "ThisWorkbook" (Microsoft Excel Objects)
+  1. En el editor VBA → doble clic en "ThisWorkbook" (Microsoft Excel Objects)
   2. Borrar TODO y pegar:
 
     Option Explicit
@@ -291,7 +300,8 @@ PASO 3 - CONFIGURAR ThisWorkbook (Auto-carga cache)
             Application.ScreenUpdating = False
             Call CargarCacheEnMemoria
             Application.ScreenUpdating = True
-            MsgBox "Cache cargado. Sistema v3.2 listo.", vbInformation, "Sistema v3.2"
+            MsgBox "Caché cargado automáticamente. Sistema v3.2 listo.", _
+                   vbInformation, "Sistema v3.2"
         End If
     End Sub
 
@@ -299,200 +309,196 @@ PASO 3 - CONFIGURAR ThisWorkbook (Auto-carga cache)
         Call InvalidarCache
     End Sub
 
-  3. Guardar (Ctrl+S) -> cerrar y reabrir Excel para verificar.
+  3. Guardar (Ctrl+S)
+  4. Cerrar y volver a abrir el archivo → debe aparecer mensaje de confirmación.
 
 
-================================================================================
-PASO 4 - EJECUTAR EL INICIALIZADOR
-================================================================================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PASO 3 — EJECUTAR EL INICIALIZADOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  1. Alt+F8 -> InicializarSistema -> Ejecutar
-  2. Elegir:
-       SI  = REINICIO TOTAL (borra datos, recrea todo) <- instalacion nueva
+  1. Cerrar VBA (Alt+Q)
+  2. Alt+F8 → seleccionar InicializarSistema → Ejecutar
+  3. Elegir:
+       SI  = REINICIO TOTAL (borra datos, recrea todo) ← para instalación nueva
        NO  = REINICIO DE SISTEMA (conserva datos, repara formatos)
-  3. Esperar mensaje "OK - SISTEMA INICIALIZADO"
+  4. Esperar mensaje "✅ OK — SISTEMA INICIALIZADO"
 
   RESULTADO:
-    OK 19 hojas creadas con pestanas de colores
-    OK Estructura unificada:
-         Fila 1  altura 15px  separador vacio
-         Fila 2  altura 45px  boton VOLVER A INICIO
-         Fila 3  altura 20px  headers (negrita + fondo gris)
-         Fila 4+ altura 20px  datos
-    OK Dashboard INICIO con todos los botones
-    OK Boton VOLVER A INICIO en todas las hojas incluyendo EFICIENCIAOPERARIAS
+    ✅ 19 hojas creadas con pestañas de colores
+    ✅ Estructura unificada: Fila 1 (sep 15px) + Fila 2 (botón 45px) + Fila 3 (headers)
+    ✅ Dashboard INICIO con todos los botones
+    ✅ Botón VOLVER A INICIO en TODAS las hojas incluyendo EFICIENCIAOPERARIAS
 
 
-================================================================================
-PASO 5 - FLUJOS DE NAVEGACION DEL SISTEMA
-================================================================================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PASO 4 — FLUJOS DE NAVEGACIÓN DEL SISTEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-FLUJO A - Asignacion desde INICIO (flujo principal)
-----------------------------------------------------
+FLUJO A — Asignación desde INICIO (flujo principal)
+─────────────────────────────────────────────────────
   INICIO
-    -> [NUEVA ASIGNACION]
-         -> frmEditarAsignacion (modo: CREAR)
-              -> Operaria -> nombre automatico
-              -> Referencia -> filtra Lotes
-              -> Lote -> filtra Colores
-              -> Color -> filtra Tallas
-              -> Tarea -> nombre + tiempo unitario
-              -> Cantidad -> calcula tiempos en tiempo real
-              -> [Guardar] -> graba ASIGNACIONESDIARIAS + resumen
+    └── [NUEVA ASIGNACIÓN]
+          └── frmEditarAsignacion (modo: CREAR)
+                ├── Seleccionar Operaria → nombre automático
+                ├── Seleccionar Referencia → filtra Lotes
+                ├── Seleccionar Lote → filtra Colores
+                ├── Seleccionar Color → filtra Tallas
+                ├── Seleccionar Tarea → nombre + tiempo unitario
+                ├── Ingresar Cantidad → calcula tiempos totales en tiempo real
+                └── [Guardar] → graba en ASIGNACIONES_DIARIAS + actualiza resumen
 
 
-FLUJO B - Gestion de Lotes y Asignaciones desde Referencias (NUEVO v3.2)
-------------------------------------------------------------------------
+FLUJO B — Gestión de Lotes y Asignaciones desde Referencias (NUEVO v3.2)
+─────────────────────────────────────────────────────────────────────────
   INICIO
-    -> [GESTIONAR REFERENCIAS]
-         -> frmMaestros (modo: REFERENCIAS)
-              -> [Gestionar Lotes]
-                   -> frmGestionLotes
-                        |
-                        +-- SECCION LOTES (parte superior)
-                        |     lstLotes: Lote|Color|Talla|Cantidad|Estado
-                        |     [Nuevo Lote]    -> frmMaestros (LOTES, nueva)
-                        |     [Editar Lote]   -> frmMaestros (LOTES, edicion)
-                        |     [Eliminar Lote] -> validacion + eliminacion
-                        |
-                        +-- SECCION ASIGNACIONES (parte inferior) <- NUEVA v3.2
-                              (carga automatica al hacer clic en un lote)
-                              lstAsignaciones: Fecha|Operaria|Tarea|Cantidad|Estado
-                              Doble clic en fila -> editar esa asignacion
-                              [Nueva Asignacion]
-                                -> frmEditarAsignacion
-                                   con Ref + Lote preseleccionados automaticamente
-                              [Editar Seleccionada]
-                                -> frmEditarAsignacion con todos los datos cargados
-                              [Refrescar]
-                                -> recarga la lista de asignaciones del lote
+    └── [GESTIONAR REFERENCIAS]
+          └── frmMaestros (modo: REFERENCIAS)
+                └── [Gestionar Lotes]
+                      └── frmGestionLotes
+                            │
+                            ├── SECCIÓN LOTES (parte superior)
+                            │     ├── lstLotes: muestra Lote|Color|Talla|Cantidad|Estado
+                            │     ├── [Nuevo Lote]    → frmMaestros (modo LOTES, nueva)
+                            │     ├── [Editar Lote]   → frmMaestros (modo LOTES, edición)
+                            │     └── [Eliminar Lote] → validación + eliminación
+                            │
+                            └── SECCIÓN ASIGNACIONES (parte inferior) ← NUEVA v3.2
+                                  │  (se carga al hacer clic en un lote)
+                                  ├── lstAsignaciones: Fecha|Operaria|Tarea|Cantidad|Estado
+                                  │     └── doble clic → editar esa asignación
+                                  ├── [+ Nueva Asignación]
+                                  │     └── frmEditarAsignacion con Ref + Lote preseleccionados
+                                  ├── [✎ Editar Seleccionada]
+                                  │     └── frmEditarAsignacion con todos los datos cargados
+                                  └── [↺ Refrescar] → recarga la lista de asignaciones
 
 
-FLUJO C - Edicion desde hoja ASIGNACIONESDIARIAS
--------------------------------------------------
-  Hoja ASIGNACIONESDIARIAS
-    -> Seleccionar fila -> [EDITAR ASIGNACION]
-         -> frmEditarAsignacion (modo: EDITAR)
-              -> Campos precargados -> modificar -> [Guardar]
+FLUJO C — Edición desde hoja ASIGNACIONES_DIARIAS
+──────────────────────────────────────────────────
+  Hoja ASIGNACIONES_DIARIAS
+    └── Seleccionar fila → [EDITAR ASIGNACIÓN]
+          └── frmEditarAsignacion (modo: EDITAR)
+                └── Todos los campos precargados → modificar → [Guardar]
 
 
-FLUJO D - Generacion de Reportes
----------------------------------
+FLUJO D — Generación de Reportes
+─────────────────────────────────
   INICIO
-    -> [VER RESUMEN DIARIO]      -> RESUMENDIARIO      (headers fila 3)
-    -> [REPORTE DE EFICIENCIA]   -> ANALISISTIEMPOS    (headers fila 3)
-    -> [AVANCE PRODUCCION]       -> AVANCEPRODUCCION   (headers fila 3)
-    -> [REPORTE DE LOTES]        -> REPORTELOTES       (headers fila 3)
-    -> [INFORME PRODUCCION]      -> PRODUCCIONFINALIZADA (headers fila 3)
+    ├── [VER RESUMEN DIARIO]       → genera RESUMENDIARIO     (headers fila 3)
+    ├── [REPORTE DE EFICIENCIA]    → genera ANALISISTIEMPOS   (headers fila 3)
+    ├── [AVANCE PRODUCCION]        → genera AVANCEPRODUCCION  (headers fila 3)
+    ├── [REPORTE DE LOTES]         → genera REPORTELOTES      (headers fila 3)
+    └── [INFORME PRODUCCION]       → genera PRODUCCIONFINALIZADA (headers fila 3)
 
 
-================================================================================
-PASO 6 - CARGAR DATOS MAESTROS (EJEMPLO)
-================================================================================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PASO 5 — CARGAR DATOS MAESTROS (EJEMPLO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   Hoja OPERARIAS (desde fila 4):
-    IDOperaria | NombreOperaria       | TiempoDispMinDiarios | Estado | Especialidad
-    OP001      | Maria Garcia Lopez   | 480                  | Activa | Costura
-    OP002      | Ana Rodriguez        | 480                  | Activa | Estampado
+    IDOperaria | NombreOperaria         | TiempoDispMinDiarios | Estado | Especialidad | Contacto
+    OP001      | María García López     | 480                  | Activa | Costura      | 3001234567
+    OP002      | Ana Rodríguez          | 480                  | Activa | Estampado    | 3007654321
 
   Hoja REFERENCIAS (desde fila 4):
-    IDReferencia | NombreReferencia    | Descripcion              | TiempoTotalUnidadSeg
-    REF001       | Camiseta Basica     | Camiseta 100% algodon    | 540
-    REF002       | Pantalon Ejecutivo  | Pantalon ejecutivo       | 720
+    IDReferencia | NombreReferencia      | Descripcion               | Color | TiempoTotalUnidadSeg
+    REF001       | Camiseta Básica       | Camiseta 100% algodón     | —     | 540
+    REF002       | Pantalón Ejecutivo    | Pantalón ejecutivo        | —     | 720
 
   Hoja LOTES (desde fila 4):
-    IDLote | IDReferencia | Color | Talla | CantidadRecibida | FechaRecepcion | FechaInicioProd
-    L001A  | REF001       | Rojo  | M     | 150              | 15/02/2026     | 16/02/2026
+    IDLote | IDReferencia | Color | Talla | CantidadRecibida | FechaRecepcion | FechaInicioProduccion | ...
+    L001A  | REF001       | Rojo  | M     | 150              | 15/02/2026     | 16/02/2026            | ...
 
   Hoja TAREAS (desde fila 4):
-    IDReferencia | NumeroTarea | NombreTarea     | TiempoSegundos | Dificultad
-    REF001       | 1           | Costura lateral | 120            | Baja
-    REF001       | 2           | Costura hombros | 180            | Media
+    IDReferencia | NumeroTarea | NombreTarea      | TiempoSegundos | DescripcionTarea | Dificultad
+    REF001       | 1           | Costura lateral  | 120            | —                | Baja
+    REF001       | 2           | Costura hombros  | 180            | —                | Media
 
 
-================================================================================
-PASO 7 - ESTRUCTURA DE HOJAS v3.2
-================================================================================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PASO 6 — ESTRUCTURA DE HOJAS v3.2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   ESTRUCTURA UNIFICADA (todas las hojas excepto INICIO y MANUAL):
-    Fila 1  Altura 15px   Separador vacio
-    Fila 2  Altura 45px   Boton VOLVER A INICIO (gris)
-    Fila 3  Altura 20px   Headers (negrita + fondo gris)
-    Fila 4+ Altura 20px   Datos (alternancia de colores)
+    Fila 1  │ Altura 15px   │ Separador vacío
+    Fila 2  │ Altura 45px   │ Botón "VOLVER A INICIO" (gris)
+    Fila 3  │ Altura 20px   │ Headers (negrita + fondo gris)
+    Fila 4+ │ Altura 20px   │ Datos (alternancia de colores)
 
   HOJAS DEL SISTEMA (19 total):
-    Pestana Azul Claro  -> INICIO
-    Pestana Amarilla    -> MANUAL
-    Pestana Roja        -> LOTES, ASIGNACIONESDIARIAS, EFICIENCIAOPERARIAS
-    Pestana Azul Oscuro -> OPERARIAS, REFERENCIAS, COLORES, TALLAS, TAREAS, DIASNOLABORALES
-    Pestana Verde       -> RESUMENDIARIO, AVANCEPRODUCCION, REPORTELOTES,
-                           INFORMEPRODUCCION, PRODUCCIONFINALIZADA, ANALISISTIEMPOS
-    Pestana Gris        -> PARAMETROS, ARCHIVOASIGNACIONES
+    Pestaña Azul Claro  → INICIO
+    Pestaña Amarilla    → MANUAL
+    Pestaña Roja        → LOTES, ASIGNACIONES_DIARIAS, EFICIENCIAOPERARIAS
+    Pestaña Azul Oscuro → OPERARIAS, REFERENCIAS, COLORES, TALLAS, TAREAS, DIASNOLABORALES
+    Pestaña Verde       → RESUMENDIARIO, AVANCEPRODUCCION, REPORTELOTES,
+                          INFORMEPRODUCCION, PRODUCCIONFINALIZADA, ANALISISTIEMPOS
+    Pestaña Gris        → PARAMETROS, ARCHIVOASIGNACIONES
 
 
-================================================================================
-PASO 8 - PROTEGER EL CODIGO (SEGURIDAD)
-================================================================================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PASO 7 — PROTEGER EL CÓDIGO (SEGURIDAD)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  1. Editor VBA -> Herramientas -> Propiedades de VBAProject
-  2. Pestana Proteccion
-  3. Marcar "Bloquear proyecto para visualizacion"
-  4. Escribir contrasena y confirmar
-  5. Guardar, cerrar y reabrir el archivo
-
-
-================================================================================
-SOLUCION DE PROBLEMAS
-================================================================================
-
-  ERROR: "Variable no definida" al abrir formulario
-    -> Verificar que los 6 modulos estan instalados en orden
-
-  ERROR: "No se puede encontrar la hoja OPERARIAS"
-    -> Ejecutar InicializarSistema() primero
-
-  ERROR: El formulario no actualiza nombres automaticamente
-    -> Verificar que CargarCacheEnMemoria fue ejecutado
-
-  ERROR: El boton EDITAR de ASIGNACIONESDIARIAS no funciona
-    -> Verificar que esta asignada la macro RegistrarFilaEnFormulario
-
-  ERROR: lstAsignaciones aparece vacio aunque hay asignaciones
-    -> Verificar que IDLote en ASIGNACIONESDIARIAS (col 6) coincide exactamente con el lote
-    -> Clic en Refrescar Cache (boton RECARGAR CACHE en INICIO)
-
-  ERROR: frmEditarAsignacion no preselecciona el Lote al venir de frmGestionLotes
-    -> Verificar que PreselectLoteID esta declarada en Modulo 6
-    -> Verificar que se agrego el bloque de preseleccion en UserForm_Initialize
-
-  ERROR: "No coinciden los tipos" en CrearDashboardInicio
-    -> Reemplazar  ws.Columns("B,D,F").ColumnWidth = 30
-       por         ws.Columns("B").ColumnWidth = 30
-                   ws.Columns("D").ColumnWidth = 30
-                   ws.Columns("F").ColumnWidth = 30
-
-  ERROR: Cache desactualizado
-    -> Alt+F8 -> ActualizarCacheCompleto (o cerrar/reabrir el archivo)
+  1. En el editor VBA → Herramientas → Propiedades de VBAProject
+  2. Pestaña Protección
+  3. Marcar "Bloquear proyecto para visualización"
+  4. Escribir contraseña y confirmar
+  5. Guardar, cerrar y volver a abrir el archivo
 
 
-================================================================================
-ARCHIVOS DEL SISTEMA v3.2
-================================================================================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SOLUCIÓN DE PROBLEMAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  MODULOS VBA:
-    Modulo1_modInicializador.txt             v3.2  headers fila 3, botones fila 2
-    Modulo2_modGestorDatosMaestros.txt       v3.1
-    Modulo3_modGestorAsignaciones.txt        v3.1
-    Modulo4_modSeleccionFilas.txt            v3.1
-    Modulo5_modUtilidadesHelpers.txt         v3.2  reportes en fila 3+
-    Modulo6_modGestorMaestros.txt            v3.2  + PreselectLoteID
+  ❌ "Variable no definida" al abrir formulario
+     → Verificar que los 6 módulos están instalados en orden correcto
+
+  ❌ "No se puede encontrar la hoja OPERARIAS"
+     → Ejecutar InicializarSistema() primero
+
+  ❌ El formulario no actualiza nombres automáticamente
+     → Verificar que CargarCacheEnMemoria fue ejecutado
+
+  ❌ El botón EDITAR de ASIGNACIONES_DIARIAS no funciona
+     → Verificar que está asignada la macro RegistrarFilaEnFormulario
+
+  ❌ lstAsignaciones en frmGestionLotes aparece vacío aunque hay asignaciones
+     → Verificar que la columna IDLote en ASIGNACIONES_DIARIAS (col 6) coincide exactamente con lstLotes col 0
+     → Ejecutar Refrescar Caché (botón RECARGAR CACHÉ en INICIO)
+
+  ❌ frmEditarAsignacion no preselecciona el Lote al abrirse desde frmGestionLotes
+     → Verificar que PreselectLoteID está declarada en Módulo 6
+     → Verificar que se agregó el bloque de preselección en UserForm_Initialize de frmEditarAsignacion
+
+  ❌ "No coinciden los tipos" en CrearDashboardInicio
+     → Reemplazar ws.Columns("B,D,F").ColumnWidth = 30
+       por:  ws.Columns("B").ColumnWidth = 30
+             ws.Columns("D").ColumnWidth = 30
+             ws.Columns("F").ColumnWidth = 30
+
+  ❌ El caché está desactualizado
+     → Alt+F8 → ActualizarCacheCompleto  (o cerrar/abrir el archivo en v3.2)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ARCHIVOS DEL SISTEMA (versión actualizada)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  MÓDULOS VBA:
+    Modulo1_modInicializador.txt                  v3.2  ← headers fila 3, botones fila 2
+    Modulo2_modGestorDatosMaestros.txt            v3.1
+    Modulo3_modGestorAsignaciones.txt             v3.1
+    Modulo4_modSeleccionFilas.txt                 v3.1
+    Modulo5_modUtilidadesHelpers.txt              v3.2  ← reportes en fila 3+
+    Modulo6_modGestorMaestros.txt                 v3.2  ← + PreselectLoteID
 
   USERFORMS:
-    UserForm_Optimizado_frmEditarAsignacion.txt  v3.2  preseleccion PreselectLoteID
-    UserForm_frmMaestros.txt                     v3.1
-    UserForm_frmGestionLotes_v32.txt             v3.2  seccion asignaciones NUEVA
+    UserForm_Optimizado_frmEditarAsignacion.txt   v3.2  ← preselección PreselectLoteID
+    UserForm_frmMaestros.txt                      v3.1
+    UserForm_frmGestionLotes_v32.txt              v3.2  ← NUEVO: sección asignaciones
 
-================================================================================
-  OK SISTEMA v3.2 - LISTO PARA PRODUCCION
-  March 07, 2026 - Sistema de Gestion de Produccion Textil
-================================================================================
+╔══════════════════════════════════════════════════════════════════════════════════════╗
+║              ✅ SISTEMA v3.2 — LISTO PARA PRODUCCIÓN                                ║
+║          March 07, 2026 — Sistema de Gestión de Producción Textil                    ║
+╚══════════════════════════════════════════════════════════════════════════════════════╝
