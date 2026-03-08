@@ -1,44 +1,60 @@
 Option Explicit
 
+'==============================================================================
+' UserForm: frmGestionLotes v3.2
+' NUEVO: Seccion ASIGNACIONES DEL LOTE con lista + botones Nueva/Editar
+' Controles nuevos a agregar en el designer:
+'   Frame         fraAsignaciones     Caption = "Asignaciones del Lote"
+'   Label         lblTituloAsig       Caption = "Asignaciones: (seleccione un lote)"
+'   ListBox       lstAsignaciones     ColumnCount = 6
+'   CommandButton btnNuevaAsignacion  Caption = "Nueva Asignacion"
+'   CommandButton btnEditarAsignacion Caption = "Editar Seleccionada"
+'   CommandButton btnRefrescarAsig    Caption = "Refrescar"
+'==============================================================================
+
 Public idRef As String
 
-'==============================================================================
-' INICIALIZACION - Solo configura el ListBox, NO carga datos aun
-'==============================================================================
-
+' ------------------------------------------------------------------------------
+' INICIALIZACION
+' ------------------------------------------------------------------------------
 Private Sub UserForm_Initialize()
     With lstLotes
         .ColumnCount = 5
-        .ColumnWidths = "80;80;50;60;80"
+        .ColumnWidths = "180;80;50;60;80"
     End With
+
+    With lstAsignaciones
+        .ColumnCount = 6
+        .ColumnWidths = "160;80;80;60;60;0"   ' col 6 ancho=0: guarda FilaReal oculta
+    End With
+
+    btnEditarAsignacion.Enabled = False
 End Sub
 
-'==============================================================================
-' PUNTO DE ENTRADA PUBLICO - Llamar desde frmMaestros en lugar de .Show directo
-' Asigna idRef Y carga los datos ANTES de mostrar el formulario
-'==============================================================================
-
+' ------------------------------------------------------------------------------
+' PUNTO DE ENTRADA PUBLICO
+' Llamar desde frmMaestros: frmLotes.IniciarConReferencia(idRef) -> luego .Show
+' ------------------------------------------------------------------------------
 Public Sub IniciarConReferencia(refID As String)
     Me.idRef = refID
-    Me.Caption = "Gestion de Lotes para Referencia: " & refID
+    Me.Caption = "Gestion de Lotes - Referencia: " & refID
     Call CargarLotes
+    Call CargarAsignacionesDelLote
 End Sub
 
-'==============================================================================
+' ------------------------------------------------------------------------------
 ' CARGA DE LOTES FILTRADOS POR REFERENCIA
-'==============================================================================
-
+' ------------------------------------------------------------------------------
 Private Sub CargarLotes()
     Dim wsLotes As Worksheet
     Dim i As Long, ultFila As Long
-
     Set wsLotes = ThisWorkbook.Sheets("LOTES")
     ultFila = wsLotes.Cells(wsLotes.Rows.Count, 1).End(xlUp).Row
-    lstLotes.Clear
 
+    lstLotes.Clear
     For i = 4 To ultFila
         If Trim(CStr(wsLotes.Cells(i, 2).Value)) = Trim(Me.idRef) Then
-            lstLotes.AddItem wsLotes.Cells(i, 1).Value         ' Col 1: IDLote
+            lstLotes.AddItem wsLotes.Cells(i, 1).Value          ' IDLote
             lstLotes.List(lstLotes.ListCount - 1, 1) = wsLotes.Cells(i, 3).Value  ' Color
             lstLotes.List(lstLotes.ListCount - 1, 2) = wsLotes.Cells(i, 4).Value  ' Talla
             lstLotes.List(lstLotes.ListCount - 1, 3) = wsLotes.Cells(i, 5).Value  ' Cantidad
@@ -47,14 +63,135 @@ Private Sub CargarLotes()
     Next i
 
     If lstLotes.ListCount = 0 Then
-        Me.Caption = "Gestion de Lotes para: " & Me.idRef & "  (Sin lotes registrados)"
+        Me.Caption = "Gestion de Lotes - " & Me.idRef & " (Sin lotes registrados)"
     End If
+
+    lstAsignaciones.Clear
+    lblTituloAsig.Caption = "Asignaciones: (seleccione un lote arriba)"
+    btnEditarAsignacion.Enabled = False
 End Sub
 
-'==============================================================================
-' BOTONES DE ACCION
-'==============================================================================
+' ------------------------------------------------------------------------------
+' CARGA DE ASIGNACIONES FILTRADAS POR LOTE SELECCIONADO
+' ------------------------------------------------------------------------------
+Private Sub CargarAsignacionesDelLote()
+    Dim wsAsig As Worksheet
+    Dim i As Long, ultFila As Long
+    Dim idLote As String
+    Dim dataArr As Variant
+    Dim count As Long
 
+    lstAsignaciones.Clear
+
+    If lstLotes.ListIndex = -1 Then
+        lblTituloAsig.Caption = "Asignaciones: (seleccione un lote arriba)"
+        btnEditarAsignacion.Enabled = False
+        Exit Sub
+    End If
+
+    idLote = lstLotes.List(lstLotes.ListIndex, 0)
+    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONESDIARIAS")
+    ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
+    count = 0
+
+    If ultFila >= 4 Then
+        dataArr = wsAsig.Range(wsAsig.Cells(4, 1), wsAsig.Cells(ultFila, 21)).Value
+        Dim j As Long
+        For j = 1 To UBound(dataArr, 1)
+            ' Col 6 = IDLote  |  Col 4 = IDRef
+            If Trim(CStr(dataArr(j, 6))) = Trim(idLote) And _
+               Trim(CStr(dataArr(j, 4))) = Trim(Me.idRef) Then
+
+                lstAsignaciones.AddItem Format(dataArr(j, 1), "dd/mm/yyyy") ' Fecha
+                lstAsignaciones.List(lstAsignaciones.ListCount - 1, 1) = dataArr(j, 3)  ' Operaria
+                lstAsignaciones.List(lstAsignaciones.ListCount - 1, 2) = dataArr(j, 10) ' Tarea
+                lstAsignaciones.List(lstAsignaciones.ListCount - 1, 3) = dataArr(j, 11) ' Cantidad
+                lstAsignaciones.List(lstAsignaciones.ListCount - 1, 4) = dataArr(j, 15) ' Estado
+                lstAsignaciones.List(lstAsignaciones.ListCount - 1, 5) = j + 3          ' FilaReal (oculta)
+                count = count + 1
+            End If
+        Next j
+    End If
+
+    lblTituloAsig.Caption = "Lote [" & idLote & "]: " & count & " asignacion(es)"
+    btnEditarAsignacion.Enabled = (lstAsignaciones.ListCount > 0)
+End Sub
+
+' ------------------------------------------------------------------------------
+' EVENTO: Clic en lstLotes -> recarga asignaciones del lote seleccionado
+' ------------------------------------------------------------------------------
+Private Sub lstLotes_Click()
+    Call CargarAsignacionesDelLote
+End Sub
+
+' ------------------------------------------------------------------------------
+' BOTON: NUEVA ASIGNACION desde el lote seleccionado
+' ------------------------------------------------------------------------------
+Private Sub btnNuevaAsignacion_Click()
+    If lstLotes.ListIndex = -1 Then
+        MsgBox "Seleccione un lote primero.", vbExclamation
+        Exit Sub
+    End If
+
+    PreselectRefID  = Me.idRef
+    PreselectLoteID = lstLotes.List(lstLotes.ListIndex, 0)
+    FilaActual = 0
+    FilaValida = False    ' modo Nueva Asignacion
+
+    Me.Hide
+    Dim frmAsig As New frmEditarAsignacion
+    frmAsig.Show
+    Me.Show
+
+    Call CargarAsignacionesDelLote
+End Sub
+
+' ------------------------------------------------------------------------------
+' BOTON: EDITAR ASIGNACION seleccionada
+' ------------------------------------------------------------------------------
+Private Sub btnEditarAsignacion_Click()
+    Call EditarAsignacionSeleccionada
+End Sub
+
+Private Sub lstAsignaciones_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+    Call EditarAsignacionSeleccionada
+End Sub
+
+Private Sub EditarAsignacionSeleccionada()
+    If lstAsignaciones.ListIndex = -1 Then
+        MsgBox "Seleccione una asignacion de la lista para editar.", vbInformation
+        Exit Sub
+    End If
+
+    Dim filaReal As Long
+    filaReal = CLng(lstAsignaciones.List(lstAsignaciones.ListIndex, 5))
+
+    If filaReal < 4 Then
+        MsgBox "No se pudo determinar la fila de la asignacion.", vbCritical
+        Exit Sub
+    End If
+
+    FilaActual = filaReal
+    FilaValida = True     ' modo Edicion
+
+    Me.Hide
+    Dim frmAsig As New frmEditarAsignacion
+    frmAsig.Show
+    Me.Show
+
+    Call CargarAsignacionesDelLote
+End Sub
+
+' ------------------------------------------------------------------------------
+' BOTON: REFRESCAR lista de asignaciones
+' ------------------------------------------------------------------------------
+Private Sub btnRefrescarAsig_Click()
+    Call CargarAsignacionesDelLote
+End Sub
+
+' ------------------------------------------------------------------------------
+' BOTONES DE LOTE (sin cambios respecto a v3.1)
+' ------------------------------------------------------------------------------
 Private Sub btnNuevoLote_Click()
     PreselectRefID = Me.idRef
     TipoMaestroActual = "LOTES"
@@ -76,7 +213,7 @@ End Sub
 
 Private Sub EditarLoteSeleccionado()
     If lstLotes.ListIndex = -1 Then
-        MsgBox "Por favor, seleccione un lote de la lista para editar.", vbInformation
+        MsgBox "Seleccione un lote de la lista para editar.", vbInformation
         Exit Sub
     End If
 
@@ -107,13 +244,13 @@ Private Sub EditarLoteSeleccionado()
         Me.Show
         Call CargarLotes
     Else
-        MsgBox "No se pudo encontrar el lote '" & idLote & "' para editar.", vbExclamation
+        MsgBox "No se pudo encontrar el lote " & idLote & " para editar.", vbExclamation
     End If
 End Sub
 
 Private Sub btnEliminarLote_Click()
     If lstLotes.ListIndex = -1 Then
-        MsgBox "Por favor, seleccione un lote de la lista para eliminar.", vbInformation
+        MsgBox "Seleccione un lote de la lista para eliminar.", vbInformation
         Exit Sub
     End If
 
@@ -122,13 +259,13 @@ Private Sub btnEliminarLote_Click()
 
     If TieneHijosLote(idLote) Then
         MsgBox "ACCION BLOQUEADA" & vbCrLf & vbCrLf & _
-               "El lote '" & idLote & "' no se puede eliminar porque ya tiene " & _
+               "El lote " & idLote & " no se puede eliminar porque ya tiene " & _
                "asignaciones de trabajo registradas.", vbCritical
         Exit Sub
     End If
 
-    If MsgBox("Esta seguro que desea eliminar permanentemente el lote '" & idLote & "'?" & _
-              vbCrLf & "Esta accion no se puede deshacer.", _
+    If MsgBox("Desea eliminar permanentemente el lote " & idLote & "?" & vbCrLf & _
+              "Esta accion no se puede deshacer.", _
               vbYesNo + vbQuestion + vbDefaultButton2, "Confirmar Eliminacion") = vbNo Then
         Exit Sub
     End If
@@ -144,7 +281,7 @@ Private Sub btnEliminarLote_Click()
             wsLotes.Rows(i).Delete
             Call CargarCacheEnMemoria
             Call CargarLotes
-            MsgBox "Lote '" & idLote & "' eliminado exitosamente.", vbInformation
+            MsgBox "Lote " & idLote & " eliminado exitosamente.", vbInformation
             Exit Sub
         End If
     Next i

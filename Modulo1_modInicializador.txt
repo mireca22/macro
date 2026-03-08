@@ -42,7 +42,7 @@ Public Sub InicializarSistema()
 
     Application.ScreenUpdating = True
 
-    MsgBox "? OK - SISTEMA INICIALIZADO" & vbCrLf & _
+    MsgBox "OK - SISTEMA INICIALIZADO" & vbCrLf & _
            "Modo: " & IIf(reinicioTotal, "Total (Fábrica)", "Sistema (Conservación)") & vbCrLf & _
            "Calendario actualizado.", vbInformation
 End Sub
