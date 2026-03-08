@@ -1,7 +1,7 @@
 Option Explicit
 
 '==============================================================================
-' UserForm: frmGestionLotes v3.2
+' UserForm: frmGestionLotes v3.2 (Corregido - nombre ambiguo filaReal)
 ' NUEVO: Seccion ASIGNACIONES DEL LOTE con lista + botones Nueva/Editar
 ' Controles nuevos a agregar en el designer:
 '   Frame         fraAsignaciones     Caption = "Asignaciones del Lote"
@@ -101,7 +101,6 @@ Private Sub CargarAsignacionesDelLote()
             ' Col 6 = IDLote  |  Col 4 = IDRef
             If Trim(CStr(dataArr(j, 6))) = Trim(idLote) And _
                Trim(CStr(dataArr(j, 4))) = Trim(Me.idRef) Then
-
                 lstAsignaciones.AddItem Format(dataArr(j, 1), "dd/mm/yyyy") ' Fecha
                 lstAsignaciones.List(lstAsignaciones.ListCount - 1, 1) = dataArr(j, 3)  ' Operaria
                 lstAsignaciones.List(lstAsignaciones.ListCount - 1, 2) = dataArr(j, 10) ' Tarea
@@ -157,21 +156,24 @@ Private Sub lstAsignaciones_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
     Call EditarAsignacionSeleccionada
 End Sub
 
+' ------------------------------------------------------------------------------
+' CORRECCIÓN: variable local renombrada a lngFilaReal para evitar nombre ambiguo
+' ------------------------------------------------------------------------------
 Private Sub EditarAsignacionSeleccionada()
     If lstAsignaciones.ListIndex = -1 Then
         MsgBox "Seleccione una asignacion de la lista para editar.", vbInformation
         Exit Sub
     End If
 
-    Dim filaReal As Long
-    filaReal = CLng(lstAsignaciones.List(lstAsignaciones.ListIndex, 5))
+    Dim lngFilaReal As Long
+    lngFilaReal = CLng(lstAsignaciones.List(lstAsignaciones.ListIndex, 5))
 
-    If filaReal < 4 Then
+    If lngFilaReal < 4 Then
         MsgBox "No se pudo determinar la fila de la asignacion.", vbCritical
         Exit Sub
     End If
 
-    FilaActual = filaReal
+    FilaActual = lngFilaReal
     FilaValida = True     ' modo Edicion
 
     Me.Hide
@@ -190,7 +192,7 @@ Private Sub btnRefrescarAsig_Click()
 End Sub
 
 ' ------------------------------------------------------------------------------
-' BOTONES DE LOTE (sin cambios respecto a v3.1)
+' BOTONES DE LOTE
 ' ------------------------------------------------------------------------------
 Private Sub btnNuevoLote_Click()
     PreselectRefID = Me.idRef
