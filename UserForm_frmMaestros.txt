@@ -1,45 +1,60 @@
 Option Explicit
 
 Private Sub UserForm_Initialize()
-    'Ocultar los nuevos controles de detalle por defecto
+    UserFormInitialize
+End Sub
+
+Private Sub UserFormInitialize()
+    Dim i As Integer
+    Dim wsRefs As Worksheet
+    Dim wsLotes As Worksheet
+    Dim wsTareas As Worksheet
+    
     lblColores.Visible = False
     lstColores.Visible = False
     btnAgregarColor.Visible = False
     btnQuitarColor.Visible = False
-    
     lblTallas.Visible = False
     lstTallas.Visible = False
     btnAgregarTalla.Visible = False
     btnQuitarTalla.Visible = False
-    
     lblTareas.Visible = False
     lstTareas.Visible = False
     btnAgregarTarea.Visible = False
     btnQuitarTarea.Visible = False
     btnGestionarLotes.Visible = False
-
-    'Configurar formulario según el tipo de maestro seleccionado
+    
     If ModoEdicion Then
         Me.Caption = "EDITAR " & TipoMaestroActual
     Else
         Me.Caption = "NUEVO " & TipoMaestroActual
     End If
     
-    'Limpiar controles
-    Dim i As Integer
     For i = 1 To 6
         Me.Controls("lbl" & i).Visible = False
         Me.Controls("txt" & i).Visible = False
         Me.Controls("txt" & i).Value = ""
+        Me.Controls("txt" & i).Locked = False
+        Me.Controls("txt" & i).BackColor = &HFFFFFF
     Next i
+    
     cboRef.Visible = False
+    cboRef.Locked = False
+    cboRef.BackColor = &HFFFFFF
     cboTalla.Visible = False
     cboColor.Visible = False
-    txt1.Width = txt2.Width 'Restaurar ancho original por si se modificó
     
-    Select Case TipoMaestroActual
+    txt1.Width = txt2.Width
+    
+    Select Case UCase$(TipoMaestroActual)
         Case "OPERARIAS"
-            ConfigurarCampo 1, "ID Operaria:", False
+            ConfigurarCampo 1, "ID Operaria", False
+            ConfigurarCampo 2, "Nombre Completo", False
+            ConfigurarCampo 3, "Tiempo Disp. Semanal min", False
+            ConfigurarCampo 4, "Estado Activa/Inactiva", False
+            ConfigurarCampo 5, "Especialidad", False
+            ConfigurarCampo 6, "Contacto", False
+            
             If ModoEdicion Then
                 txt1.Value = ActiveSheet.Cells(FilaEdicion, 1).Value
                 txt1.Locked = True
@@ -51,61 +66,37 @@ Private Sub UserForm_Initialize()
                 txt6.Value = ActiveSheet.Cells(FilaEdicion, 6).Value
             Else
                 txt1.Value = GenerarNuevoID("OPERARIAS", 1, "OP")
-                txt1.Locked = False
-                txt1.BackColor = &HFFFFFF
                 txt3.Value = CalcularMinutosDiariosBase()
                 txt4.Value = "Activa"
             End If
-            
-            ConfigurarCampo 2, "Nombre Completo:", False
-            ConfigurarCampo 3, "Tiempo Disp. Semanal (min):", False
-            ConfigurarCampo 4, "Estado (Activa/Inactiva):", False
-            ConfigurarCampo 5, "Especialidad:", False
-            ConfigurarCampo 6, "Contacto:", False
-            
+        
         Case "REFERENCIAS"
-            ConfigurarCampo 1, "ID Referencia:", False
+            ConfigurarCampo 1, "ID Referencia", False
+            ConfigurarCampo 2, "Nombre Referencia", False
+            ConfigurarCampo 3, "Descripción", False
+            
+            lbl4.Visible = False
+            txt4.Visible = False
+            
             If ModoEdicion Then
-                Dim wsRefs As Worksheet
                 Set wsRefs = ThisWorkbook.Sheets("REFERENCIAS")
                 txt1.Value = wsRefs.Cells(FilaEdicion, 1).Value
                 txt1.Locked = True
                 txt1.BackColor = &H8000000F
                 txt2.Value = wsRefs.Cells(FilaEdicion, 2).Value
                 txt3.Value = wsRefs.Cells(FilaEdicion, 3).Value
-                
-                'Mostrar y cargar los detalles en las grillas
                 MostrarControlesDetalle True
                 CargarDetallesReferencia txt1.Value
             Else
                 txt1.Value = GenerarNuevoID("REFERENCIAS", 1, "REF")
-                txt1.Locked = False
-                txt1.BackColor = &HFFFFFF
-                'Ocultar detalles hasta que se guarde por primera vez
                 MostrarControlesDetalle False
             End If
-            
-            ConfigurarCampo 2, "Nombre Referencia:", False
-            ConfigurarCampo 3, "Descripción:", False
-            'El campo 4 (color) ya no se usa aquí, se gestiona en la grilla
-            lbl4.Visible = False
-            txt4.Visible = False
-            
+        
         Case "COLORES"
-            ConfigurarCampo 1, "Referencia:", True
+            ConfigurarCampo 1, "Referencia", True
+            ConfigurarCampo 2, "Color", False
+            
             txt1.Visible = False
-            cboRef.Visible = True
-            cboRef.Top = txt1.Top
-            cboRef.Left = txt1.Left
-            cboRef.Width = txt1.Width
-            CargarReferenciasCombo
-            If ModoEdicion Then cboRef.Value = ActiveSheet.Cells(FilaEdicion, 1).Value: txt2.Value = ActiveSheet.Cells(FilaEdicion, 2).Value
-            
-            ConfigurarCampo 2, "Color:", False
-            
-        Case "TALLAS"
-            ConfigurarCampo 1, "Referencia:", True
-            txt1.Visible = False 'Usaremos el combo
             cboRef.Visible = True
             cboRef.Top = txt1.Top
             cboRef.Left = txt1.Left
@@ -116,29 +107,46 @@ Private Sub UserForm_Initialize()
                 cboRef.Value = ActiveSheet.Cells(FilaEdicion, 1).Value
                 txt2.Value = ActiveSheet.Cells(FilaEdicion, 2).Value
             End If
+        
+        Case "TALLAS"
+            ConfigurarCampo 1, "Referencia", True
+            ConfigurarCampo 2, "Talla S, M, L...", False
             
-            ConfigurarCampo 2, "Talla (S, M, L...):", False
+            txt1.Visible = False
+            cboRef.Visible = True
+            cboRef.Top = txt1.Top
+            cboRef.Left = txt1.Left
+            cboRef.Width = txt1.Width
+            CargarReferenciasCombo
             
+            If ModoEdicion Then
+                cboRef.Value = ActiveSheet.Cells(FilaEdicion, 1).Value
+                txt2.Value = ActiveSheet.Cells(FilaEdicion, 2).Value
+            End If
+        
         Case "LOTES"
-            ConfigurarCampo 1, "Lote:                                   Referencia:", False
-            txt1.Visible = True 'Ahora usamos txt1 para el Lote
-            txt1.Width = 70 'Reducir ancho para compartir fila
+            ConfigurarCampo 1, "Lote", False
+            ConfigurarCampo 2, "Color", True
+            ConfigurarCampo 3, "Talla", True
+            ConfigurarCampo 4, "Cantidad Recibida", False
+            ConfigurarCampo 5, "Fecha Recepción", False
+            ConfigurarCampo 6, "Fecha Inicio Prod", False
             
-            'Referencia al lado del Lote
+            txt1.Visible = True
+            txt1.Width = 70
+            
             cboRef.Visible = True
             cboRef.Top = txt1.Top
             cboRef.Left = txt1.Left + 80
             cboRef.Width = 110
-            CargarReferenciasCombo            
+            CargarReferenciasCombo
             
-            ConfigurarCampo 2, "Color:", True
             txt2.Visible = False
             cboColor.Visible = True
             cboColor.Top = txt2.Top
             cboColor.Left = txt2.Left
             cboColor.Width = txt2.Width
             
-            ConfigurarCampo 3, "Talla:", True
             txt3.Visible = False
             cboTalla.Visible = True
             cboTalla.Top = txt3.Top
@@ -146,47 +154,46 @@ Private Sub UserForm_Initialize()
             cboTalla.Width = txt3.Width
             
             If ModoEdicion Then
-                Dim wsLotes As Worksheet
                 Set wsLotes = ThisWorkbook.Sheets("LOTES")
-                txt1.Value = wsLotes.Cells(FilaEdicion, 1).Value 'Lote
-                cboRef.Value = wsLotes.Cells(FilaEdicion, 2).Value 'Ref
-                Call cboRef_Change 'Cargar combos
-                cboColor.Value = wsLotes.Cells(FilaEdicion, 3).Value 'Color
+                txt1.Value = wsLotes.Cells(FilaEdicion, 1).Value
+                cboRef.Value = wsLotes.Cells(FilaEdicion, 2).Value
+                cboRefChange
+                cboColor.Value = wsLotes.Cells(FilaEdicion, 3).Value
                 cboTalla.Value = wsLotes.Cells(FilaEdicion, 4).Value
-                txt4.Value = wsLotes.Cells(FilaEdicion, 5).Value 'Cantidad
-                txt5.Value = wsLotes.Cells(FilaEdicion, 6).Value 'Fecha Rec
-                txt6.Value = wsLotes.Cells(FilaEdicion, 7).Value 'Fecha Ini
+                txt4.Value = wsLotes.Cells(FilaEdicion, 5).Value
+                txt5.Value = wsLotes.Cells(FilaEdicion, 6).Value
+                txt6.Value = wsLotes.Cells(FilaEdicion, 7).Value
             Else
                 txt5.Value = Format(Date, "dd/mm/yyyy")
                 txt6.Value = Format(Date, "dd/mm/yyyy")
-                ' Si venimos del gestor de lotes, pre-seleccionar y bloquear la referencia
-                If PreselectRefID <> "" Then
+                
+                If Len(Trim$(PreselectRefID)) > 0 Then
                     cboRef.Value = PreselectRefID
                     cboRef.Locked = True
                     cboRef.BackColor = &H8000000F
-                    'No limpiamos PreselectRefID aquí para que siga disponible si se abre otro
+                    cboRefChange
                 End If
             End If
-            
-            ConfigurarCampo 4, "Cantidad Recibida:", False
-            ConfigurarCampo 5, "Fecha Recepción:", False
-            ConfigurarCampo 6, "Fecha Inicio Prod:", False
-            
+        
         Case "TAREAS"
-            ConfigurarCampo 1, "Referencia:", True
-            txt1.Visible = False 'Usaremos el combo
+            ConfigurarCampo 1, "Referencia", True
+            ConfigurarCampo 2, "Número Tarea", True
+            ConfigurarCampo 3, "Nombre Tarea", False
+            ConfigurarCampo 4, "Tiempo segundos", False
+            ConfigurarCampo 5, "Fecha", False
+            ConfigurarCampo 6, "Descripción", False
+            
+            txt1.Visible = False
             cboRef.Visible = True
             cboRef.Top = txt1.Top
             cboRef.Left = txt1.Left
             cboRef.Width = txt1.Width
             CargarReferenciasCombo
             
-            ConfigurarCampo 2, "Número Tarea:", True
             txt2.Locked = True
             txt2.BackColor = &H8000000F
             
             If ModoEdicion Then
-                Dim wsTareas As Worksheet
                 Set wsTareas = ThisWorkbook.Sheets("TAREAS")
                 cboRef.Value = wsTareas.Cells(FilaEdicion, 1).Value
                 txt2.Value = wsTareas.Cells(FilaEdicion, 2).Value
@@ -195,33 +202,27 @@ Private Sub UserForm_Initialize()
                 txt5.Value = wsTareas.Cells(FilaEdicion, 5).Value
                 txt6.Value = wsTareas.Cells(FilaEdicion, 6).Value
             Else
-                txt6.Value = "Media"
-                ' Check if we need to pre-select a reference from another form
-                If PreselectRefID <> "" Then
+                txt5.Value = Format(Date, "dd/mm/yyyy")
+                txt6.Value = ""
+                
+                If Len(Trim$(PreselectRefID)) > 0 Then
                     cboRef.Value = PreselectRefID
-                    PreselectRefID = "" ' Clear the variable after use
+                    txt2.Value = ObtenerSiguienteNumeroTarea(cboRef.Value)
+                    PreselectRefID = ""
                 End If
             End If
-            
-            ConfigurarCampo 3, "Nombre Tarea:", False
-            ConfigurarCampo 4, "Tiempo (segundos):", False
-            ConfigurarCampo 5, "Descripción:", False
-            ConfigurarCampo 6, "Dificultad:", False
-            
     End Select
 End Sub
 
-Private Sub MostrarControlesDetalle(visible As Boolean)
+Private Sub MostrarControlesDetalle(ByVal visible As Boolean)
     lblColores.Visible = visible
     lstColores.Visible = visible
     btnAgregarColor.Visible = visible
     btnQuitarColor.Visible = visible
-    
     lblTallas.Visible = visible
     lstTallas.Visible = visible
     btnAgregarTalla.Visible = visible
     btnQuitarTalla.Visible = visible
-    
     lblTareas.Visible = visible
     lstTareas.Visible = visible
     btnAgregarTarea.Visible = visible
@@ -229,119 +230,127 @@ Private Sub MostrarControlesDetalle(visible As Boolean)
     btnGestionarLotes.Visible = visible
 End Sub
 
-Private Sub CargarDetallesReferencia(idRef As String)
-    If idRef = "" Then Exit Sub
+Private Sub CargarDetallesReferencia(ByVal idRef As String)
+    Dim colores As Collection
+    Dim tallas As Collection
+    Dim c As Variant
+    Dim t As Variant
+    Dim wsTareas As Worksheet
+    Dim i As Long
+    Dim ultFila As Long
     
-    '1. Cargar Colores
+    If Len(Trim$(idRef)) = 0 Then Exit Sub
+    
     lstColores.Clear
-    Dim colores As Collection, c As Variant
     Set colores = ObtenerColoresDeReferencia(idRef)
     For Each c In colores
         lstColores.AddItem c
     Next c
     
-    '2. Cargar Tallas
     lstTallas.Clear
-    Dim tallas As Collection, t As Variant
     Set tallas = ObtenerTallasDeReferencia(idRef)
     For Each t In tallas
         lstTallas.AddItem t
     Next t
     
-    '3. Cargar Tareas
     lstTareas.Clear
     lstTareas.ColumnCount = 3
     lstTareas.ColumnWidths = "30;150;50"
     
-    Dim wsTareas As Worksheet, i As Long, ultFila As Long
     Set wsTareas = ThisWorkbook.Sheets("TAREAS")
     ultFila = wsTareas.Cells(wsTareas.Rows.Count, 1).End(xlUp).Row
     
     For i = 4 To ultFila
-        If wsTareas.Cells(i, 1).Value = idRef Then
-            lstTareas.AddItem wsTareas.Cells(i, 2).Value 'Num Tarea
-            lstTareas.List(lstTareas.ListCount - 1, 1) = wsTareas.Cells(i, 3).Value 'Nombre
-            lstTareas.List(lstTareas.ListCount - 1, 2) = wsTareas.Cells(i, 4).Value 'Tiempo
+        If CStr(wsTareas.Cells(i, 1).Value) = idRef Then
+            lstTareas.AddItem wsTareas.Cells(i, 2).Value
+            lstTareas.List(lstTareas.ListCount - 1, 1) = wsTareas.Cells(i, 3).Value
+            lstTareas.List(lstTareas.ListCount - 1, 2) = wsTareas.Cells(i, 4).Value
         End If
     Next i
 End Sub
 
 Private Sub lstColores_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+    Dim idRef As String
+    Dim colorViejo As String
+    Dim colorNuevo As String
+    Dim ws As Worksheet
+    Dim i As Long
+    
     If lstColores.ListIndex = -1 Then Exit Sub
     
-    Dim idRef As String, colorViejo As String, colorNuevo As String
     idRef = txt1.Value
     colorViejo = lstColores.Value
     
-    'Validación: No se puede editar si tiene hijos
     If TieneHijosColor(idRef, colorViejo) Then
-        MsgBox "No se puede editar el color '" & colorViejo & "' porque ya está siendo usado en Lotes o Asignaciones.", vbCritical, "Acción Bloqueada"
+        MsgBox "No se puede editar el color " & colorViejo & " porque ya está siendo usado en Lotes o Asignaciones.", vbCritical, "Acción Bloqueada"
         Exit Sub
     End If
     
-    colorNuevo = InputBox("Editar color:", "Editar Color", colorViejo)
+    colorNuevo = InputBox("Editar color", "Editar Color", colorViejo)
+    If Len(Trim$(colorNuevo)) = 0 Then Exit Sub
+    If colorNuevo = colorViejo Then Exit Sub
     
-    If colorNuevo <> "" And colorNuevo <> colorViejo Then
-        'Lógica para buscar y actualizar en la hoja COLORES
-        Dim ws As Worksheet, i As Long
-        Set ws = ThisWorkbook.Sheets("COLORES")
-        For i = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row To 4 Step -1
-            If ws.Cells(i, 1).Value = idRef And ws.Cells(i, 2).Value = colorViejo Then
-                ws.Cells(i, 2).Value = colorNuevo
-                Exit For
-            End If
-        Next i
-        
-        Call CargarCacheEnMemoria
-        Call CargarDetallesReferencia(idRef)
-    End If
+    Set ws = ThisWorkbook.Sheets("COLORES")
+    For i = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row To 4 Step -1
+        If ws.Cells(i, 1).Value = idRef And ws.Cells(i, 2).Value = colorViejo Then
+            ws.Cells(i, 2).Value = colorNuevo
+            Exit For
+        End If
+    Next i
+    
+    CargarCacheEnMemoria
+    CargarDetallesReferencia idRef
 End Sub
 
 Private Sub lstTallas_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+    Dim idRef As String
+    Dim tallaVieja As String
+    Dim tallaNueva As String
+    Dim ws As Worksheet
+    Dim i As Long
+    
     If lstTallas.ListIndex = -1 Then Exit Sub
     
-    Dim idRef As String, tallaVieja As String, tallaNueva As String
     idRef = txt1.Value
     tallaVieja = lstTallas.Value
     
-    'Validación: No se puede editar si tiene hijos
     If TieneHijosTalla(idRef, tallaVieja) Then
-        MsgBox "No se puede editar la talla '" & tallaVieja & "' porque ya está siendo usada en Lotes o Asignaciones.", vbCritical, "Acción Bloqueada"
+        MsgBox "No se puede editar la talla " & tallaVieja & " porque ya está siendo usada en Lotes o Asignaciones.", vbCritical, "Acción Bloqueada"
         Exit Sub
     End If
     
-    tallaNueva = InputBox("Editar talla:", "Editar Talla", tallaVieja)
+    tallaNueva = InputBox("Editar talla", "Editar Talla", tallaVieja)
+    If Len(Trim$(tallaNueva)) = 0 Then Exit Sub
+    If tallaNueva = tallaVieja Then Exit Sub
     
-    If tallaNueva <> "" And tallaNueva <> tallaVieja Then
-        'Lógica para buscar y actualizar en la hoja TALLAS
-        Dim ws As Worksheet, i As Long
-        Set ws = ThisWorkbook.Sheets("TALLAS")
-        For i = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row To 4 Step -1
-            If ws.Cells(i, 1).Value = idRef And ws.Cells(i, 2).Value = tallaVieja Then
-                ws.Cells(i, 2).Value = tallaNueva
-                Exit For
-            End If
-        Next i
-        
-        Call CargarCacheEnMemoria
-        Call CargarDetallesReferencia(idRef)
-    End If
+    Set ws = ThisWorkbook.Sheets("TALLAS")
+    For i = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row To 4 Step -1
+        If ws.Cells(i, 1).Value = idRef And ws.Cells(i, 2).Value = tallaVieja Then
+            ws.Cells(i, 2).Value = tallaNueva
+            Exit For
+        End If
+    Next i
+    
+    CargarCacheEnMemoria
+    CargarDetallesReferencia idRef
 End Sub
 
 Private Sub lstTareas_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+    Dim idRef As String
+    Dim numTarea As String
+    Dim wsTareas As Worksheet
+    Dim i As Long
+    Dim ultFila As Long
+    Dim filaTarea As Long
+    Dim frmTaskEditor As New frmMaestros
+    
     If lstTareas.ListIndex = -1 Then Exit Sub
     
-    Dim idRef As String, numTarea As String
     idRef = txt1.Value
-    numTarea = lstTareas.Value ' First column of the listbox
+    numTarea = lstTareas.Value
     
-    If MsgBox("¿Desea editar los detalles de la tarea N°" & numTarea & "?", vbYesNo + vbQuestion, "Editar Tarea") = vbNo Then Exit Sub
+    If MsgBox("¿Desea editar los detalles de la tarea N° " & numTarea & "?", vbYesNo + vbQuestion, "Editar Tarea") = vbNo Then Exit Sub
     
-    ' Find the task in the TAREAS sheet
-    Dim wsTareas As Worksheet
-    Dim i As Long, ultFila As Long
-    Dim filaTarea As Long
-
     Set wsTareas = ThisWorkbook.Sheets("TAREAS")
     ultFila = wsTareas.Cells(wsTareas.Rows.Count, 1).End(xlUp).Row
     filaTarea = 0
@@ -354,23 +363,13 @@ Private Sub lstTareas_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
     Next i
     
     If filaTarea > 0 Then
-        ' Prepare to open the editor for the task
         FilaEdicion = filaTarea
         ModoEdicion = True
         TipoMaestroActual = "TAREAS"
-        
-        ' Hide the current form (Reference Editor)
         Me.Hide
-        
-        ' Show a NEW instance of the form to act as the Task Editor
-        Dim frmTaskEditor As New frmMaestros
         frmTaskEditor.Show
-        
-        ' When the new form instance is closed, this code will resume
-        ' Re-show the reference form
         Me.Show
-        ' Refresh the task list to show any changes
-        Call CargarDetallesReferencia(txt1.Value)
+        CargarDetallesReferencia txt1.Value
     Else
         MsgBox "No se pudo encontrar la tarea para editar. Por favor, recargue el caché.", vbExclamation
     End If
@@ -379,46 +378,51 @@ End Sub
 Private Sub btnGestionarLotes_Click()
     Dim frmLotes As New frmGestionLotes
     Me.Hide
-    frmLotes.IniciarConReferencia Me.txt1.Value   ' <-- asigna idRef y carga ANTES de Show
+    frmLotes.IniciarConReferencia Me.txt1.Value
     frmLotes.Show
     Me.Show
-    Call CargarCacheEnMemoria
-    Call CargarDetallesReferencia(Me.txt1.Value)
+    CargarCacheEnMemoria
+    CargarDetallesReferencia Me.txt1.Value
 End Sub
 
 Private Sub btnAgregarColor_Click()
     Dim nuevoColor As String
-    nuevoColor = InputBox("Ingrese el nuevo color para la referencia " & txt1.Value, "Agregar Color")
-    If nuevoColor = "" Then Exit Sub
+    Dim ws As Worksheet
+    Dim fila As Long
     
-    'Lógica para agregar a la hoja COLORES
-    Dim ws As Worksheet, fila As Long
+    nuevoColor = InputBox("Ingrese el nuevo color para la referencia " & txt1.Value, "Agregar Color")
+    If Len(Trim$(nuevoColor)) = 0 Then Exit Sub
+    
     Set ws = ThisWorkbook.Sheets("COLORES")
     fila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1
     ws.Cells(fila, 1).Value = txt1.Value
     ws.Cells(fila, 2).Value = nuevoColor
     
-    Call CargarCacheEnMemoria
-    Call CargarDetallesReferencia(txt1.Value)
+    CargarCacheEnMemoria
+    CargarDetallesReferencia txt1.Value
 End Sub
 
 Private Sub btnQuitarColor_Click()
-    If lstColores.ListIndex = -1 Then MsgBox "Seleccione un color para quitar.", vbExclamation: Exit Sub
+    Dim colorQuitar As String
+    Dim idRef As String
+    Dim ws As Worksheet
+    Dim i As Long
     
-    Dim colorQuitar As String, idRef As String
-    colorQuitar = lstColores.Value
-    idRef = txt1.Value
-    
-    'Validación: No se puede quitar si tiene hijos
-    If TieneHijosColor(idRef, colorQuitar) Then
-        MsgBox "No se puede quitar el color '" & colorQuitar & "' porque ya está siendo usado en Lotes o Asignaciones.", vbCritical, "Acción Bloqueada"
+    If lstColores.ListIndex = -1 Then
+        MsgBox "Seleccione un color para quitar.", vbExclamation
         Exit Sub
     End If
     
-    If MsgBox("¿Seguro que desea quitar el color '" & colorQuitar & "'?", vbYesNo + vbQuestion) = vbNo Then Exit Sub
+    colorQuitar = lstColores.Value
+    idRef = txt1.Value
     
-    'Lógica para buscar y eliminar de la hoja COLORES
-    Dim ws As Worksheet, i As Long
+    If TieneHijosColor(idRef, colorQuitar) Then
+        MsgBox "No se puede quitar el color " & colorQuitar & " porque ya está siendo usado en Lotes o Asignaciones.", vbCritical, "Acción Bloqueada"
+        Exit Sub
+    End If
+    
+    If MsgBox("¿Seguro que desea quitar el color " & colorQuitar & "?", vbYesNo + vbQuestion) = vbNo Then Exit Sub
+    
     Set ws = ThisWorkbook.Sheets("COLORES")
     For i = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row To 4 Step -1
         If ws.Cells(i, 1).Value = idRef And ws.Cells(i, 2).Value = colorQuitar Then
@@ -427,41 +431,48 @@ Private Sub btnQuitarColor_Click()
         End If
     Next i
     
-    Call CargarCacheEnMemoria
-    Call CargarDetallesReferencia(idRef)
+    CargarCacheEnMemoria
+    CargarDetallesReferencia idRef
 End Sub
 
 Private Sub btnAgregarTalla_Click()
     Dim nuevaTalla As String
-    nuevaTalla = InputBox("Ingrese la nueva talla (ej: S, M, L) para " & txt1.Value, "Agregar Talla")
-    If nuevaTalla = "" Then Exit Sub
+    Dim ws As Worksheet
+    Dim fila As Long
     
-    Dim ws As Worksheet, fila As Long
+    nuevaTalla = InputBox("Ingrese la nueva talla (ej. S, M, L) para " & txt1.Value, "Agregar Talla")
+    If Len(Trim$(nuevaTalla)) = 0 Then Exit Sub
+    
     Set ws = ThisWorkbook.Sheets("TALLAS")
     fila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1
     ws.Cells(fila, 1).Value = txt1.Value
     ws.Cells(fila, 2).Value = nuevaTalla
     
-    Call CargarCacheEnMemoria
-    Call CargarDetallesReferencia(txt1.Value)
+    CargarCacheEnMemoria
+    CargarDetallesReferencia txt1.Value
 End Sub
 
 Private Sub btnQuitarTalla_Click()
-    If lstTallas.ListIndex = -1 Then MsgBox "Seleccione una talla para quitar.", vbExclamation: Exit Sub
+    Dim tallaQuitar As String
+    Dim idRef As String
+    Dim ws As Worksheet
+    Dim i As Long
     
-    Dim tallaQuitar As String, idRef As String
-    tallaQuitar = lstTallas.Value
-    idRef = txt1.Value
-    
-    'Validación: No se puede quitar si tiene hijos
-    If TieneHijosTalla(idRef, tallaQuitar) Then
-        MsgBox "No se puede quitar la talla '" & tallaQuitar & "' porque ya está siendo usada en Lotes o Asignaciones.", vbCritical, "Acción Bloqueada"
+    If lstTallas.ListIndex = -1 Then
+        MsgBox "Seleccione una talla para quitar.", vbExclamation
         Exit Sub
     End If
     
-    If MsgBox("¿Seguro que desea quitar la talla '" & tallaQuitar & "'?", vbYesNo + vbQuestion) = vbNo Then Exit Sub
+    tallaQuitar = lstTallas.Value
+    idRef = txt1.Value
     
-    Dim ws As Worksheet, i As Long
+    If TieneHijosTalla(idRef, tallaQuitar) Then
+        MsgBox "No se puede quitar la talla " & tallaQuitar & " porque ya está siendo usada en Lotes o Asignaciones.", vbCritical, "Acción Bloqueada"
+        Exit Sub
+    End If
+    
+    If MsgBox("¿Seguro que desea quitar la talla " & tallaQuitar & "?", vbYesNo + vbQuestion) = vbNo Then Exit Sub
+    
     Set ws = ThisWorkbook.Sheets("TALLAS")
     For i = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row To 4 Step -1
         If ws.Cells(i, 1).Value = idRef And ws.Cells(i, 2).Value = tallaQuitar Then
@@ -470,51 +481,50 @@ Private Sub btnQuitarTalla_Click()
         End If
     Next i
     
-    Call CargarCacheEnMemoria
-    Call CargarDetallesReferencia(idRef)
+    CargarCacheEnMemoria
+    CargarDetallesReferencia idRef
 End Sub
 
 Private Sub btnAgregarTarea_Click()
     Dim idRef As String
+    Dim frmNewTask As New frmMaestros
+    
     idRef = txt1.Value
     
-    If MsgBox("Va a abrir el gestor de Tareas para agregar una nueva a la referencia '" & idRef & "'. ¿Desea continuar?", vbYesNo + vbQuestion) = vbNo Then Exit Sub
+    If MsgBox("Va a abrir el gestor de Tareas para agregar una nueva a la referencia " & idRef & ". ¿Desea continuar?", vbYesNo + vbQuestion) = vbNo Then Exit Sub
     
-    ' Set the global variable to pre-select the reference
     PreselectRefID = idRef
-    
-    ' Prepare to open the editor for a new task
     ModoEdicion = False
     TipoMaestroActual = "TAREAS"
     
-    ' Hide the current form and show a new instance for Tasks
     Me.Hide
-    Dim frmNewTask As New frmMaestros
     frmNewTask.Show
-    
-    ' When the new form instance is closed, this code will resume
-    ' Re-show the reference form
     Me.Show
-    ' Refresh the task list to show any changes
-    Call CargarDetallesReferencia(idRef)
+    
+    CargarDetallesReferencia idRef
 End Sub
 
 Private Sub btnQuitarTarea_Click()
-    If lstTareas.ListIndex = -1 Then MsgBox "Seleccione una tarea para quitar.", vbExclamation: Exit Sub
+    Dim numTareaQuitar As String
+    Dim idRef As String
+    Dim ws As Worksheet
+    Dim i As Long
     
-    Dim numTareaQuitar As String, idRef As String
-    numTareaQuitar = lstTareas.Value 'Value of first column
-    idRef = txt1.Value
-    
-    'Validación: No se puede quitar si tiene hijos
-    If TieneHijosTarea(idRef, numTareaQuitar) Then
-        MsgBox "No se puede quitar la tarea N°" & numTareaQuitar & " porque ya tiene asignaciones registradas.", vbCritical, "Acción Bloqueada"
+    If lstTareas.ListIndex = -1 Then
+        MsgBox "Seleccione una tarea para quitar.", vbExclamation
         Exit Sub
     End If
     
-    If MsgBox("¿Seguro que desea quitar la tarea N°" & numTareaQuitar & "?", vbYesNo + vbQuestion) = vbNo Then Exit Sub
+    numTareaQuitar = lstTareas.Value
+    idRef = txt1.Value
     
-    Dim ws As Worksheet, i As Long
+    If TieneHijosTarea(idRef, numTareaQuitar) Then
+        MsgBox "No se puede quitar la tarea N° " & numTareaQuitar & " porque ya tiene asignaciones registradas.", vbCritical, "Acción Bloqueada"
+        Exit Sub
+    End If
+    
+    If MsgBox("¿Seguro que desea quitar la tarea N° " & numTareaQuitar & "?", vbYesNo + vbQuestion) = vbNo Then Exit Sub
+    
     Set ws = ThisWorkbook.Sheets("TAREAS")
     For i = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row To 4 Step -1
         If ws.Cells(i, 1).Value = idRef And ws.Cells(i, 2).Value = CStr(numTareaQuitar) Then
@@ -523,103 +533,166 @@ Private Sub btnQuitarTarea_Click()
         End If
     Next i
     
-    Call ActualizarTiempoTotalReferencia(idRef) 'Recalcular tiempo total
-    Call CargarCacheEnMemoria
-    Call CargarDetallesReferencia(idRef)
+    ActualizarTiempoTotalReferencia idRef
+    CargarCacheEnMemoria
+    CargarDetallesReferencia idRef
 End Sub
 
-Private Sub ConfigurarCampo(idx As Integer, titulo As String, bloqueado As Boolean)
+Private Sub ConfigurarCampo(ByVal idx As Integer, ByVal titulo As String, ByVal bloqueado As Boolean)
     Me.Controls("lbl" & idx).Caption = titulo
     Me.Controls("lbl" & idx).Visible = True
     Me.Controls("txt" & idx).Visible = True
+    Me.Controls("txt" & idx).Locked = bloqueado
+    
+    If bloqueado Then
+        Me.Controls("txt" & idx).BackColor = &H8000000F
+    Else
+        Me.Controls("txt" & idx).BackColor = &HFFFFFF
+    End If
 End Sub
 
 Private Sub CargarReferenciasCombo()
     Dim refs As Collection
     Dim ref As Variant
-    Set refs = ObtenerAllReferencias()
     
+    Set refs = ObtenerAllReferencias()
     cboRef.Clear
+    
     For Each ref In refs
         cboRef.AddItem ref
     Next ref
 End Sub
 
 Private Sub cboRef_Change()
-    'Si estamos en TAREAS, calcular el siguiente número al elegir referencia
-    If TipoMaestroActual = "TAREAS" And cboRef.Value <> "" Then
-        txt2.Value = ObtenerSiguienteNumeroTarea(cboRef.Value)
+    cboRefChange
+End Sub
+
+Private Sub cboRefChange()
+    Dim tallas As Collection
+    Dim colores As Collection
+    Dim t As Variant
+    Dim c As Variant
+    
+    If UCase$(TipoMaestroActual) = "TAREAS" Then
+        If Len(Trim$(cboRef.Value)) > 0 And Not ModoEdicion Then
+            txt2.Value = ObtenerSiguienteNumeroTarea(cboRef.Value)
+        End If
     End If
     
-    'Si estamos en LOTES, cargar las tallas definidas para esa referencia
-    If TipoMaestroActual = "LOTES" And cboRef.Value <> "" Then
-        Dim tallas As Collection
-        Dim t As Variant
-        Set tallas = ObtenerTallasDeReferencia(cboRef.Value)
-        cboTalla.Clear
-        For Each t In tallas
-            cboTalla.AddItem t
-        Next t
-        
-        Dim colores As Collection
-        Dim c As Variant
-        Set colores = ObtenerColoresDeReferencia(cboRef.Value)
-        cboColor.Clear
-        For Each c In colores
-            cboColor.AddItem c
-        Next c
+    If UCase$(TipoMaestroActual) = "LOTES" Then
+        If Len(Trim$(cboRef.Value)) > 0 Then
+            Set tallas = ObtenerTallasDeReferencia(cboRef.Value)
+            cboTalla.Clear
+            For Each t In tallas
+                cboTalla.AddItem t
+            Next t
+            
+            Set colores = ObtenerColoresDeReferencia(cboRef.Value)
+            cboColor.Clear
+            For Each c In colores
+                cboColor.AddItem c
+            Next c
+        End If
     End If
 End Sub
 
 Private Sub btnGuardar_Click()
     Dim datos(0 To 6) As Variant
     
-    'Validaciones básicas
-    If TipoMaestroActual = "TALLAS" Or TipoMaestroActual = "TAREAS" Or TipoMaestroActual = "LOTES" Or TipoMaestroActual = "COLORES" Then
-        If cboRef.Value = "" Then MsgBox "[X] Seleccione una referencia", vbCritical: Exit Sub
+    If UCase$(TipoMaestroActual) = "TALLAS" Or UCase$(TipoMaestroActual) = "TAREAS" Or UCase$(TipoMaestroActual) = "LOTES" Or UCase$(TipoMaestroActual) = "COLORES" Then
+        If Len(Trim$(cboRef.Value)) = 0 Then
+            MsgBox "X Seleccione una referencia", vbCritical
+            Exit Sub
+        End If
         datos(0) = cboRef.Value
     Else
-        If txt1.Value = "" Then MsgBox "[X] Campo ID obligatorio", vbCritical: Exit Sub
+        If Len(Trim$(txt1.Value)) = 0 Then
+            MsgBox "X Campo ID obligatorio", vbCritical
+            Exit Sub
+        End If
         datos(0) = txt1.Value
     End If
     
-    If TipoMaestroActual = "LOTES" Then
-        datos(0) = txt1.Value 'ID_Lote
-        datos(1) = cboRef.Value 'ID_Ref
-        datos(2) = cboColor.Value 'Color
+    If UCase$(TipoMaestroActual) = "LOTES" Then
+        datos(0) = txt1.Value
+        datos(1) = cboRef.Value
+        datos(2) = cboColor.Value
         datos(3) = cboTalla.Value
-        datos(4) = txt4.Value 'Cantidad
-        datos(5) = txt5.Value 'Fecha Rec
-        datos(6) = txt6.Value 'Fecha Ini
+        datos(4) = txt4.Value
+        datos(5) = txt5.Value
+        datos(6) = txt6.Value
+    ElseIf UCase$(TipoMaestroActual) = "TAREAS" Then
+        datos(1) = txt2.Value
+        datos(2) = txt3.Value
+        datos(3) = txt4.Value
+        datos(4) = txt5.Value
+        datos(5) = txt6.Value
+        datos(6) = "Media"
     Else
         datos(1) = txt2.Value
         datos(2) = txt3.Value
-        'Si no es LOTES o REFERENCIAS, los datos 3, 4, 5 vienen de txt4, txt5, txt6
-        If TipoMaestroActual <> "LOTES" And TipoMaestroActual <> "REFERENCIAS" Then
-            datos(3) = txt4.Value
-            datos(4) = txt5.Value
-            datos(5) = txt6.Value
+        datos(3) = txt4.Value
+        datos(4) = txt5.Value
+        datos(5) = txt6.Value
+    End If
+    
+    If UCase$(TipoMaestroActual) = "OPERARIAS" And Len(Trim$(txt2.Value)) = 0 Then
+        MsgBox "X Nombre obligatorio", vbCritical
+        Exit Sub
+    End If
+    
+    If UCase$(TipoMaestroActual) = "REFERENCIAS" And Len(Trim$(txt2.Value)) = 0 Then
+        MsgBox "X Nombre obligatorio", vbCritical
+        Exit Sub
+    End If
+    
+    If UCase$(TipoMaestroActual) = "COLORES" And Len(Trim$(txt2.Value)) = 0 Then
+        MsgBox "X Color obligatorio", vbCritical
+        Exit Sub
+    End If
+    
+    If UCase$(TipoMaestroActual) = "TALLAS" And Len(Trim$(txt2.Value)) = 0 Then
+        MsgBox "X Talla obligatoria", vbCritical
+        Exit Sub
+    End If
+    
+    If UCase$(TipoMaestroActual) = "LOTES" Then
+        If Len(Trim$(txt1.Value)) = 0 Or Len(Trim$(cboColor.Value)) = 0 Or Len(Trim$(cboTalla.Value)) = 0 Or Len(Trim$(txt4.Value)) = 0 Then
+            MsgBox "X Lote, Color, Talla y Cantidad obligatorias", vbCritical
+            Exit Sub
+        End If
+        
+        If Not IsDate(txt5.Value) Or Not IsDate(txt6.Value) Then
+            MsgBox "X Fechas inválidas", vbCritical
+            Exit Sub
         End If
     End If
     
-    'Validaciones específicas
-    If TipoMaestroActual = "OPERARIAS" And txt2.Value = "" Then MsgBox "[X] Nombre obligatorio", vbCritical: Exit Sub
-    If TipoMaestroActual = "REFERENCIAS" And txt2.Value = "" Then MsgBox "[X] Nombre obligatorio", vbCritical: Exit Sub
-    If TipoMaestroActual = "COLORES" And txt2.Value = "" Then MsgBox "[X] Color obligatorio", vbCritical: Exit Sub
-    If TipoMaestroActual = "TALLAS" And txt2.Value = "" Then MsgBox "[X] Talla obligatoria", vbCritical: Exit Sub
-    If TipoMaestroActual = "LOTES" And (txt1.Value = "" Or cboColor.Value = "" Or cboTalla.Value = "" Or txt4.Value = "") Then MsgBox "[X] Lote, Color, Talla y Cantidad obligatorias", vbCritical: Exit Sub
-    If TipoMaestroActual = "LOTES" And (Not IsDate(txt5.Value) Or Not IsDate(txt6.Value)) Then MsgBox "[X] Fechas inválidas", vbCritical: Exit Sub
-    If TipoMaestroActual = "TAREAS" And (txt3.Value = "" Or txt4.Value = "") Then MsgBox "[X] Nombre y Tiempo obligatorios", vbCritical: Exit Sub
+    If UCase$(TipoMaestroActual) = "TAREAS" Then
+        If Len(Trim$(txt3.Value)) = 0 Or Len(Trim$(txt4.Value)) = 0 Then
+            MsgBox "X Nombre y Tiempo obligatorios", vbCritical
+            Exit Sub
+        End If
+        
+        If Not IsNumeric(txt4.Value) Then
+            MsgBox "X El tiempo debe ser numérico", vbCritical
+            Exit Sub
+        End If
+        
+        If Not IsDate(txt5.Value) Then
+            MsgBox "X La fecha de la tarea es inválida", vbCritical
+            Exit Sub
+        End If
+    End If
     
-    Call GuardarRegistroMaestro(datos)
+    GuardarRegistroMaestro datos
     
-    'Si es una nueva referencia, ahora se puede editar para agregar detalles
-    If TipoMaestroActual = "REFERENCIAS" And Not ModoEdicion Then
+    If UCase$(TipoMaestroActual) = "REFERENCIAS" And Not ModoEdicion Then
         MsgBox "Referencia creada. Ahora puede agregarle Colores, Tallas y Tareas.", vbInformation
-        ModoEdicion = True 'Cambiar a modo edición
-        UserForm_Initialize 'Recargar el form en modo edición
+        ModoEdicion = True
+        UserFormInitialize
     ElseIf MsgBox("¿Desea agregar otro registro?", vbYesNo + vbQuestion) = vbYes Then
-        UserForm_Initialize 'Reiniciar para un nuevo registro
+        UserFormInitialize
     Else
         Unload Me
     End If

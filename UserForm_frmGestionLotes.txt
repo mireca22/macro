@@ -25,7 +25,7 @@ Private Sub UserForm_Initialize()
 
     With lstAsignaciones
         .ColumnCount = 6
-        .ColumnWidths = "80;180;180;60;60;0"   ' col 6 ancho=0: guarda FilaReal oculta
+        .ColumnWidths = "80;100;180;60;60;0"   ' col 6 ancho=0: guarda FilaReal oculta
     End With
 
     btnEditarAsignacion.Enabled = False
