@@ -46,6 +46,9 @@ Private Sub UserForm_Initialize()
         Me.BackColor = RGB(250, 250, 240)  'Blanco ligeramente amarillo
     End If
 
+    txtFecha.Enabled = True
+    txtFecha.Locked = False
+
     'Cargar listas desplegables
     Call CargarListasOperarias
     Call CargarListasReferencias
@@ -327,7 +330,7 @@ Private Sub RecalcularTiempos()
 
     On Error Resume Next
 
-    If IsNumericValue(txtCantidad.Value) And IsNumericValue(txtTiempoUnitario.Value) Then
+    If IsNumeric(txtCantidad.Value) And IsNumeric(txtTiempoUnitario.Value) Then
         cantidad = CLng(txtCantidad.Value)
         tiempoUnit = CLng(txtTiempoUnitario.Value)
 
@@ -377,13 +380,31 @@ Private Sub btnGuardar_Click()
         Exit Sub
     End If
 
+    If Not IsDate(txtFecha.Value) Then
+        MsgBox "[X] La fecha de asignación no es válida", vbCritical
+        txtFecha.SetFocus
+        Exit Sub
+    End If
+
     If cboNumeroTarea.Value = "" Then
         MsgBox "[X] Seleccione un número de tarea", vbCritical
         cboNumeroTarea.SetFocus
         Exit Sub
     End If
 
-    If txtCantidad.Value = "" Or Not IsNumericValue(txtCantidad.Value) Or CLng(txtCantidad.Value) <= 0 Then
+    If txtCantidad.Value = "" Then
+        MsgBox "[X] Ingrese una cantidad", vbCritical
+        txtCantidad.SetFocus
+        Exit Sub
+    End If
+
+    If Not IsNumeric(txtCantidad.Value) Then
+        MsgBox "[X] La cantidad debe ser un número válido", vbCritical
+        txtCantidad.SetFocus
+        Exit Sub
+    End If
+
+    If CLng(txtCantidad.Value) <= 0 Then
         MsgBox "[X] La cantidad debe ser mayor a 0", vbCritical
         txtCantidad.SetFocus
         Exit Sub
@@ -407,10 +428,17 @@ Private Sub btnGuardar_Click()
         End If
         
     Else
-        resultado = ActualizarAsignacion(fila, cboOperaria.Value, cboReferencia.Value, cboLote.Value, cboColor.Value, cboTalla.Value, _
-                                  cboNumeroTarea.Value, CLng(txtCantidad.Value), cboEstado.Value, _
-                                  CLng(txtUnidadesCompletadas.Value), txtObservaciones.Value, _
-                                  txtFechaReal.Value, Val(txtTiempoReal.Value))
+        Dim unidadesCompletadas As Long
+        ' Conversión segura para unidades completadas. Si está vacío o no es numérico, se asume 0.
+        If IsNumeric(txtUnidadesCompletadas.Value) And txtUnidadesCompletadas.Value <> "" Then
+            unidadesCompletadas = CLng(txtUnidadesCompletadas.Value)
+        Else
+            unidadesCompletadas = 0
+        End If
+
+        resultado = ActualizarAsignacion(fila, CDate(txtFecha.Value), cboOperaria.Value, cboReferencia.Value, cboLote.Value, cboColor.Value, cboTalla.Value, _
+                                  cboNumeroTarea.Value, CLng(txtCantidad.Value), cboEstado.Value, unidadesCompletadas, _
+                                  txtObservaciones.Value, txtFechaReal.Value, Val(txtTiempoReal.Value))
         If resultado Then Unload Me 'Si la edición fue exitosa, cerrar
     End If
 End Sub

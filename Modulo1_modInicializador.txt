@@ -30,7 +30,7 @@ Public Sub InicializarSistema()
     Application.ScreenUpdating = False
 
     Call CrearHojas(reinicioTotal)
-    Call CrearHeaders                    ' ? AHORA TODOS LOS HEADERS EN FILA 3
+    Call CrearHeaders                    ' AHORA TODOS LOS HEADERS EN FILA 3
     Call ConfigurarProtecciones
     Call CargarParametrosIniciales
     Call CrearDashboardInicio
@@ -38,7 +38,7 @@ Public Sub InicializarSistema()
     Call CrearBotonesAsignaciones
     Call CrearBotonesMaestros
     Call ActualizarCalendarioNoLaboral
-    Call CrearBotonesVolver             ' ? AHORA INCLUYE REPORTES fila 2
+    Call CrearBotonesVolver             ' AHORA INCLUYE REPORTES fila 2
 
     Application.ScreenUpdating = True
 
@@ -98,7 +98,7 @@ Public Function ExisteHoja(nombre As String) As Boolean
     On Error GoTo 0
 End Function
 
-' ? HEADERS UNIFICADOS - TODAS LAS HOJAS HEADER EN FILA 3
+' HEADERS UNIFICADOS - TODAS LAS HOJAS HEADER EN FILA 3
 Public Sub CrearHeaders()
     Dim ws As Worksheet
 
@@ -137,7 +137,7 @@ Public Sub CrearHeaders()
                                     "Observaciones", "TiempoLibreOperariaMinutos", "FechaEntregaReal", _
                                     "TiempoRealMinutos", "DesviacionMinutos")
 
-    ' ? 7. REPORTES - AHORA HEADER EN FILA 3 (MOVIDO DESDE FILA 1)
+    ' 7. REPORTES - AHORA HEADER EN FILA 3 (MOVIDO DESDE FILA 1)
     Set ws = ThisWorkbook.Sheets("PRODUCCIONFINALIZADA")
     ws.Range("A3:G3").Value = Array("FechaFinalizacion", "IDReferencia", "NombreReferencia", "Talla", _
                                     "TotalUnidadesProducidas", "DiasProduccion", "OperariasInvolucradas")
@@ -299,7 +299,7 @@ Public Sub CrearBotonesAsignaciones()
     Next shp
 
     ws.Rows(1).RowHeight = 15
-    ws.Rows(2).RowHeight = 45  ' ? Fila 2 para botones
+    ws.Rows(2).RowHeight = 45  ' Fila 2 para botones
 
     Call CrearBotonDashboard(ws, "NUEVA ASIGNACION", "CrearNuevaAsignacionUI", 2, 2, RGB(0, 122, 204))
     Call CrearBotonDashboard(ws, "EDITAR ASIGNACION", "RegistrarFilaEnFormulario", 2, 6, RGB(255, 140, 0))
@@ -322,7 +322,7 @@ Public Sub CrearBotonesMaestros()
         ws.Cells.RowHeight = 20
         ws.Columns("B").ColumnWidth = 30
         ws.Rows(1).RowHeight = 15
-        ws.Rows(2).RowHeight = 45  ' ? Fila 2 para botones
+        ws.Rows(2).RowHeight = 45  ' Fila 2 para botones
 
         Select Case hoja
             Case "OPERARIAS": macroNuevo = "AbrirGestorOperarias"
@@ -338,7 +338,7 @@ Public Sub CrearBotonesMaestros()
     Next hoja
 End Sub
 
-' ? BOTONES VOLVER CORREGIDO - INCLUYE REPORTES EN FILA 2
+' BOTONES VOLVER CORREGIDO - INCLUYE REPORTES EN FILA 2
 Public Sub CrearBotonesVolver()
     Dim ws As Worksheet
     Dim colBtn As Integer, filaBtn As Integer
@@ -354,7 +354,7 @@ Public Sub CrearBotonesVolver()
                 End If
             Next i
 
-            ' ? ESTRUCTURA UNIFICADA - TODAS las hojas tienen botones en FILA 2
+            ' ESTRUCTURA UNIFICADA - TODAS las hojas tienen botones en FILA 2
             filaBtn = 2
             colBtn = 10
 

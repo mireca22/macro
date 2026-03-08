@@ -1,16 +1,15 @@
+Option Explicit
+
 '==============================================================================
 ' MODULO 3 - modGestorAsignaciones
 ' Logica de negocio: creacion, edicion y validacion de asignaciones
 ' Sistema de Gestion de Produccion Textil v3.0 - OPTIMIZADO
-' Cambios v3.1:
-'   - ValidarCapacidadOperaria: loop sobre OPERARIAS reemplazado por cache Modulo2
-'   - ValidarCapacidadOperaria: loop sobre ASIGNACIONES_DIARIAS reemplazado por array
-'   - ValidarStockProduccion: 2 loops reemplazados por arrays (solo columnas necesarias)
-'   - InsertarFilaAsignacion: 21 escrituras individuales reemplazadas por 1 array
-'   - InsertarFilaAsignacion: Application.EnableEvents = False durante escritura
+' CORRECCIÓN v3.2.1:
+'   - ValidarStockProduccion: array LOTES ahora inicia en fila 4 (headers en fila 3)
+'   - ValidarStockProduccion: array ASIGNACIONES_DIARIAS mantiene fila 4
+'   - ActualizarAvanceTalla: loop corregido para iniciar en fila 4
+'   - VerificarReferenciaCompletada: loop corregido para iniciar en fila 4
 '==============================================================================
-
-Option Explicit
 
 ' =============================================================================
 ' FUNCION CrearAsignacion - Retorna True si se creo exitosamente
@@ -130,7 +129,7 @@ Private Sub GenerarAsignacionesDivididas(idOper As String, nombreOper As String,
 
         If pendientes > 0 Then fechaIteracion = fechaIteracion + 1
 
-        ' Seguridad para evitar bucles infinitos
+        ' Seguridad: evitar bucle infinito
         If diasUsados > 365 Then Exit Do
     Loop
 
@@ -142,8 +141,7 @@ End Sub
 
 ' =============================================================================
 ' SUB InsertarFilaAsignacion - OPTIMIZADO v3.1
-' Escribe toda la fila en 1 sola operacion de array (antes: 21 escrituras)
-' Application.EnableEvents = False evita recalculos durante la escritura
+' Escribe toda la fila en 1 sola operacion de array
 ' =============================================================================
 Private Sub InsertarFilaAsignacion(fecha As Date, idOper As String, nombreOper As String, _
     idRef As String, nombreRef As String, idLote As String, color As String, talla As String, _
@@ -156,16 +154,15 @@ Private Sub InsertarFilaAsignacion(fecha As Date, idOper As String, nombreOper A
     Dim tiempoTotalMin  As Double
     Dim tiempoDisponible As Double, tiempoAsignadoHoy As Double
 
-    Set ws          = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    tiempoTotalSeg  = cantidad * tiempoUnit
-    tiempoTotalMin  = tiempoTotalSeg / 60
+    Set ws         = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    tiempoTotalSeg = cantidad * tiempoUnit
+    tiempoTotalMin = tiempoTotalSeg / 60
 
     Call ValidarCapacidadOperaria(idOper, fecha, 0, tiempoDisponible, tiempoAsignadoHoy)
-    fila = ObtenerProximaFilaDisponible
+    fila = ObtenerProximaFilaDisponible()
 
     Application.EnableEvents = False
 
-    ' 1 sola escritura al rango completo en lugar de 21 llamadas individuales
     ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 21)).Value = Array( _
         fecha, _
         idOper, _
@@ -194,9 +191,9 @@ Private Sub InsertarFilaAsignacion(fecha As Date, idOper As String, nombreOper A
 End Sub
 
 ' =============================================================================
-' FUNCION ActualizarAsignacion - Retorna True si se actualizo
+' FUNCION ActualizarAsignacion - Retorna True si se actualizo exitosamente
 ' =============================================================================
-Public Function ActualizarAsignacion(fila As Long, idOper As String, idRef As String, _
+Public Function ActualizarAsignacion(fila As Long, fechaAsig As Date, idOper As String, idRef As String, _
     idLote As String, color As String, talla As String, numTarea As String, _
     cantidad As Long, estado As String, unidadesComp As Long, observaciones As String, _
     Optional fechaReal As Variant = "", Optional tiempoRealMin As Double = 0) As Boolean
@@ -225,11 +222,12 @@ Public Function ActualizarAsignacion(fila As Long, idOper As String, idRef As St
     End If
 
     ' Recalcular tiempo libre
-    Call ValidarCapacidadOperaria(idOper, ws.Cells(fila, 1).Value, 0, tiempoDisponible, tiempoAsignadoHoy)
+    Call ValidarCapacidadOperaria(idOper, fechaAsig, 0, tiempoDisponible, tiempoAsignadoHoy)
 
     ' ACTUALIZAR CELDAS
     Application.EnableEvents = False
 
+    ws.Cells(fila, 1).Value  = fechaAsig
     ws.Cells(fila, 2).Value  = idOper
     ws.Cells(fila, 3).Value  = nombreOper
     ws.Cells(fila, 4).Value  = idRef
@@ -256,7 +254,7 @@ Public Function ActualizarAsignacion(fila As Long, idOper As String, idRef As St
 
     Application.EnableEvents = True
 
-    ' Si se marca Completada, actualizar avance de talla
+    ' Si se marca Completada, actualizar avance
     If estado = "Completada" Then
         Call ActualizarAvanceTalla(idRef, color, talla, unidadesComp)
         Call VerificarReferenciaCompletada(idRef)
@@ -283,8 +281,6 @@ End Function
 
 ' =============================================================================
 ' FUNCION ValidarCapacidadOperaria - OPTIMIZADA v3.1
-' Antes: loop celda a celda sobre OPERARIAS + loop sobre ASIGNACIONES_DIARIAS
-' Ahora: cache Modulo2 para OPERARIAS + array para ASIGNACIONES_DIARIAS
 ' =============================================================================
 Public Function ValidarCapacidadOperaria(idOper As String, fecha As Date, minutosNuevos As Double, _
     ByRef outDisponible As Double, ByRef outAsignado As Double) As Boolean
@@ -293,10 +289,10 @@ Public Function ValidarCapacidadOperaria(idOper As String, fecha As Date, minuto
     Dim i        As Long, ultFila As Long
     Dim dataArr  As Variant
 
-    ' 1. Capacidad desde cache (elimina loop sobre hoja OPERARIAS)
+    ' Capacidad desde cache
     outDisponible = ObtenerHorasDisponiblesOperaria(idOper)
 
-    ' 2. Minutos ya asignados ese dia (1 lectura en array, columnas 1-14 unicamente)
+    ' Minutos ya asignados ese dia
     outAsignado = 0
     Set wsAsig  = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     ultFila     = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
@@ -312,39 +308,37 @@ Public Function ValidarCapacidadOperaria(idOper As String, fecha As Date, minuto
         Next i
     End If
 
-    ' 3. Validar
-    If outAsignado + minutosNuevos <= outDisponible Then
-        ValidarCapacidadOperaria = True
-    Else
-        ValidarCapacidadOperaria = False
-    End If
+    ValidarCapacidadOperaria = (outAsignado + minutosNuevos <= outDisponible)
 End Function
 
 ' =============================================================================
-' FUNCION ValidarStockProduccion - OPTIMIZADA v3.1
-' Antes: 2 loops celda a celda sobre LOTES y ASIGNACIONES_DIARIAS
-' Ahora: 2 lecturas de array (solo columnas necesarias en cada caso)
+' FUNCION ValidarStockProduccion - CORREGIDA v3.2.1
+' LOTES: headers fila 3, datos desde fila 4 (antes iniciaba en fila 2 - BUG)
 ' =============================================================================
 Public Function ValidarStockProduccion(idRef As String, idLote As String, color As String, _
     talla As String, numTarea As String, cantidadNueva As Long, filaExcluir As Long) As Boolean
 
-    Dim wsRecep       As Worksheet, wsAsig As Worksheet
+    Dim wsLotes       As Worksheet, wsAsig As Worksheet
     Dim i             As Long, ultFila As Long
     Dim dataArr       As Variant
     Dim totalRecibido As Long, totalAsignado As Long
+    Dim filaAbsoluta  As Long
 
-    Set wsRecep = ThisWorkbook.Sheets("LOTES")
+    Set wsLotes = ThisWorkbook.Sheets("LOTES")
     Set wsAsig  = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
 
-    ' 1. Total recibido en LOTES (array hasta col 5 unicamente)
+    ' ── 1. Total recibido en LOTES ──────────────────────────────────────────
+    ' CORRECCIÓN: datos desde fila 4 (headers en fila 3, no en fila 2)
     totalRecibido = 0
-    ultFila       = wsRecep.Cells(wsRecep.Rows.Count, 1).End(xlUp).Row
+    ultFila = wsLotes.Cells(wsLotes.Rows.Count, 1).End(xlUp).Row
 
-    If ultFila >= 2 Then
-        dataArr = wsRecep.Range(wsRecep.Cells(2, 1), wsRecep.Cells(ultFila, 5)).Value
+    If ultFila >= 4 Then
+        dataArr = wsLotes.Range(wsLotes.Cells(4, 1), wsLotes.Cells(ultFila, 5)).Value
         For i = 1 To UBound(dataArr, 1)
-            If dataArr(i, 1) = idLote And dataArr(i, 2) = idRef And _
-               dataArr(i, 3) = color  And dataArr(i, 4) = talla Then
+            If Trim(CStr(dataArr(i, 1))) = Trim(idLote) And _
+               Trim(CStr(dataArr(i, 2))) = Trim(idRef)  And _
+               Trim(CStr(dataArr(i, 3))) = Trim(color)  And _
+               Trim(CStr(dataArr(i, 4))) = Trim(talla)  Then
                 totalRecibido = CLng(Val(dataArr(i, 5)))
                 Exit For
             End If
@@ -352,43 +346,46 @@ Public Function ValidarStockProduccion(idRef As String, idLote As String, color 
     End If
 
     If totalRecibido = 0 Then
-        MsgBox "No hay produccion recibida registrada para " & idRef & _
-               " Talla " & talla & "." & vbCrLf & _
-               "Registre primero la recepcion de corte.", vbCritical
+        MsgBox "No hay produccion recibida registrada para:" & vbCrLf & _
+               "Referencia: " & idRef & vbCrLf & _
+               "Lote: " & idLote & vbCrLf & _
+               "Color: " & color & " / Talla: " & talla & vbCrLf & vbCrLf & _
+               "Registre primero la recepcion de corte en LOTES.", vbCritical
         ValidarStockProduccion = False
         Exit Function
     End If
 
-    ' 2. Total ya asignado excluyendo fila actual (array hasta col 11 unicamente)
+    ' ── 2. Total ya asignado, excluyendo fila actual ────────────────────────
     totalAsignado = 0
-    ultFila       = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
+    ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
 
     If ultFila >= 4 Then
         dataArr = wsAsig.Range(wsAsig.Cells(4, 1), wsAsig.Cells(ultFila, 11)).Value
-        Dim filaReal As Long
         For i = 1 To UBound(dataArr, 1)
-            filaReal = i + 3
-            If filaReal <> filaExcluir Then
-                If dataArr(i, 4)  = idRef    And dataArr(i, 6) = idLote And _
-                   dataArr(i, 7)  = color    And dataArr(i, 8) = talla  And _
-                   dataArr(i, 9) = numTarea Then
+            filaAbsoluta = i + 3   ' fila real en la hoja (datos desde fila 4)
+            If filaAbsoluta <> filaExcluir Then
+                If Trim(CStr(dataArr(i, 4)))  = Trim(idRef)   And _
+                   Trim(CStr(dataArr(i, 6)))  = Trim(idLote)  And _
+                   Trim(CStr(dataArr(i, 7)))  = Trim(color)   And _
+                   Trim(CStr(dataArr(i, 8)))  = Trim(talla)   And _
+                   Trim(CStr(dataArr(i, 9)))  = Trim(numTarea) Then
                     totalAsignado = totalAsignado + CLng(Val(dataArr(i, 11)))
                 End If
             End If
         Next i
     End If
 
-    ' 3. Validar
+    ' ── 3. Validar ──────────────────────────────────────────────────────────
     If totalAsignado + cantidadNueva > totalRecibido Then
         MsgBox "EXCESO DE CANTIDAD" & vbCrLf & vbCrLf & _
-               "Referencia " & idRef & " - Talla " & talla & vbCrLf & _
-               "Tarea " & numTarea & vbCrLf & _
+               "Referencia: " & idRef & " - Talla: " & talla & vbCrLf & _
+               "Lote: " & idLote & " / Tarea: " & numTarea & vbCrLf & _
                String(40, "-") & vbCrLf & _
                "Total Recibido:  " & totalRecibido & vbCrLf & _
                "Ya Asignado:     " & totalAsignado & vbCrLf & _
                "Intento Actual:  " & cantidadNueva & vbCrLf & _
                String(40, "-") & vbCrLf & _
-               "Disponible: " & totalRecibido - totalAsignado, vbCritical
+               "Disponible: " & (totalRecibido - totalAsignado), vbCritical
         ValidarStockProduccion = False
     Else
         ValidarStockProduccion = True
@@ -396,26 +393,28 @@ Public Function ValidarStockProduccion(idRef As String, idLote As String, color 
 End Function
 
 ' =============================================================================
-' SUB ActualizarAvanceTalla
+' SUB ActualizarAvanceTalla - CORREGIDA v3.2.1
+' Loop inicia en fila 4 (headers en fila 3)
 ' =============================================================================
 Private Sub ActualizarAvanceTalla(idRef As String, color As String, talla As String, unidades As Long)
     Dim ws      As Worksheet
     Dim i       As Long, ultFila As Long
     Dim total   As Long
 
-    Set ws      = ThisWorkbook.Sheets("LOTES")
-    ultFila     = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    Set ws    = ThisWorkbook.Sheets("LOTES")
+    ultFila   = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
 
-    For i = 2 To ultFila
-        If ws.Cells(i, 1).Value = idRef And ws.Cells(i, 2).Value = color And _
-           ws.Cells(i, 3).Value = talla Then
-            total              = ws.Cells(i, 4).Value
-            ws.Cells(i, 7).Value = ws.Cells(i, 7).Value + unidades
-            If total > 0 Then ws.Cells(i, 8).Value = ws.Cells(i, 7).Value / total
-            If ws.Cells(i, 7).Value >= total Then
-                ws.Cells(i, 9).Value = "Completada"
-            ElseIf ws.Cells(i, 7).Value > 0 Then
-                ws.Cells(i, 9).Value = "En Proceso"
+    For i = 4 To ultFila   ' CORRECCIÓN: fila 4 (antes era fila 2)
+        If ws.Cells(i, 2).Value = idRef  And _
+           ws.Cells(i, 3).Value = color  And _
+           ws.Cells(i, 4).Value = talla  Then
+            total = ws.Cells(i, 5).Value
+            ws.Cells(i, 8).Value = ws.Cells(i, 8).Value + unidades
+            If total > 0 Then ws.Cells(i, 9).Value = ws.Cells(i, 8).Value / total
+            If ws.Cells(i, 8).Value >= total Then
+                ws.Cells(i, 10).Value = "Completada"
+            ElseIf ws.Cells(i, 8).Value > 0 Then
+                ws.Cells(i, 10).Value = "En Proceso"
             End If
             Exit For
         End If
@@ -423,26 +422,27 @@ Private Sub ActualizarAvanceTalla(idRef As String, color As String, talla As Str
 End Sub
 
 ' =============================================================================
-' SUB VerificarReferenciaCompletada
+' SUB VerificarReferenciaCompletada - CORREGIDA v3.2.1
+' Loop inicia en fila 4 (headers en fila 3)
 ' =============================================================================
 Private Sub VerificarReferenciaCompletada(idRef As String)
-    Dim wsRecep       As Worksheet, wsProd As Worksheet
+    Dim wsLotes       As Worksheet, wsProd As Worksheet
     Dim i             As Long, ultFila As Long
     Dim todasCompletas As Boolean
     Dim totalUnidades As Long
     Dim encontroRef   As Boolean
 
-    Set wsRecep       = ThisWorkbook.Sheets("LOTES")
-    ultFila           = wsRecep.Cells(wsRecep.Rows.Count, 1).End(xlUp).Row
-    todasCompletas    = True
-    encontroRef       = False
-    totalUnidades     = 0
+    Set wsLotes     = ThisWorkbook.Sheets("LOTES")
+    ultFila         = wsLotes.Cells(wsLotes.Rows.Count, 1).End(xlUp).Row
+    todasCompletas  = True
+    encontroRef     = False
+    totalUnidades   = 0
 
-    For i = 2 To ultFila
-        If wsRecep.Cells(i, 1).Value = idRef Then
+    For i = 4 To ultFila   ' CORRECCIÓN: fila 4 (antes era fila 2)
+        If wsLotes.Cells(i, 2).Value = idRef Then
             encontroRef   = True
-            totalUnidades = totalUnidades + wsRecep.Cells(i, 4).Value
-            If wsRecep.Cells(i, 9).Value <> "Completada" Then
+            totalUnidades = totalUnidades + wsLotes.Cells(i, 5).Value
+            If wsLotes.Cells(i, 10).Value <> "Completada" Then
                 todasCompletas = False
                 Exit For
             End If
@@ -450,9 +450,10 @@ Private Sub VerificarReferenciaCompletada(idRef As String)
     Next i
 
     If encontroRef And todasCompletas Then
-        Set wsProd  = ThisWorkbook.Sheets("PRODUCCIONFINALIZADA")
+        Set wsProd    = ThisWorkbook.Sheets("PRODUCCIONFINALIZADA")
         Dim nuevaFila As Long
         nuevaFila = wsProd.Cells(wsProd.Rows.Count, 1).End(xlUp).Row + 1
+        If nuevaFila < 4 Then nuevaFila = 4
         wsProd.Cells(nuevaFila, 1).Value = Date
         wsProd.Cells(nuevaFila, 2).Value = idRef
         wsProd.Cells(nuevaFila, 3).Value = ObtenerNombreReferencia(idRef)
