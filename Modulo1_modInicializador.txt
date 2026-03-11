@@ -72,7 +72,7 @@ Public Sub CrearHojas(Optional reiniciarFabrica As Boolean = False)
         "REFERENCIAS", "COLORES", "TALLAS", "TAREAS", "LOTES", "EFICIENCIA_OPERARIAS", _
         "DIAS_NO_LABORALES", "AVANCE_PRODUCCION", "REPORTE_LOTES", "INFORME_PRODUCCION", _
         "RESUMEN_DIARIO", "PRODUCCION_FINALIZADA", "ANALISIS_TIEMPOS", _
-        "ARCHIVO_ASIGNACIONES", "PARAMETROS")
+        "ARCHIVO_ASIGNACIONES", "PARAMETROS", "MATRIZ_ASIGNACION", "TRAZABILIDAD_LOTE")
 
     If reiniciarFabrica Then
         Application.DisplayAlerts = False
@@ -104,7 +104,7 @@ Public Sub CrearHojas(Optional reiniciarFabrica As Boolean = False)
             Case "LOTES", "ASIGNACIONES_DIARIAS", "EFICIENCIA_OPERARIAS"
                 ws.Tab.Color = RGB(192, 0, 0)
             Case "RESUMEN_DIARIO", "AVANCE_PRODUCCION", "REPORTE_LOTES", "INFORME_PRODUCCION", _
-                 "PRODUCCION_FINALIZADA", "ANALISIS_TIEMPOS"
+                 "PRODUCCION_FINALIZADA", "ANALISIS_TIEMPOS", "MATRIZ_ASIGNACION", "TRAZABILIDAD_LOTE"
                 ws.Tab.Color = RGB(0, 176, 80)
             Case "PARAMETROS", "ARCHIVO_ASIGNACIONES"
                 ws.Tab.Color = RGB(128, 128, 128)
@@ -214,14 +214,14 @@ End Sub
 Public Sub CargarParametrosIniciales()
     Dim ws As Worksheet
     Set ws = ThisWorkbook.Sheets("PARAMETROS")
-    If ws.Range("A2").Value <> "" Then Exit Sub
-    ws.Range("A2:D2").Value = Array("TiempoDisponibleBase_Minutos", 480, "Tiempo en minutos diarios base para operarias nuevas", "Numero")
-    ws.Range("A3:D3").Value = Array("DiasRotacionArchivo", 30, "Dias antes de archivar", "Numero")
-    ws.Range("A4:D4").Value = Array("HabilitarAdvertencias", "VERDADERO", "Mostrar advertencias de capacidad", "Booleano")
-    ws.Range("A5:D5").Value = Array("RedondeoTiempo", 1, "Redondeo de tiempo", "Numero")
-    ws.Range("A6:D6").Value = Array("HorasSemanalesLegales", 44, "Horas legales por semana", "Numero")
-    ws.Range("A7:D7").Value = Array("DiasLaboralesSemana", 5, "Dias laborales por semana", "Numero")
-    ws.Range("A2:D7").Columns.AutoFit
+    If ws.Range("A4").Value <> "" Then Exit Sub ' CORREGIDO: Se valida la primera fila de datos, no el header.
+    ws.Range("A4:D4").Value = Array("DiasRotacionArchivo", 30, "Dias antes de archivar", "Numero")
+    ws.Range("A5:D5").Value = Array("HabilitarAdvertencias", "VERDADERO", "Mostrar advertencias de capacidad", "Booleano")
+    ws.Range("A6:D6").Value = Array("RedondeoTiempo", 1, "Redondeo de tiempo", "Numero")
+    ws.Range("A7:D7").Value = Array("HorasSemanalesLegales", 44, "Horas legales por semana", "Numero")
+    ws.Range("A8:D8").Value = Array("DiasLaboralesSemana", 5, "Dias laborales por semana", "Numero")
+    ws.Range("A9:D9").Value = Array("TiempoDisponibleBase_Minutos", 528, "Tiempo en minutos diarios base para operarias nuevas", "Numero")
+    ws.Range("A3:D9").Columns.AutoFit
 End Sub
 
 ' ==============================================================================
@@ -272,10 +272,13 @@ Public Sub CrearDashboardInicio()
 
     Call CrearBotonDashboard(ws, "GESTIONAR LOTES",       "AbrirGestorLotes",       16, 2, RGB(0, 100, 0))
     Call CrearBotonDashboard(ws, "REPORTE DE LOTES",      "GenerarReporteLotes",    16, 4, RGB(0, 122, 204))
-    Call CrearBotonDashboard(ws, "INFORME PRODUCCION",    "GenerarInformeProduccion", 16, 6, RGB(0, 122, 204))
+    Call CrearBotonDashboard(ws, "TRAZABILIDAD LOTE",     "GenerarReporteTrazabilidadLote", 16, 6, RGB(0, 122, 204))
 
     Call CrearBotonDashboard(ws, "RECARGAR CACHE",         "CargarCacheEnMemoria",  18, 2, RGB(255, 140, 0))
     Call CrearBotonDashboard(ws, "REINICIALIZAR SISTEMA",  "InicializarSistema",    18, 4, RGB(192, 0, 0))
+    Call CrearBotonDashboard(ws, "MATRIZ ASIGNACION",      "GenerarReporteMatrizAsignacion", 18, 6, RGB(0, 122, 204))
+
+    Call CrearBotonDashboard(ws, "INFORME PRODUCCION",    "GenerarInformeProduccion", 21, 4, RGB(0, 122, 204))
     Call CrearBotonDashboard(ws, "VER MANUAL DE USO",      "IrAHojaManual",         21, 2, RGB(255, 192, 0))
 
     Call PopulateRefSearchCombo
@@ -370,7 +373,7 @@ Public Sub CrearBotonesVolver()
             Select Case ws.Name
                 Case "ASIGNACIONES_DIARIAS", "RESUMEN_DIARIO", "AVANCE_PRODUCCION", _
                      "REPORTE_LOTES", "PRODUCCION_FINALIZADA", "ANALISIS_TIEMPOS", _
-                     "EFICIENCIA_OPERARIAS", "INFORME_PRODUCCION"
+                     "EFICIENCIA_OPERARIAS", "INFORME_PRODUCCION", "MATRIZ_ASIGNACION", "TRAZABILIDAD_LOTE"
                     colBtn = 10
                 Case "OPERARIAS", "REFERENCIAS", "COLORES", "TALLAS", "LOTES", "TAREAS"
                     colBtn = 12

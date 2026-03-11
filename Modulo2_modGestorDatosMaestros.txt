@@ -219,18 +219,20 @@ Public Function ObtenerNombreOperaria(id As String) As String
 End Function
 
 ' NUEVA v3.1 - Requerida por Modulo3 ValidarCapacidadOperaria
-' Devuelve HorasDisponibles de la operaria convertidas a minutos
+' Devuelve HorasDisponibles de la operaria (ya están en minutos en la hoja)
 ' Indice (1) = HorasDisponibles (columna 3 de hoja OPERARIAS)
 Public Function ObtenerHorasDisponiblesOperaria(id As String) As Double
     If Not cacheActualizado Then Call CargarCacheEnMemoria
     On Error Resume Next
     If dictOperarias.Exists(id) Then
-        ObtenerHorasDisponiblesOperaria = Val(dictOperarias(id)(1)) * 60
+        ' CORRECCION: El valor en la hoja ya son MINUTOS
+        ObtenerHorasDisponiblesOperaria = Val(dictOperarias(id)(1))
     Else
-        ObtenerHorasDisponiblesOperaria = 480  ' Fallback: 8 horas en minutos
+        ObtenerHorasDisponiblesOperaria = 528  ' Fallback: 528 minutos
     End If
     On Error GoTo 0
 End Function
+
 
 Public Function ObtenerNombreReferencia(id As String) As String
     If Not cacheActualizado Then Call CargarCacheEnMemoria
