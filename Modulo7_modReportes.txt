@@ -1,0 +1,804 @@
+Option Explicit
+
+'==============================================================================
+' MODULO 7 - modReportes v3.3
+' Generacion de reportes del sistema v3.0
+' Extraido de Modulo5_modUtilidadesHelpers para modularidad
+'==============================================================================
+
+' Llamadas manuales desde dashboard (SI activan la hoja)
+Public Sub MostrarEstadisticasDelDia()
+    Dim fechaStr As String, fechaReporte As Date
+    fechaStr = InputBox("Ingrese la fecha para el reporte diario (dd/mm/yyyy):", _
+        "Reporte Diario", Format(Date, "dd/mm/yyyy"))
+    If fechaStr = "" Then Exit Sub
+    If Not IsDate(fechaStr) Then MsgBox "Fecha invalida.", vbExclamation: Exit Sub
+    fechaReporte = CDate(fechaStr)
+    Call GenerarReporteEnHoja(fechaReporte, "DIARIO", True)
+    ThisWorkbook.Sheets("RESUMEN_DIARIO").Activate
+End Sub
+
+Public Sub MostrarReporteMensual()
+    Dim fechaStr As String, fechaReporte As Date
+    fechaStr = InputBox("Ingrese una fecha dentro del mes a reportar (dd/mm/yyyy):", _
+        "Reporte Mensual", Format(Date, "dd/mm/yyyy"))
+    If fechaStr = "" Then Exit Sub
+    If Not IsDate(fechaStr) Then MsgBox "Fecha invalida.", vbExclamation: Exit Sub
+    fechaReporte = CDate(fechaStr)
+    Call GenerarReporteEnHoja(fechaReporte, "MENSUAL", True)
+    ThisWorkbook.Sheets("RESUMEN_DIARIO").Activate
+End Sub
+
+' ==============================================================================
+' GENERADOR PRINCIPAL DE REPORTES
+' CORRECCION v3.2.2: activarHoja opcional (default False)
+'   False = desde formulario -> NO cambia hoja activa (se queda en INICIO)
+'   True  = desde dashboard  -> SI activa RESUMEN_DIARIO
+' ==============================================================================
+Public Sub GenerarReporteEnHoja(fecha As Date, tipoReporte As String, _
+    Optional activarHoja As Boolean = False)
+
+    Dim wsResumen   As Worksheet, wsAsig As Worksheet, wsOp As Worksheet
+    Dim dictOp      As Object
+    Dim i           As Long, ultFila As Long
+    Dim idOp        As String, nomOp As String
+    Dim cap         As Double
+    Dim fechaFila   As Date
+    Dim esMes       As Boolean
+    Dim diasLaborales As Integer
+
+    Set wsResumen = ThisWorkbook.Sheets("RESUMEN_DIARIO")
+    Set wsAsig    = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    Set wsOp      = ThisWorkbook.Sheets("OPERARIAS")
+    Set dictOp    = CreateObject("Scripting.Dictionary")
+    esMes         = (tipoReporte = "MENSUAL")
+    diasLaborales = 22
+
+    Application.ScreenUpdating = False
+    Application.EnableEvents   = False
+
+    ' 1. Cargar Operarias
+    ultFila = wsOp.Cells(wsOp.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        idOp  = wsOp.Cells(i, 1).Value
+        nomOp = wsOp.Cells(i, 2).Value
+        cap   = Val(wsOp.Cells(i, 3).Value)
+        If esMes Then cap = cap * diasLaborales
+        If idOp <> "" Then dictOp(idOp) = Array(nomOp, cap, 0, 0, 0)
+    Next i
+
+    ' 2. Leer ASIGNACIONES_DIARIAS en array
+    Dim dataArr As Variant, incluir As Boolean
+    ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
+    If ultFila >= 4 Then
+        dataArr = wsAsig.Range(wsAsig.Cells(4, 1), wsAsig.Cells(ultFila, 21)).Value
+        For i = 1 To UBound(dataArr, 1)
+            If IsDate(dataArr(i, 1)) Then
+                fechaFila = dataArr(i, 1)
+                incluir   = False
+                If esMes Then
+                    If Month(fechaFila) = Month(fecha) And Year(fechaFila) = Year(fecha) Then incluir = True
+                Else
+                    If Int(fechaFila) = Int(fecha) Then incluir = True
+                End If
+                If incluir Then
+                    idOp = dataArr(i, 2)
+                    If dictOp.Exists(idOp) Then
+                        Dim arrOp As Variant
+                        arrOp    = dictOp(idOp)
+                        arrOp(2) = arrOp(2) + Val(dataArr(i, 14))
+                        If dataArr(i, 15) = "Completada" Then arrOp(3) = arrOp(3) + 1
+                        arrOp(4)     = arrOp(4) + Val(dataArr(i, 20))
+                        dictOp(idOp) = arrOp
+                    End If
+                End If
+            End If
+        Next i
+    End If
+
+    ' 3. Escribir reporte — headers fila 3, datos fila 4
+    wsResumen.Cells.Clear
+    With wsResumen.Range("A3:F3")
+        .Value = Array("Operaria", "Capacidad min", "Asignado min", "Ocupacion %", "Disponible min", "Estado")
+        .Font.Bold = True
+        .Interior.Color = RGB(220, 220, 220)
+        .Borders.LineStyle = xlContinuous
+    End With
+
+    Dim fila As Long, k As Variant
+    fila = 4
+    For Each k In dictOp.Keys
+        Dim d As Variant, ocu As Double, dispon As Double, estado As String
+        d      = dictOp(k)
+        ocu    = IIf(d(1) > 0, d(2) / d(1), 0)
+        dispon = d(1) - d(2)
+        If ocu >= 1 Then
+            estado = "SOBRECARGA"
+        ElseIf dispon > 0 Then
+            estado = "DISPONIBLE"
+        Else
+            estado = "OPTIMA"
+        End If
+        wsResumen.Cells(fila, 1).Value = d(0)
+        wsResumen.Cells(fila, 2).Value = d(1)
+        wsResumen.Cells(fila, 3).Value = d(2)
+        wsResumen.Cells(fila, 4).Value = Format(ocu, "0%")
+        wsResumen.Cells(fila, 5).Value = dispon
+        wsResumen.Cells(fila, 6).Value = estado
+        Select Case estado
+            Case "DISPONIBLE", "OPTIMA": wsResumen.Cells(fila, 6).Interior.Color = RGB(0, 176, 80)
+            Case "SOBRECARGA":            wsResumen.Cells(fila, 6).Interior.Color = RGB(255, 0, 0)
+        End Select
+        fila = fila + 1
+    Next k
+
+    wsResumen.Columns.AutoFit
+    If activarHoja Then wsResumen.Activate  ' CORRECCION v3.2.2
+
+    Application.EnableEvents   = True
+    Application.ScreenUpdating = True
+End Sub
+
+' ==============================================================================
+' REPORTE EFICIENCIA
+' ==============================================================================
+Public Sub GenerarReporteEficiencia()
+    Dim wsReporte   As Worksheet, wsAsig As Worksheet
+    Dim dictPerf    As Object
+    Dim i           As Long, ultFila As Long
+    Dim fechaInicio As Date, fechaFin As Date, fechaStr As String
+
+    fechaStr = InputBox("Fecha de INICIO del reporte (dd/mm/yyyy):", "Reporte de Eficiencia", Format(Date - 30, "dd/mm/yyyy"))
+    If fechaStr = "" Then Exit Sub
+    If Not IsDate(fechaStr) Then Exit Sub
+    fechaInicio = CDate(fechaStr)
+    fechaStr = InputBox("Fecha de FIN del reporte (dd/mm/yyyy):", "Reporte de Eficiencia", Format(Date, "dd/mm/yyyy"))
+    If fechaStr = "" Then Exit Sub
+    If Not IsDate(fechaStr) Then Exit Sub
+    fechaFin = CDate(fechaStr)
+
+    Set wsReporte = ThisWorkbook.Sheets("ANALISIS_TIEMPOS")
+    Set wsAsig    = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    Set dictPerf  = CreateObject("Scripting.Dictionary")
+
+    Application.ScreenUpdating = False
+    Application.EnableEvents   = False
+
+    ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
+    If ultFila >= 4 Then
+        Dim dataArr As Variant
+        dataArr = wsAsig.Range(wsAsig.Cells(4, 1), wsAsig.Cells(ultFila, 21)).Value
+        For i = 1 To UBound(dataArr, 1)
+            If IsDate(dataArr(i, 1)) Then
+                Dim fechaAsig As Date
+                fechaAsig = dataArr(i, 1)
+                If fechaAsig >= fechaInicio And fechaAsig <= fechaFin Then
+                    Dim key As String
+                    key = dataArr(i, 2) & "|" & dataArr(i, 4) & "|" & dataArr(i, 9)
+                    Dim minAsig As Double, minProd As Double
+                    minAsig = Val(dataArr(i, 14))
+                    minProd = CLng(Val(dataArr(i, 16))) * CLng(Val(dataArr(i, 12))) / 60
+                    If Not dictPerf.Exists(key) Then
+                        dictPerf(key) = Array(dataArr(i, 3), dataArr(i, 5), dataArr(i, 10), 0, 0)
+                    End If
+                    Dim arrP As Variant
+                    arrP    = dictPerf(key)
+                    arrP(3) = arrP(3) + minAsig
+                    arrP(4) = arrP(4) + minProd
+                    dictPerf(key) = arrP
+                End If
+            End If
+        Next i
+    End If
+
+    wsReporte.Cells.Clear
+    With wsReporte.Range("A3:G3")
+        .Value = Array("Operaria", "Referencia", "Tarea", "Min. Asignados", "Min. Producidos Est.", "Desviacion min", "Eficiencia")
+        .Font.Bold = True: .Interior.Color = RGB(220, 220, 220): .Borders.LineStyle = xlContinuous
+    End With
+
+    Dim fila As Long, k As Variant
+    fila = 4
+    For Each k In dictPerf.Keys
+        Dim d As Variant
+        d = dictPerf(k)
+        wsReporte.Cells(fila, 1).Value = d(0)
+        wsReporte.Cells(fila, 2).Value = d(1)
+        wsReporte.Cells(fila, 3).Value = d(2)
+        wsReporte.Cells(fila, 4).Value = d(3)
+        wsReporte.Cells(fila, 5).Value = d(4)
+        wsReporte.Cells(fila, 6).Value = d(4) - d(3)
+        If d(3) > 0 Then wsReporte.Cells(fila, 7).Value = d(4) / d(3)
+        fila = fila + 1
+    Next k
+
+    wsReporte.Range("G4:G" & fila).NumberFormat = "0.0%"
+    wsReporte.Columns.AutoFit
+    wsReporte.Activate
+    Application.EnableEvents   = True
+    Application.ScreenUpdating = True
+    MsgBox "Reporte de Eficiencia generado con " & dictPerf.Count & " registros.", vbInformation
+End Sub
+
+' ==============================================================================
+' REPORTE AVANCE PRODUCCION
+' ==============================================================================
+Public Sub GenerarReporteAvanceProduccion()
+    Dim wsAvance    As Worksheet, wsLotes As Worksheet
+    Dim wsTareas    As Worksheet, wsAsig  As Worksheet
+    Dim dictUnidades As Object, dictAsignado As Object
+    Dim i As Long, ultFila As Long
+    Dim idRef As String, key As String, cant As Long
+
+    Set wsAvance    = ThisWorkbook.Sheets("AVANCE_PRODUCCION")
+    Set wsLotes     = ThisWorkbook.Sheets("LOTES")
+    Set wsTareas    = ThisWorkbook.Sheets("TAREAS")
+    Set wsAsig      = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    Set dictUnidades = CreateObject("Scripting.Dictionary")
+    Set dictAsignado = CreateObject("Scripting.Dictionary")
+
+    Application.ScreenUpdating = False
+
+    ' 1. Total por Referencia desde LOTES (fila 4)
+    ultFila = wsLotes.Cells(wsLotes.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        idRef = wsLotes.Cells(i, 2).Value
+        cant  = wsLotes.Cells(i, 5).Value
+        If dictUnidades.Exists(idRef) Then
+            dictUnidades(idRef) = dictUnidades(idRef) + cant
+        Else
+            dictUnidades(idRef) = cant
+        End If
+    Next i
+
+    ' 2. Lo asignado por Ref+Tarea (fila 4)
+    ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        idRef = wsAsig.Cells(i, 4).Value
+        key   = idRef & "|" & wsAsig.Cells(i, 9).Value
+        cant  = wsAsig.Cells(i, 11).Value
+        If dictAsignado.Exists(key) Then
+            dictAsignado(key) = dictAsignado(key) + cant
+        Else
+            dictAsignado(key) = cant
+        End If
+    Next i
+
+    ' 3. Reporte — headers fila 3, datos fila 4
+    wsAvance.Cells.Clear
+    With wsAvance.Range("A3:I3")
+        .Value = Array("ID Referencia", "Nombre Referencia", "Nombre Tarea", "Tiempo Unit seg", _
+            "Total Unidades Req.", "Unidades Asignadas", "Unidades Pendientes", "Tiempo Pendiente min", "Estado Asignacion")
+        .Font.Bold = True: .Interior.Color = RGB(220, 220, 220): .Borders.LineStyle = xlContinuous
+    End With
+
+    Dim fila As Long
+    fila    = 4
+    ultFila = wsTareas.Cells(wsTareas.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        idRef = wsTareas.Cells(i, 1).Value
+        Dim numT As String, nomT As String, tiempoT As Long
+        numT    = wsTareas.Cells(i, 2).Value
+        nomT    = wsTareas.Cells(i, 3).Value
+        tiempoT = wsTareas.Cells(i, 4).Value
+        Dim totalReq As Long, totalAsig As Long, pendiente As Long
+        totalReq  = IIf(dictUnidades.Exists(idRef), dictUnidades(idRef), 0)
+        key       = idRef & "|" & numT
+        totalAsig = IIf(dictAsignado.Exists(key), dictAsignado(key), 0)
+        pendiente = IIf(totalReq - totalAsig > 0, totalReq - totalAsig, 0)
+        Dim tiempoPend As Double, estadoT As String
+        tiempoPend = pendiente * tiempoT / 60
+        If totalReq = 0 Then
+            estadoT = "Sin Tallas"
+        ElseIf totalAsig >= totalReq Then
+            estadoT = "Completo"
+        ElseIf totalAsig = 0 Then
+            estadoT = "En Curso"
+        Else
+            estadoT = "Pendiente"
+        End If
+        wsAvance.Range("A" & fila & ":I" & fila).Value = Array(idRef, _
+            ObtenerNombreReferencia(idRef), nomT, tiempoT, totalReq, totalAsig, pendiente, tiempoPend, estadoT)
+        fila = fila + 1
+    Next i
+
+    wsAvance.Columns.AutoFit
+    wsAvance.Activate
+    Application.ScreenUpdating = True
+    MsgBox "Reporte de Avance de Produccion generado.", vbInformation
+End Sub
+
+' ==============================================================================
+' REPORTE LOTES
+' ==============================================================================
+Public Sub GenerarReporteLotes() ' MEJORADO: Mide el avance basado en tiempo invertido vs tiempo estimado.
+    Dim wsReporte   As Worksheet, wsLotes As Worksheet, wsAsig As Worksheet
+    Dim dictRefTime As Object, dictTimeDone As Object
+    Dim i As Long, ultFila As Long
+    Dim idRef As String, idLote As String
+    Dim cantLote As Long, timeUnitSeg As Long
+    Dim tiempoEstTotalHrs As Double, tiempoRealInvertidoHrs As Double
+    Dim avance As Double, estadoL As String
+    Dim dataArr As Variant
+
+    Set wsReporte   = ThisWorkbook.Sheets("REPORTE_LOTES")
+    Set wsLotes     = ThisWorkbook.Sheets("LOTES")
+    Set wsAsig      = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    Set dictRefTime  = CreateObject("Scripting.Dictionary")
+    Set dictTimeDone  = CreateObject("Scripting.Dictionary")
+
+    Application.ScreenUpdating = False
+
+    ' 1. Cargar tiempo total por unidad para cada Referencia
+    ' Esta información está en la columna E de la hoja REFERENCIAS
+    ultFila = ThisWorkbook.Sheets("REFERENCIAS").Cells(ThisWorkbook.Sheets("REFERENCIAS").Rows.Count, 1).End(xlUp).Row
+    If ultFila >= 4 Then
+        dataArr = ThisWorkbook.Sheets("REFERENCIAS").Range("A4:E" & ultFila).Value
+        For i = 1 To UBound(dataArr, 1)
+            idRef = CStr(dataArr(i, 1))
+            If idRef <> "" Then dictRefTime(idRef) = Val(dataArr(i, 5))
+        Next i
+    End If
+
+    ' 2. Sumar el tiempo real invertido por Lote desde ASIGNACIONES_DIARIAS
+    ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
+    If ultFila >= 4 Then
+        ' Columnas: F(Lote), T(Tiempo Real Min)
+        dataArr = wsAsig.Range("A4:T" & ultFila).Value
+        For i = 1 To UBound(dataArr, 1)
+            idLote = Trim(CStr(dataArr(i, 6)))
+            If idLote <> "" Then
+                Dim tiempoRealMin As Double
+                tiempoRealMin = Val(dataArr(i, 20))
+                If dictTimeDone.Exists(idLote) Then
+                    dictTimeDone(idLote) = dictTimeDone(idLote) + tiempoRealMin
+                Else
+                    dictTimeDone(idLote) = tiempoRealMin
+                End If
+            End If
+        Next i
+    End If
+
+    ' 3. Generar Reporte
+    wsReporte.Cells.Clear
+    With wsReporte.Range("A3:I3")
+        .Value = Array("Lote", "Referencia", "Color", "Talla", "Cantidad", "Tiempo Estimado (hrs)", "Tiempo Invertido (hrs)", "Avance por Tiempo", "Estado")
+        .Font.Bold = True: .Interior.Color = RGB(220, 220, 220): .Borders.LineStyle = xlContinuous
+    End With
+
+    Dim fila As Long
+    fila    = 4
+    ultFila = wsLotes.Cells(wsLotes.Rows.Count, 1).End(xlUp).Row
+    If ultFila >= 4 Then
+        dataArr = wsLotes.Range("A4:K" & ultFila).Value
+        For i = 1 To UBound(dataArr, 1)
+            idLote   = Trim(CStr(dataArr(i, 1)))
+            idRef    = Trim(CStr(dataArr(i, 2)))
+            cantLote = Val(dataArr(i, 5))
+            estadoL  = CStr(dataArr(i, 10))
+
+            If idLote <> "" Then
+                timeUnitSeg = IIf(dictRefTime.Exists(idRef), dictRefTime(idRef), 0)
+                tiempoEstTotalHrs = (cantLote * timeUnitSeg) / 3600
+
+                tiempoRealInvertidoHrs = IIf(dictTimeDone.Exists(idLote), dictTimeDone(idLote) / 60, 0)
+
+                If tiempoEstTotalHrs > 0 Then
+                    avance = tiempoRealInvertidoHrs / tiempoEstTotalHrs
+                Else
+                    avance = 0
+                End If
+
+                If estadoL = "Completada" Then
+                    wsReporte.Cells(fila, 9).Font.Color = RGB(0, 150, 0)
+                ElseIf estadoL = "En Proceso" Then
+                    wsReporte.Cells(fila, 9).Font.Color = RGB(255, 140, 0)
+                End If
+
+                wsReporte.Cells(fila, 1).Value = idLote
+                wsReporte.Cells(fila, 2).Value = idRef
+                wsReporte.Cells(fila, 3).Value = CStr(dataArr(i, 3)) ' Color
+                wsReporte.Cells(fila, 4).Value = CStr(dataArr(i, 4)) ' Talla
+                wsReporte.Cells(fila, 5).Value = cantLote
+                wsReporte.Cells(fila, 6).Value = Round(tiempoEstTotalHrs, 2)
+                wsReporte.Cells(fila, 7).Value = Round(tiempoRealInvertidoHrs, 2)
+                wsReporte.Cells(fila, 8).Value = avance
+                wsReporte.Cells(fila, 9).Value = estadoL
+
+                fila = fila + 1
+            End If
+        Next i
+    End If
+
+    wsReporte.Range("H4:H" & fila).NumberFormat = "0.0%"
+    wsReporte.Columns.AutoFit
+    wsReporte.Activate
+    Application.ScreenUpdating = True
+    MsgBox "Reporte de Lotes (Mejorado) generado exitosamente.", vbInformation
+End Sub
+
+
+' ==============================================================================
+' INFORME PRODUCCION FINALIZADA
+' ==============================================================================
+Public Sub GenerarInformeProduccion()
+    Dim wsProd      As Worksheet, wsLotes As Worksheet
+    Dim dictAvance  As Object
+    Dim i As Long, ultFila As Long
+    Dim idRef As String
+    Dim idLote As String ' Declarada para evitar error
+
+    Set wsProd     = ThisWorkbook.Sheets("PRODUCCION_FINALIZADA")
+    Set wsLotes    = ThisWorkbook.Sheets("LOTES")
+    Set dictAvance = CreateObject("Scripting.Dictionary")
+
+    Application.ScreenUpdating = False
+
+    ultFila = wsLotes.Cells(wsLotes.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        idRef = wsLotes.Cells(i, 2).Value
+        idLote = wsLotes.Cells(i, 1).Value
+        If idLote <> "" Then
+            If Not dictAvance.Exists(idRef) Then
+                dictAvance(idRef) = Array(ObtenerNombreReferencia(idRef), 0, 0, 0, 0)
+            End If
+            Dim arrRef As Variant
+            arrRef    = dictAvance(idRef)
+            arrRef(1) = arrRef(1) + Val(wsLotes.Cells(i, 5).Value)
+            arrRef(2) = arrRef(2) + Val(wsLotes.Cells(i, 8).Value)
+            arrRef(3) = arrRef(3) + 1
+            dictAvance(idRef) = arrRef
+        End If
+    Next i
+    
+    wsProd.Cells.Clear
+    With wsProd.Range("A3:F3")
+        .Value = Array("Fecha Cierre", "ID Referencia", "Nombre Referencia", "Total Unidades", "Unidades Completadas", "Porcentaje")
+        .Font.Bold = True: .Interior.Color = RGB(220, 220, 220): .Borders.LineStyle = xlContinuous
+    End With
+
+    Dim fila As Long, k As Variant
+    fila = 4
+    For Each k In dictAvance.Keys
+        Dim d As Variant, pct As Double
+        d   = dictAvance(k)
+        pct = IIf(d(1) > 0, d(2) / d(1), 0)
+        wsProd.Range("A" & fila & ":F" & fila).Value = Array(Date, k, d(0), d(1), d(2), Format(pct, "0%"))
+        fila = fila + 1
+    Next k
+
+    wsProd.Columns.AutoFit
+    wsProd.Activate
+    Application.ScreenUpdating = True
+    MsgBox "Informe de Produccion generado.", vbInformation
+End Sub
+
+' ==============================================================================
+' REPORTE TRAZABILIDAD DE LOTE (MEJORADO)
+' ==============================================================================
+Public Sub GenerarReporteTrazabilidadLote(Optional ByVal idLoteInput As String = "")
+    Dim wsReporte   As Worksheet, wsTareas As Worksheet, wsAsig As Worksheet, wsLotes As Worksheet
+    Dim dictTareas  As Object
+    Dim i As Long, ultFila As Long
+    Dim idRef As String, cantLote As Long, colorLote As String, tallaLote As String
+    Dim dataArr As Variant, key As String
+
+    ' 1. Si no viene ID, ir a la hoja y dejar que el usuario elija del combo
+    If idLoteInput = "" Then
+        ThisWorkbook.Sheets("TRAZABILIDAD_LOTE").Activate
+        Call ActualizarComboLotesTrazabilidad
+        Exit Sub
+    End If
+
+    Application.ScreenUpdating = False
+
+    ' 2. Encontrar el Lote
+    Set wsLotes = ThisWorkbook.Sheets("LOTES")
+    ultFila = wsLotes.Cells(wsLotes.Rows.Count, 1).End(xlUp).Row
+    Dim loteEncontrado As Boolean: loteEncontrado = False
+    
+    If ultFila >= 4 Then
+        dataArr = wsLotes.Range("A5:E" & ultFila).Value
+        For i = 1 To UBound(dataArr, 1)
+            If Trim(CStr(dataArr(i, 1))) = idLoteInput Then
+                idRef = CStr(dataArr(i, 2)): colorLote = CStr(dataArr(i, 3))
+                tallaLote = CStr(dataArr(i, 4)): cantLote = CLng(dataArr(i, 5))
+                loteEncontrado = True: Exit For
+            End If
+        Next i
+    End If
+
+    If Not loteEncontrado Then
+        MsgBox "El Lote '" & idLoteInput & "' no fue encontrado en la hoja LOTES. Por favor, verifica que el ID sea correcto.", vbExclamation
+        Exit Sub
+    End If
+
+    ' 3. Cargar Tareas
+    Set dictTareas = CreateObject("Scripting.Dictionary")
+    Set wsTareas = ThisWorkbook.Sheets("TAREAS")
+    ultFila = wsTareas.Cells(wsTareas.Rows.Count, 1).End(xlUp).Row
+    If ultFila >= 5 Then
+        dataArr = wsTareas.Range("A5:D" & ultFila).Value
+        For i = 1 To UBound(dataArr, 1)
+            If Trim(CStr(dataArr(i, 1))) = idRef Then
+                dictTareas(CStr(dataArr(i, 2))) = Array(CStr(dataArr(i, 3)), 0, 0)
+            End If
+        Next i
+    End If
+
+    ' 4. Cargar Asignaciones
+    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
+    If ultFila >= 4 Then
+        dataArr = wsAsig.Range("A5:P" & ultFila).Value
+        For i = 1 To UBound(dataArr, 1)
+            If Trim(CStr(dataArr(i, 6))) = idLoteInput Then
+                key = CStr(dataArr(i, 9))
+                If dictTareas.Exists(key) Then
+                    Dim dta As Variant: dta = dictTareas(key)
+                    dta(1) = dta(1) + Val(dataArr(i, 11)): dta(2) = dta(2) + Val(dataArr(i, 16))
+                    dictTareas(key) = dta
+                End If
+            End If
+        Next i
+    End If
+
+    ' 5. Dibujar Reporte
+    Set wsReporte = ThisWorkbook.Sheets("TRAZABILIDAD_LOTE")
+    wsReporte.Range("A5:G500").ClearContents
+    wsReporte.Range("A5:G500").Interior.ColorIndex = xlNone
+    
+    wsReporte.Range("A1").Value = "SELECCIONE LOTE:"
+    wsReporte.Range("B3").Value = idRef & " (" & ObtenerNombreReferencia(idRef) & ")"
+    wsReporte.Range("D3").Value = "COLOR: " & colorLote & " | TALLA: " & tallaLote
+    wsReporte.Range("F3").Value = "TOTAL LOTE: " & cantLote
+
+    With wsReporte.Range("A5:G5")
+        .Value = Array("N° Tarea", "Nombre Tarea", "Total Requerido", "Unidades Asignadas", "Unidades Completadas", "Avance", "Estado")
+        .Font.Bold = True: .Interior.Color = RGB(220, 220, 220): .Borders.LineStyle = xlContinuous
+    End With
+
+    Dim fila As Long: fila = 6
+    Dim k As Variant
+    For Each k In dictTareas.Keys
+        Dim t As Variant: t = dictTareas(k)
+        Dim avn As Double: avn = IIf(cantLote > 0, t(2) / cantLote, 0)
+        Dim est As String: est = IIf(avn >= 1, "Completada", IIf(avn > 0, "En Proceso", "Pendiente"))
+        
+        wsReporte.Cells(fila, 1).Value = k
+        wsReporte.Cells(fila, 2).Value = t(0)
+        wsReporte.Cells(fila, 3).Value = cantLote
+        wsReporte.Cells(fila, 4).Value = t(1)
+        wsReporte.Cells(fila, 5).Value = t(2)
+        wsReporte.Cells(fila, 6).Value = avn
+        wsReporte.Cells(fila, 7).Value = est
+        
+        If est = "Completada" Then wsReporte.Cells(fila, 7).Interior.Color = RGB(198, 239, 206)
+        fila = fila + 1
+    Next k
+
+    wsReporte.Range("F5:F" & fila).NumberFormat = "0%"
+    wsReporte.Columns.AutoFit
+    Application.ScreenUpdating = True
+End Sub
+
+' ==============================================================================
+' NUEVO: REPORTE MATRIZ DE ASIGNACION (CARGA DE TRABAJO)
+' Muestra una matriz de Fechas (Filas) vs Operarias (Columnas)
+' ==============================================================================
+Public Sub GenerarReporteMatrizAsignacion()
+    Dim wsMatriz    As Worksheet, wsAsig As Worksheet, wsOp As Worksheet
+    Dim fechaStr    As String
+    Dim fechaInicio As Date, fechaFin As Date
+    Dim dictAsig    As Object ' Key: "Fecha|IdOp" -> Value: MinutosAsignados
+    Dim dictOp      As Object ' Key: IdOp -> Array(Nombre, CapacidadMin)
+    Dim colOps      As Collection
+    Dim i           As Long, ultFila As Long
+    Dim f           As Date, opId As Variant, minutos As Double
+    Dim data        As Variant
+
+    ' 1. Solicitar rango de fechas
+    fechaStr = InputBox("Ingrese fecha INICIO (dd/mm/yyyy):", "Reporte Matriz", Format(Date, "dd/mm/yyyy"))
+    If fechaStr = "" Or Not IsDate(fechaStr) Then Exit Sub
+    fechaInicio = CDate(fechaStr)
+
+    fechaStr = InputBox("Ingrese fecha FIN (dd/mm/yyyy):", "Reporte Matriz", Format(Date + 7, "dd/mm/yyyy"))
+    If fechaStr = "" Or Not IsDate(fechaStr) Then Exit Sub
+    fechaFin = CDate(fechaStr)
+
+    If fechaFin < fechaInicio Then
+        MsgBox "La fecha fin no puede ser menor a la de inicio.", vbExclamation
+        Exit Sub
+    End If
+
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+
+    ' 2. Preparar Hoja
+    On Error Resume Next
+    Set wsMatriz = ThisWorkbook.Sheets("MATRIZ_ASIGNACION")
+    If wsMatriz Is Nothing Then
+        Set wsMatriz = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+        wsMatriz.Name = "MATRIZ_ASIGNACION"
+    End If
+    On Error GoTo 0
+    wsMatriz.Cells.Clear
+    wsMatriz.Tab.Color = RGB(0, 112, 192)
+
+    ' 3. Cargar Operarias Activas
+    Set dictOp = CreateObject("Scripting.Dictionary")
+    Set colOps = New Collection
+    Set wsOp = ThisWorkbook.Sheets("OPERARIAS")
+    ultFila = wsOp.Cells(wsOp.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        opId = Trim(CStr(wsOp.Cells(i, 1).Value))
+        If opId <> "" And wsOp.Cells(i, 4).Value = "Activa" Then
+            ' CORRECCION: El valor en la hoja ya son MINUTOS, no multiplicar por 60
+            dictOp(opId) = Array(wsOp.Cells(i, 2).Value, Val(wsOp.Cells(i, 3).Value))
+            colOps.Add opId
+        End If
+    Next i
+
+    ' 4. Cargar Asignaciones del rango
+    Set dictAsig = CreateObject("Scripting.Dictionary")
+    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
+    If ultFila >= 4 Then
+        data = wsAsig.Range("A4:N" & ultFila).Value ' Col 1: Fecha, Col 2: IDOp, Col 14: Minutos
+        For i = 1 To UBound(data, 1)
+            f = Int(CDate(data(i, 1)))
+            If f >= fechaInicio And f <= fechaFin Then
+                opId = Trim(CStr(data(i, 2)))
+                minutos = Val(data(i, 14))
+                Dim key As String
+                key = Format(f, "yyyy-mm-dd") & "|" & opId
+                dictAsig(key) = dictAsig(key) + minutos
+            End If
+        Next i
+    End If
+
+    ' 5. Construir Encabezados
+    wsMatriz.Range("A3").Value = "FECHA / OPERARIA"
+    wsMatriz.Range("A3").Font.Bold = True
+    Dim col As Long
+    col = 2
+    For Each opId In colOps
+        wsMatriz.Cells(3, col).Value = dictOp(opId)(0) & " (" & dictOp(opId)(1) & " min)"
+        wsMatriz.Cells(3, col).Font.Bold = True
+        wsMatriz.Cells(3, col).Interior.Color = RGB(220, 220, 220)
+        col = col + 1
+    Next opId
+
+    ' 6. Llenar Matriz
+    Dim fila As Long
+    fila = 4
+    For f = fechaInicio To fechaFin
+        wsMatriz.Cells(fila, 1).Value = f
+        wsMatriz.Cells(fila, 1).NumberFormat = "ddd dd/mm/yyyy"
+        
+        col = 2
+        For Each opId In colOps
+            Dim keyAsig As String
+            keyAsig = Format(f, "yyyy-mm-dd") & "|" & opId
+            Dim minAsignados As Double, capDiaria As Double
+            minAsignados = IIf(dictAsig.Exists(keyAsig), dictAsig(keyAsig), 0)
+            capDiaria = dictOp(opId)(1)
+            
+            If capDiaria > 0 Then
+                Dim pct As Double
+                pct = minAsignados / capDiaria
+                wsMatriz.Cells(fila, col).Value = minAsignados & " / " & capDiaria & " min (" & Format(pct, "0%") & ")"
+                ' Formato condicional manual
+                If pct > 1 Then
+                    wsMatriz.Cells(fila, col).Font.Color = RGB(255, 0, 0)
+                    wsMatriz.Cells(fila, col).Font.Bold = True
+                ElseIf pct >= 0.9 Then
+                    wsMatriz.Cells(fila, col).Font.Color = RGB(255, 150, 0)
+                ElseIf pct > 0 Then
+                    wsMatriz.Cells(fila, col).Font.Color = RGB(0, 128, 0)
+                End If
+            Else
+                wsMatriz.Cells(fila, col).Value = minAsignados & " min"
+            End If
+            col = col + 1
+        Next opId
+        fila = fila + 1
+    Next f
+
+    ' 7. Fila de Totales
+    wsMatriz.Cells(fila, 1).Value = "TOTALES (Asig / Disp)"
+    wsMatriz.Cells(fila, 1).Font.Bold = True
+    Dim numDias As Long
+    numDias = (fechaFin - fechaInicio) + 1
+    
+    col = 2
+    For Each opId In colOps
+        Dim totalAsig As Double, totalDisp As Double
+        ' Recorrer fechas para sumar solo laborales si se quisiera, 
+        ' pero aqui sumaremos linealmente segun el rango
+        totalDisp = dictOp(opId)(1) * numDias
+        totalAsig = 0
+        For f = fechaInicio To fechaFin
+            keyAsig = Format(f, "yyyy-mm-dd") & "|" & opId
+            totalAsig = totalAsig + IIf(dictAsig.Exists(keyAsig), dictAsig(keyAsig), 0)
+        Next f
+        
+        Dim pctTotal As Double
+        pctTotal = IIf(totalDisp > 0, totalAsig / totalDisp, 0)
+        wsMatriz.Cells(fila, col).Value = totalAsig & " / " & totalDisp & " (" & Format(pctTotal, "0%") & ")"
+        wsMatriz.Cells(fila, col).Font.Bold = True
+        wsMatriz.Cells(fila, col).Borders(xlEdgeTop).LineStyle = xlContinuous
+        col = col + 1
+    Next opId
+
+    wsMatriz.Columns.AutoFit
+    wsMatriz.Activate
+    
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    MsgBox "Reporte Matriz de Asignacion generado exitosamente.", vbInformation
+End Sub
+
+' NUEVO v3.3 - Carga los lotes activos en el ComboBox de la hoja de trazabilidad
+Public Sub ActualizarComboLotesTrazabilidad(Optional ByVal ddInput As Object = Nothing)
+    Dim wsLotes As Worksheet, wsRep As Worksheet
+    Dim dd As DropDown, i As Long, ultFila As Long, contador As Long
+    
+    Set wsRep = ThisWorkbook.Sheets("TRAZABILIDAD_LOTE")
+    
+    ' Si no viene el objeto, buscarlo por nombre
+    If ddInput Is Nothing Then
+        On Error Resume Next
+        Set dd = wsRep.DropDowns("cboSeleccionarLote")
+        On Error GoTo 0
+    Else
+        Set dd = ddInput
+    End If
+    
+    If dd Is Nothing Then Exit Sub
+    
+    dd.RemoveAllItems
+    Set wsLotes = ThisWorkbook.Sheets("LOTES")
+    ultFila = wsLotes.Cells(wsLotes.Rows.Count, 1).End(xlUp).Row
+    
+    ' Agregar una opción vacía al inicio
+    dd.AddItem ""
+    
+    If ultFila >= 4 Then
+        For i = 4 To ultFila
+            Dim idLote As String, estado As String
+            idLote = Trim(CStr(wsLotes.Cells(i, 1).Value))
+            estado = Trim(CStr(wsLotes.Cells(i, 10).Value)) ' Columna J (Estado)
+            
+            ' Mostrar solo lotes que están en producción o pendientes
+            If idLote <> "" And (estado = "En Proceso" Or estado = "Pendiente") Then
+                dd.AddItem idLote
+                contador = contador + 1
+            End If
+        Next i
+    End If
+End Sub
+
+' NUEVO v3.3 - Lanzador del reporte desde el evento del combo
+Public Sub GenerarReporteTrazabilidadLote_DesdeCombo()
+    Dim wsRep As Worksheet, idLote As String, dd As DropDown
+    
+    Set wsRep = ThisWorkbook.Sheets("TRAZABILIDAD_LOTE")
+    On Error Resume Next
+    Set dd = wsRep.DropDowns("cboSeleccionarLote")
+    On Error GoTo 0
+    
+    If dd Is Nothing Then
+        MsgBox "Error: No se encontró el control 'cboSeleccionarLote' en la hoja.", vbCritical
+        Exit Sub
+    End If
+    
+    ' Obtener valor seleccionado (Form Control usa List e ListIndex)
+    If dd.ListIndex > 0 Then
+        idLote = Trim(CStr(dd.List(dd.ListIndex)))
+    End If
+    
+    If idLote <> "" Then
+        Call GenerarReporteTrazabilidadLote(idLote)
+    End If
+End Sub

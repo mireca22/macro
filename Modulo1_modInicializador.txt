@@ -35,7 +35,8 @@ Public Sub InicializarSistema()
     Call CrearHojaManual
     Call CrearBotonesAsignaciones
     Call CrearBotonesMaestros
-    Call ActualizarCalendarioNoLaboral_Seguro  ' CORRECCION v3.2.3
+    Call CrearComboTrazabilidad
+    Call ActualizarCalendarioNoLaboral_Seguro
     Call CrearBotonesVolver
 
     Application.ScreenUpdating = True
@@ -494,4 +495,32 @@ Private Sub EscribirSeccionManual(ws As Worksheet, ByRef fila As Long, titulo As
         .EntireRow.AutoFit
     End With
     fila = fila + 2
+End Sub
+
+' NUEVO v3.3 - Crea el Combo para seleccionar lotes en la hoja de trazabilidad
+Public Sub CrearComboTrazabilidad()
+    Dim ws As Worksheet, dd As DropDown
+    Set ws = ThisWorkbook.Sheets("TRAZABILIDAD_LOTE")
+    ws.Activate
+    
+    ' Eliminar combos y botones antiguos para limpiar la hoja
+    On Error Resume Next
+    ws.DropDowns.Delete
+    ws.Buttons.Delete
+    ws.OLEObjects("cboSeleccionarLote").Delete
+    On Error GoTo 0
+    
+    ' Crear Combo de Forma (mucho más confiable)
+    Set dd = ws.DropDowns.Add(ws.Cells(1, 2).Left, ws.Cells(1, 2).Top, 180, 25)
+    
+    With dd
+        .Name = "cboSeleccionarLote"
+        .OnAction = "GenerarReporteTrazabilidadLote_DesdeCombo"
+    End With
+    
+    ' Llenar datos inmediatamente pasando el objeto
+    Call ActualizarComboLotesTrazabilidad(dd)
+    
+    ws.Range("A1").Value = "ELEGIR LOTE:"
+    ws.Range("A1").Font.Bold = True
 End Sub
