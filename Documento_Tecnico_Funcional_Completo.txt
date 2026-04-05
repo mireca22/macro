@@ -8,7 +8,7 @@
 1. CONCEPTUALIZACIÓN GENERAL DEL SISTEMA
 ═══════════════════════════════════════════════════════════════════════════════════
 
-El sistema es una aplicación de escritorio desarrollada en Microsoft Excel y VBA, diseñada para la gestión integral del flujo de producción en una planta textil. Su objetivo principal es reemplazar procesos manuales y hojas de cálculo desconectadas con una solución centralizada, rápida y a prueba de errores.
+El sistema es una aplicación de escritorio desarrollada en Microsoft Excel y Microsoft Visual Basic para aplicacion, diseñada para la gestión integral del flujo de producción en una planta textil. Su objetivo principal es reemplazar procesos manuales y hojas de cálculo desconectadas con una solución centralizada, rápida y a prueba de errores.
 
 La filosofía del sistema se basa en tres pilares:
 

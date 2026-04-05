@@ -1,144 +1,154 @@
 Option Explicit
 
 '==============================================================================
-' MÓDULO 4 - modSeleccionFilas
-' Detectar fila seleccionada, validar, preparar para edicion
-' Sistema de Gestion de Produccion Textil v3.0
+' MODULO 4 - modSeleccionFilas v3.3.6 (DOCUMENTACIÓN EXHAUSTIVA)
+' Propósito: Gestionar la interacción del usuario con las filas de Excel.
+'            Maneja la detección de selección, validación de datos en fila
+'            y la transferencia de información hacia los UserForms.
 '==============================================================================
 
-' --- VARIABLES GLOBALES PARA FILA SELECCIONADA ---
-' UNICA declaracion de FilaActual y FilaValida en todo el proyecto
-Public FilaActual As Long
-Public FilaValida As Boolean
+' --- VARIABLES GLOBALES DE ESTADO (REQUIRED BY FORMS) ---
+Public FilaActual As Long ' Fila que se está procesando actualmente
+Public FilaValida As Boolean ' Indica si la fila seleccionada tiene datos útiles
 
-' ------------------------------------------------------------------------------
-' FUNCION ObtenerFilaSeleccionada
-' Obtiene la fila donde esta el cursor en ASIGNACIONES_DIARIAS
-' ------------------------------------------------------------------------------
+'==============================================================================
+' FUNCIÓN: ObtenerFilaSeleccionada
+' Propósito: Detecta la fila activa del cursor en ASIGNACIONES_DIARIAS.
+' Retorno: Long (Número de fila).
+'==============================================================================
 Public Function ObtenerFilaSeleccionada() As Long
     Dim ws As Worksheet
     On Error Resume Next
     Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    If ws.Name <> "ASIGNACIONES_DIARIAS" Then
-        MsgBox "Debe estar en la hoja ASIGNACIONES_DIARIAS.", vbCritical
-        Exit Function
+    
+    ' Validación de contexto de hoja
+    If ActiveSheet.Name <> "ASIGNACIONES_DIARIAS" Then
+        MsgBox "Debe estar posicionado en la hoja ASIGNACIONES_DIARIAS.", vbCritical: Exit Function
     End If
+    
+    ' Validación de área de datos (evitar encabezados)
     If ActiveCell.Row <= 3 Then
-        MsgBox "No puede editar el encabezado.", vbCritical
-        Exit Function
+        MsgBox "No puede seleccionar las filas de encabezado.", vbCritical: Exit Function
     End If
+    
     FilaActual = ActiveCell.Row
     FilaValida = True
     ObtenerFilaSeleccionada = FilaActual
     On Error GoTo 0
 End Function
 
-' ------------------------------------------------------------------------------
-' FUNCION ValidarFilaAsignacion
-' Verifica que la fila contiene una asignacion valida
-' ------------------------------------------------------------------------------
-Public Function ValidarFilaAsignacion(fila As Long) As Boolean
-    Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    If ws.Cells(fila, 1).Value = "" Then
-        MsgBox "Fila vacia - no hay asignacion para editar.", vbCritical
-        ValidarFilaAsignacion = False
-        Exit Function
-    End If
-    If ws.Cells(fila, 2).Value = "" Then
-        MsgBox "Fila sin operaria asignada.", vbCritical
-        ValidarFilaAsignacion = False
-        Exit Function
-    End If
-    ValidarFilaAsignacion = True
+'==============================================================================
+' FUNCIÓN: ObtenerFilaActual
+' Propósito: Getter para que los UserForms consulten la fila en proceso.
+'==============================================================================
+Public Function ObtenerFilaActual() As Long
+    ObtenerFilaActual = FilaActual
 End Function
 
-' ------------------------------------------------------------------------------
-' FUNCION ObtenerDatosAsignacion
-' Lee todos los datos de una fila en un array
-' OPTIMIZADO: 1 lectura de rango en lugar de 21 accesos individuales
-' ------------------------------------------------------------------------------
-Public Function ObtenerDatosAsignacion(fila As Long) As Variant
-    Dim ws As Worksheet
-    Dim rangoData As Variant
-    ReDim datos(1 To 21) As Variant
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    If fila <= 3 Then
-        ObtenerDatosAsignacion = datos
-        Exit Function
-    End If
-    ' Lectura masiva: 1 acceso COM para 21 columnas (A-U)
-    rangoData = ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 21)).Value
-    If IsArray(rangoData) Then
-        Dim i As Long
-        For i = 1 To 21
-            datos(i) = rangoData(1, i)
-        Next i
-    End If
-    ObtenerDatosAsignacion = datos
-End Function
-
-' ------------------------------------------------------------------------------
-' SUB GuardarDatosAsignacion
-' Escribe un array de datos a la hoja
-' OPTIMIZADO: escritura masiva en 1 acceso COM
-' ------------------------------------------------------------------------------
-Public Sub GuardarDatosAsignacion(fila As Long, datos As Variant)
-    Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    Application.ScreenUpdating = False
-    Application.Calculation = xlCalculationManual
-    ' Construir array 2D para escritura masiva
-    Dim arrEscritura(1 To 1, 1 To 21) As Variant
-    Dim i As Long
-    For i = 1 To 21
-        arrEscritura(1, i) = datos(i)
-    Next i
-    ' Una sola escritura al rango completo
-    ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 21)).Value = arrEscritura
-    Application.Calculation = xlCalculationAutomatic
-    Application.ScreenUpdating = True
-    Call ActualizarResumenDiario
-End Sub
-
-' ------------------------------------------------------------------------------
-' SUB RegistrarFilaEnFormulario
-' Macro asignada al boton EDITAR en la hoja ASIGNACIONES_DIARIAS
-' ------------------------------------------------------------------------------
-Public Sub RegistrarFilaEnFormulario()
-    Dim fila As Long
-    If ActiveSheet.Name <> "ASIGNACIONES_DIARIAS" Then
-        MsgBox "Debe estar en ASIGNACIONES_DIARIAS para editar.", vbCritical
-        Exit Sub
-    End If
-    fila = ActiveCell.Row
-    If Not ValidarFilaAsignacion(fila) Then Exit Sub
-    FilaActual = fila
-    FilaValida = True
-    frmEditarAsignacion.Show vbModeless
-End Sub
-
-' ------------------------------------------------------------------------------
-' SUB CrearNuevaAsignacionUI
-' Macro asignada al boton NUEVA en la hoja ASIGNACIONES_DIARIAS
-' ------------------------------------------------------------------------------
-Public Sub CrearNuevaAsignacionUI()
-    Dim ws As Worksheet
-    Dim fila As Long
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    fila = ObtenerProximaFilaDisponible()
-    FilaActual = fila
-    FilaValida = False   ' Modo creacion, no edicion
-    frmEditarAsignacion.Show vbModeless
-End Sub
-
-' ------------------------------------------------------------------------------
-' FUNCIONES DE ESTADO
-' ------------------------------------------------------------------------------
+'==============================================================================
+' FUNCIÓN: EsNuevaAsignacion
+' Propósito: Determina si el formulario debe operar en modo CREACIÓN.
+'==============================================================================
 Public Function EsNuevaAsignacion() As Boolean
     EsNuevaAsignacion = Not FilaValida
 End Function
 
-Public Function ObtenerFilaActual() As Long
-    ObtenerFilaActual = FilaActual
+'==============================================================================
+' FUNCIÓN: ValidarFilaAsignacion
+' Propósito: Comprueba si una fila específica contiene una asignación real.
+' Parámetros: fila (Long).
+' Retorno: Boolean.
+'==============================================================================
+Public Function ValidarFilaAsignacion(fila As Long) As Boolean
+    Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    
+    If ws.Cells(fila, 1).Value = "" Then
+        MsgBox "Fila vacía. No hay datos para editar.", vbCritical
+        ValidarFilaAsignacion = False: Exit Function
+    End If
+    
+    If ws.Cells(fila, 2).Value = "" Then
+        MsgBox "Registro incompleto (falta ID Operaria).", vbCritical
+        ValidarFilaAsignacion = False: Exit Function
+    End If
+    
+    ValidarFilaAsignacion = True
 End Function
+
+'==============================================================================
+' FUNCIÓN: ObtenerDatosAsignacion
+' Propósito: Lee las 21 columnas de una fila en un solo paso (Array).
+' Parámetros: fila (Long).
+' Retorno: Variant (Array indexado 1 a 21).
+'==============================================================================
+Public Function ObtenerDatosAsignacion(fila As Long) As Variant
+    Dim ws As Worksheet, rangoData, i&
+    ReDim datos(1 To 21) As Variant
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    
+    If fila <= 3 Then ObtenerDatosAsignacion = datos: Exit Function
+    
+    ' Lectura optimizada del rango completo
+    rangoData = ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 21)).Value
+    
+    If IsArray(rangoData) Then
+        For i = 1 To 21: datos(i) = rangoData(1, i): Next i
+    End If
+    ObtenerDatosAsignacion = datos
+End Function
+
+'==============================================================================
+' SUB: GuardarDatosAsignacion
+' Propósito: Escribe un bloque de datos (Array) directamente en una fila.
+'==============================================================================
+Public Sub GuardarDatosAsignacion(fila As Long, datos As Variant)
+    Dim ws As Worksheet, i&, arrEscritura(1 To 1, 1 To 21) As Variant
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    
+    ' Preparar array 2D para volcado directo
+    For i = 1 To 21: arrEscritura(1, i) = datos(i): Next i
+    
+    ' Escritura masiva
+    ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 21)).Value = arrEscritura
+    
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    
+    ' Llamada corregida al reporte diario (Modulo 7)
+    If IsDate(datos(1)) Then Call GenerarReporteEnHoja(CDate(datos(1)), "DIARIO", False)
+End Sub
+
+'==============================================================================
+' SUB: RegistrarFilaEnFormulario
+' Propósito: Lanzador asignado a botones de edición en la hoja.
+'==============================================================================
+Public Sub RegistrarFilaEnFormulario()
+    Dim fila&: fila = ActiveCell.Row
+    
+    ' Validaciones de seguridad
+    If ActiveSheet.Name <> "ASIGNACIONES_DIARIAS" Then MsgBox "Opción solo válida en ASIGNACIONES_DIARIAS.", vbCritical: Exit Sub
+    If fila <= 3 Then Exit Sub
+    If Not ValidarFilaAsignacion(fila) Then Exit Sub
+    
+    FilaActual = fila: FilaValida = True
+    
+    ' Abrir formulario de edición (frmEditarAsignacion debe estar en el proyecto)
+    On Error Resume Next
+    frmEditarAsignacion.Show vbModeless
+    If Err.Number <> 0 Then MsgBox "El formulario frmEditarAsignacion no está instalado.", vbExclamation
+    On Error GoTo 0
+End Sub
+
+'==============================================================================
+' SUB: CrearNuevaAsignacionUI
+' Propósito: Prepara el sistema para una nueva entrada manual.
+'==============================================================================
+Public Sub CrearNuevaAsignacionUI()
+    Dim ws As Worksheet: Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    FilaActual = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1
+    FilaValida = False ' Indica modo "Nuevo"
+    On Error Resume Next: frmEditarAsignacion.Show vbModeless: On Error GoTo 0
+End Sub

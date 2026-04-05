@@ -169,9 +169,11 @@ Private Sub CargarLotesDeReferencia(idRef As String)
     Dim l As Variant
     Set lotesCol = ObtenerLotesDeReferencia(idRef)
     cboLote.Clear
-    For Each l In lotesCol
-        cboLote.AddItem l
-    Next l
+    If Not lotesCol Is Nothing Then
+        For Each l In lotesCol
+            cboLote.AddItem l
+        Next l
+    End If
     If cboLote.ListCount > 0 Then cboLote.ListIndex = 0
 End Sub
 

@@ -1,19 +1,103 @@
 Option Explicit
 
 '==============================================================================
-' MODULO 5 - modUtilidadesHelpers v3.2.3
-' CORRECCIONES:
-'   - GenerarReporteEnHoja: parametro opcional activarHoja (default False)
-'   - Separacion de logica de reportes a Modulo7_modReportes
+' MODULO 5 - modUtilidadesHelpers v3.3.6 (DOCUMENTACIÓN EXHAUSTIVA)
+' Propósito: Funciones transversales de soporte técnico.
+'            Maneja cálculos de tiempo, formatos visuales dinámicos, 
+'            calendario de festivos y gestión de parámetros globales.
 '==============================================================================
 
-' ==============================================================================
-' FUNCIONES GENERALES
-' ==============================================================================
-Public Function IsNumericValue(valor As Variant) As Boolean
+' --- CACHÉ DE PARÁMETROS (PRIVATE) ---
+Private dictParams As Object
+
+'==============================================================================
+' SECCIÓN: FORMATEO Y ESTÉTICA
+'==============================================================================
+
+'==============================================================================
+' SUB: AjustarAnchoColumnasInteligente
+' Propósito: Auto-ajuste de ancho con límite de seguridad (max 50) para evitar
+'            columnas excesivamente anchas que dañen la visualización.
+' Parámetros: ws (Worksheet) - Hoja a procesar.
+'==============================================================================
+Public Sub AjustarAnchoColumnasInteligente(ws As Worksheet)
+    Dim col As Range, maxAncho As Double: maxAncho = 50
     On Error Resume Next
-    IsNumericValue = IsNumeric(valor)
+    ws.UsedRange.Columns.AutoFit
+    For Each col In ws.UsedRange.Columns
+        If col.ColumnWidth > maxAncho Then
+            col.ColumnWidth = maxAncho
+            col.WrapText = True
+        Else
+            col.WrapText = False
+        End If
+    Next col
+    ' Ajuste de alto de fila para visualización clara
+    Dim lastRow As Long: lastRow = ws.UsedRange.Rows.Count + ws.UsedRange.Row - 1
+    If lastRow > 3 Then ws.Rows("3:" & lastRow).EntireRow.AutoFit
     On Error GoTo 0
+End Sub
+
+'==============================================================================
+' SUB: AplicarFormatoAsignaciones
+' Propósito: Estiliza la hoja ASIGNACIONES_DIARIAS con colores alternos y alineaciones.
+'            Optimizado por Unión de rangos para evitar parpadeos.
+'==============================================================================
+Public Sub AplicarFormatoAsignaciones()
+    Dim ws As Worksheet, fila&, ultF&, rngPar As Range, rngImpar As Range
+    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    ultF = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row: If ultF < 4 Then Exit Sub
+    
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Call AjustarAnchoColumnasInteligente(ws)
+    
+    ' Agrupación de filas para aplicar color en un solo paso COM
+    For fila = 4 To ultF
+        If fila Mod 2 = 0 Then
+            If rngPar Is Nothing Then Set rngPar = ws.Rows(fila) Else Set rngPar = Union(rngPar, ws.Rows(fila))
+        Else
+            If rngImpar Is Nothing Then Set rngImpar = ws.Rows(fila) Else Set rngImpar = Union(rngImpar, ws.Rows(fila))
+        End If
+        ' Límite de 500 filas por bloque para estabilidad de memoria
+        If fila Mod 500 = 0 Then
+            If Not rngPar Is Nothing Then rngPar.Interior.Color = RGB(240, 240, 240): Set rngPar = Nothing
+            If Not rngImpar Is Nothing Then rngImpar.Interior.Color = RGB(255, 255, 255): Set rngImpar = Nothing
+        End If
+    Next fila
+    
+    ' Aplicación de bloques remanentes
+    If Not rngPar Is Nothing Then rngPar.Interior.Color = RGB(240, 240, 240)
+    If Not rngImpar Is Nothing Then rngImpar.Interior.Color = RGB(255, 255, 255)
+    
+    ' Alineaciones estándar de columnas
+    With ws
+        .Columns("B:C").HorizontalAlignment = xlCenter
+        .Columns("E:E").HorizontalAlignment = xlCenter
+        .Columns("G:H").HorizontalAlignment = xlCenter
+        .Columns("J:K").HorizontalAlignment = xlCenter
+        .Columns("N:O").HorizontalAlignment = xlCenter
+        .Columns("L:M").NumberFormat = "#,0"
+    End With
+    
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    MsgBox "Diseño de hoja actualizado correctamente.", vbInformation
+End Sub
+
+'==============================================================================
+' SECCIÓN: VALIDADORES Y UTILIDADES DE DATOS (UI)
+'==============================================================================
+
+'==============================================================================
+' FUNCIÓN: IsNumericValue
+' Propósito: Validador de entrada para UserForms. Maneja nulos y texto.
+' Retorno: Boolean (True si el valor puede tratarse como número).
+'==============================================================================
+Public Function IsNumericValue(val As Variant) As Boolean
+    If IsNull(val) Then IsNumericValue = False: Exit Function
+    If Trim(CStr(val)) = "" Then IsNumericValue = False: Exit Function
+    IsNumericValue = IsNumeric(val)
 End Function
 
 Public Function ConvertirANumero(valor As Variant) As Long
@@ -43,304 +127,236 @@ Public Function CalcularPorcentajeCompletado(completadas As Long, total As Long)
     End If
 End Function
 
-Public Sub LimpiarControles(frm As Object)
-    Dim ctrl As Control
-    For Each ctrl In frm.Controls
-        Select Case TypeName(ctrl)
-            Case "TextBox":    ctrl.Value = ""
-            Case "ComboBox":   ctrl.ListIndex = -1: ctrl.Value = ""
-            Case "CheckBox":   ctrl.Value = False
-            Case "SpinButton": ctrl.Value = 0
-        End Select
+'==============================================================================
+' SUB: LimpiarControles
+' Propósito: Borra el contenido de todos los inputs en un formulario o frame.
+'==============================================================================
+Public Sub LimpiarControles(parent As Object)
+    Dim ctrl As Object
+    For Each ctrl In parent.Controls
+        If TypeName(ctrl) = "TextBox" Then
+            ctrl.Value = ""
+        ElseIf TypeName(ctrl) = "ComboBox" Then
+            ctrl.ListIndex = -1
+        ElseIf TypeName(ctrl) = "ListBox" Then
+            ctrl.Clear
+        ElseIf TypeName(ctrl) = "Frame" Then
+            Call LimpiarControles(ctrl) ' Recursividad para frames anidados
+        End If
     Next ctrl
 End Sub
 
-Public Function ObtenerProximoColorFila(fila As Long) As Long
-    If fila Mod 2 = 0 Then
-        ObtenerProximoColorFila = RGB(240, 240, 240)
-    Else
-        ObtenerProximoColorFila = RGB(255, 255, 255)
-    End If
-End Function
+'==============================================================================
+' SECCIÓN: ESTADÍSTICAS Y CAPACIDAD
+'==============================================================================
 
-' ==============================================================================
-' FORMATEO Y PRESENTACION VISUAL
-' ==============================================================================
-Public Sub AjustarAnchoColumnasInteligente(ws As Worksheet)
-    Dim col      As Range
-    Dim maxAncho As Double
-    maxAncho = 50
-    On Error Resume Next
-    ws.UsedRange.Columns.AutoFit
-    For Each col In ws.UsedRange.Columns
-        If col.ColumnWidth > maxAncho Then
-            col.ColumnWidth = maxAncho
-            col.WrapText    = True
-        Else
-            col.WrapText = False
-        End If
-    Next col
-    Dim lastRow As Long
-    lastRow = ws.UsedRange.Rows.Count + ws.UsedRange.Row - 1
-    If lastRow > 3 Then ws.Rows("3:" & lastRow).EntireRow.AutoFit
-    On Error GoTo 0
-End Sub
-
-Public Sub AplicarFormatoAsignaciones()
-    Dim ws      As Worksheet
-    Dim fila    As Long, ultFila As Long
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    Application.ScreenUpdating = False
-    Call AjustarAnchoColumnasInteligente(ws)
-    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
-    For fila = 4 To ultFila
-        ws.Rows(fila).Interior.Color = ObtenerProximoColorFila(fila)
-    Next fila
-    ws.Columns("B:C").HorizontalAlignment = xlCenter
-    ws.Columns("E:E").HorizontalAlignment = xlCenter
-    ws.Columns("G:H").HorizontalAlignment = xlCenter
-    ws.Columns("J:K").HorizontalAlignment = xlCenter
-    ws.Columns("N:O").HorizontalAlignment = xlCenter
-    ws.Columns("L:M").NumberFormat = "#,0"
-    Application.ScreenUpdating = True
-    MsgBox "Formato aplicado.", vbInformation
-End Sub
-
-Public Sub ConfigurarValidacionesExcel()
-    Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    With ws.Range("O4:O1000").Validation
-        .Delete
-        .Add xlList, , , "Pendiente,En Proceso,Completada"
-        .ShowDropDown = True
-    End With
-    MsgBox "Validaciones configuradas en columna Estado.", vbInformation
-End Sub
-
-' ==============================================================================
-' ESTADISTICAS
-' ==============================================================================
+'==============================================================================
+' FUNCIÓN: ObtenerEstadisticasHoy
+' Propósito: Consolida KPIs del día actual procesando la hoja en memoria.
+' Retorno: Array(Asignaciones, Minutos Totales, Completadas, Pendientes).
+'==============================================================================
 Public Function ObtenerEstadisticasHoy() As Variant
-    Dim ws          As Worksheet
-    Dim fila        As Long
-    Dim stats(1 To 4) As Variant
-    Dim totalMin    As Double
-    Dim completadas As Long, pendientes As Long, contador As Long
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    For fila = 4 To ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
-        If Int(ws.Cells(fila, 1).Value) = Int(Date) Then
-            contador  = contador + 1
-            totalMin  = totalMin + ws.Cells(fila, 14).Value
-            If ws.Cells(fila, 15).Value = "Completada" Then
-                completadas = completadas + 1
-            Else
-                pendientes = pendientes + 1
+    Dim ws As Worksheet, i&, ultF&, data, stats(1 To 4) As Variant, tMin#, comp&, pend&, cont&, fHoy As Date
+    fHoy = Int(Date): Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    ultF = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    
+    If ultF >= 4 Then
+        data = ws.Range(ws.Cells(4, 1), ws.Cells(ultF, 15)).Value
+        For i = 1 To UBound(data, 1)
+            If IsDate(data(i, 1)) Then
+                If Int(data(i, 1)) = fHoy Then
+                    cont = cont + 1: tMin = tMin + Val(data(i, 14))
+                    If data(i, 15) = "Completada" Then comp = comp + 1 Else pend = pend + 1
+                End If
             End If
-        End If
-    Next fila
-    stats(1) = contador
-    stats(2) = CLng(totalMin)
-    stats(3) = completadas
-    stats(4) = pendientes
+        Next i
+    End If
+    stats(1) = cont: stats(2) = CLng(tMin): stats(3) = comp: stats(4) = pend
     ObtenerEstadisticasHoy = stats
 End Function
 
-' ==============================================================================
-' CALENDARIO DIAS NO LABORALES - COLOMBIA
-' RESTAURADO v3.2.3
-' ==============================================================================
+'==============================================================================
+' FUNCIÓN: GetCapacidadDiariaTotal
+' Propósito: Suma la capacidad de todas las operarias activas para planificación global.
+'==============================================================================
+Public Function GetCapacidadDiariaTotal() As Long
+    Dim wsOp As Worksheet, i&, ultF&, data, capT&
+    Set wsOp = ThisWorkbook.Sheets("OPERARIAS"): ultF = wsOp.Cells(wsOp.Rows.Count, 1).End(xlUp).Row
+    If ultF >= 4 Then
+        data = wsOp.Range(wsOp.Cells(4, 1), wsOp.Cells(ultF, 4)).Value
+        For i = 1 To UBound(data, 1)
+            If data(i, 4) = "Activa" Then capT = capT + Val(data(i, 3))
+        Next i
+    End If
+    GetCapacidadDiariaTotal = capT
+End Function
+
+'==============================================================================
+' SECCIÓN: FECHAS Y DÍAS NO LABORALES (COLOMBIA)
+'==============================================================================
+
+'==============================================================================
+' SUB: ActualizarCalendarioNoLaboral
+' Propósito: Rellena automáticamente los días inhábiles (Fines de semana y Festivos).
+'==============================================================================
 Public Sub ActualizarCalendarioNoLaboral()
-    Dim ws          As Worksheet
-    Dim ultFila     As Long
-    Dim fechaInicio As Date, fechaFin As Date, fechaIter As Date
-    Dim descripcion As String
-    Dim contador    As Long
-
-    Set ws  = ThisWorkbook.Sheets("DIAS_NO_LABORALES")
-    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
-
-    If ultFila > 3 Then
-        fechaInicio = ws.Cells(ultFila, 1).Value + 1
-    Else
-        fechaInicio = DateSerial(Year(Date), 1, 1)
-    End If
-    fechaFin = DateSerial(Year(Date), 12, 31)
-
-    If fechaInicio > fechaFin Then
-        MsgBox "INFO: El calendario ya esta actualizado hasta " & Format(fechaFin, "dd/mm/yyyy"), vbInformation
-        Exit Sub
-    End If
-
+    Dim ws As Worksheet, ultF&, fIni As Date, fFin As Date, fIter As Date, desc$, cont&
+    Set ws = ThisWorkbook.Sheets("DIAS_NO_LABORALES"): ultF = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    
+    ' Definición de rango de fechas (desde el último registro hasta fin de año)
+    If ultF > 3 Then fIni = ws.Cells(ultF, 1).Value + 1 Else fIni = DateSerial(Year(Date), 1, 1)
+    fFin = DateSerial(Year(Date), 12, 31)
+    
+    If fIni > fFin Then MsgBox "El calendario ya está al día.", vbInformation: Exit Sub
+    
     Application.ScreenUpdating = False
-    contador = 0
-
-    For fechaIter = fechaInicio To fechaFin
-        descripcion = ""
-
-        ' Fines de semana
-        If Weekday(fechaIter, vbMonday) = 6 Then descripcion = "Sabado"
-        If Weekday(fechaIter, vbMonday) = 7 Then descripcion = "Domingo"
-
-        ' Festivos Colombia
-        Dim festivo As String
-        festivo = ObtenerFestivoColombia(fechaIter)
-        If festivo <> "" Then
-            If descripcion <> "" Then
-                descripcion = descripcion & " - " & festivo
-            Else
-                descripcion = festivo
-            End If
+    For fIter = fIni To fFin
+        desc = ""
+        ' Identificación de fines de semana
+        If Weekday(fIter, vbMonday) = 6 Then desc = "Sábado"
+        If Weekday(fIter, vbMonday) = 7 Then desc = "Domingo"
+        
+        ' Cálculo de festivos dinámicos
+        Dim fest$: fest = ObtenerFestivoColombia(fIter)
+        If fest <> "" Then If desc <> "" Then desc = desc & " - " & fest Else desc = fest
+        
+        If desc <> "" Then
+            ultF = ultF + 1: ws.Cells(ultF, 1).Value = fIter: ws.Cells(ultF, 2).Value = Format(fIter, "dddd"): ws.Cells(ultF, 3).Value = desc: cont = cont + 1
         End If
-
-        If descripcion <> "" Then
-            ultFila = ultFila + 1
-            ws.Cells(ultFila, 1).Value = fechaIter
-            ws.Cells(ultFila, 2).Value = Format(fechaIter, "dddd")
-            ws.Cells(ultFila, 3).Value = descripcion
-            contador = contador + 1
-        End If
-    Next fechaIter
-
-    ws.Columns("A:C").AutoFit
-    Application.ScreenUpdating = True
-    MsgBox "Calendario actualizado. Se agregaron " & contador & " dias no laborales.", vbInformation
+    Next fIter
+    ws.Columns("A:C").AutoFit: Application.ScreenUpdating = True
+    MsgBox "Calendario actualizado con " & cont & " nuevos registros.", vbInformation
 End Sub
 
+'==============================================================================
+' FUNCIÓN: EsDiaLaboral
+' Propósito: Validador rápido de fechas contra la tabla de días no laborales.
+' Parámetros: fecha (Date).
+' Retorno: Boolean (True si se puede trabajar).
+'==============================================================================
 Public Function EsDiaLaboral(fecha As Date) As Boolean
-    Dim ws  As Worksheet
-    Dim res As Variant
-    Set ws = ThisWorkbook.Sheets("DIAS_NO_LABORALES")
+    Dim ws As Worksheet, res As Variant: Set ws = ThisWorkbook.Sheets("DIAS_NO_LABORALES")
+    ' Uso de Application.Match para búsqueda ultra-rápida en la columna A
     res = Application.Match(CLng(fecha), ws.Columns(1), 0)
     EsDiaLaboral = IsError(res)
 End Function
 
-' ==============================================================================
-' FESTIVOS COLOMBIA - Ley 51/1983 (Emiliani) + Semana Santa
-' ==============================================================================
+'==============================================================================
+' FUNCIÓN: ObtenerFestivoColombia
+' Propósito: Identifica si una fecha es festivo en Colombia (Ley Emiliani).
+'==============================================================================
 Public Function ObtenerFestivoColombia(fecha As Date) As String
-    Dim d As Integer, m As Integer, y As Integer
-    Dim pascua As Date
-    d = Day(fecha): m = Month(fecha): y = Year(fecha)
+    Dim d%, m%, a%, fDesc$, fDomPascua As Date
+    d = Day(fecha): m = Month(fecha): a = Year(fecha)
+    
+    ' 1. Festivos de Fecha Fija (No se mueven)
+    If d = 1 And m = 1 Then fDesc = "Año Nuevo": GoTo Finalizar
+    If d = 1 And m = 5 Then fDesc = "Día del Trabajo": GoTo Finalizar
+    If d = 20 And m = 7 Then fDesc = "Independencia de Colombia": GoTo Finalizar
+    If d = 7 And m = 8 Then fDesc = "Batalla de Boyacá": GoTo Finalizar
+    If d = 8 And m = 12 Then fDesc = "Inmaculada Concepción": GoTo Finalizar
+    If d = 25 And m = 12 Then fDesc = "Navidad": GoTo Finalizar
+    
+    ' 2. Festivos de Fecha Fija (Ley Emiliani - Se mueven al siguiente lunes si no son lunes)
+    If EsFestivoTrasladable(fecha, 6, 1, "Reyes Magos") Then fDesc = "Reyes Magos": GoTo Finalizar
+    If EsFestivoTrasladable(fecha, 19, 3, "San José") Then fDesc = "San José": GoTo Finalizar
+    If EsFestivoTrasladable(fecha, 29, 6, "San Pedro y San Pablo") Then fDesc = "San Pedro y San Pablo": GoTo Finalizar
+    If EsFestivoTrasladable(fecha, 15, 8, "Asunción de la Virgen") Then fDesc = "Asunción de la Virgen": GoTo Finalizar
+    If EsFestivoTrasladable(fecha, 12, 10, "Día de la Raza") Then fDesc = "Día de la Raza": GoTo Finalizar
+    If EsFestivoTrasladable(fecha, 1, 11, "Todos los Santos") Then fDesc = "Todos los Santos": GoTo Finalizar
+    If EsFestivoTrasladable(fecha, 11, 11, "Independencia de Cartagena") Then fDesc = "Independencia de Cartagena": GoTo Finalizar
+    
+    ' 3. Festivos Basados en la Pascua (Variables)
+    fDomPascua = CalcularDomingoPascua(a)
+    If fecha = fDomPascua - 3 Then fDesc = "Jueves Santo": GoTo Finalizar
+    If fecha = fDomPascua - 2 Then fDesc = "Viernes Santo": GoTo Finalizar
+    If fecha = ProximoLunes(fDomPascua + 39) Then fDesc = "Ascensión del Señor": GoTo Finalizar
+    If fecha = ProximoLunes(fDomPascua + 60) Then fDesc = "Corpus Christi": GoTo Finalizar
+    If fecha = ProximoLunes(fDomPascua + 68) Then fDesc = "Sagrado Corazón": GoTo Finalizar
 
-    ' Festivos fijos
-    If d = 1  And m = 1  Then ObtenerFestivoColombia = "Ano Nuevo":                    Exit Function
-    If d = 1  And m = 5  Then ObtenerFestivoColombia = "Dia del Trabajo":               Exit Function
-    If d = 20 And m = 7  Then ObtenerFestivoColombia = "Independencia de Colombia":     Exit Function
-    If d = 7  And m = 8  Then ObtenerFestivoColombia = "Batalla de Boyaca":             Exit Function
-    If d = 8  And m = 12 Then ObtenerFestivoColombia = "Inmaculada Concepcion":         Exit Function
-    If d = 25 And m = 12 Then ObtenerFestivoColombia = "Navidad":                       Exit Function
-
-    ' Festivos Ley Emiliani (traslado al lunes)
-    If EsFestivoEmiliani(fecha, DateSerial(y, 1, 6))   Then ObtenerFestivoColombia = "Reyes Magos":                Exit Function
-    If EsFestivoEmiliani(fecha, DateSerial(y, 3, 19))  Then ObtenerFestivoColombia = "San Jose":                   Exit Function
-    If EsFestivoEmiliani(fecha, DateSerial(y, 6, 29))  Then ObtenerFestivoColombia = "San Pedro y San Pablo":      Exit Function
-    If EsFestivoEmiliani(fecha, DateSerial(y, 8, 15))  Then ObtenerFestivoColombia = "Asuncion de la Virgen":      Exit Function
-    If EsFestivoEmiliani(fecha, DateSerial(y, 10, 12)) Then ObtenerFestivoColombia = "Dia de la Raza":             Exit Function
-    If EsFestivoEmiliani(fecha, DateSerial(y, 11, 1))  Then ObtenerFestivoColombia = "Todos los Santos":           Exit Function
-    If EsFestivoEmiliani(fecha, DateSerial(y, 11, 11)) Then ObtenerFestivoColombia = "Independencia de Cartagena": Exit Function
-
-    ' Semana Santa y moviles (base: Pascua)
-    pascua = CalcularPascua(y)
-    If fecha = pascua - 3 Then ObtenerFestivoColombia = "Jueves Santo":                 Exit Function
-    If fecha = pascua - 2 Then ObtenerFestivoColombia = "Viernes Santo":                Exit Function
-    If EsFestivoEmiliani(fecha, pascua + 43) Then ObtenerFestivoColombia = "Ascension del Senor":     Exit Function
-    If EsFestivoEmiliani(fecha, pascua + 64) Then ObtenerFestivoColombia = "Corpus Christi":           Exit Function
-    If EsFestivoEmiliani(fecha, pascua + 71) Then ObtenerFestivoColombia = "Sagrado Corazon de Jesus": Exit Function
-
-    ObtenerFestivoColombia = ""
+Finalizar:
+    ObtenerFestivoColombia = fDesc
 End Function
 
-Public Function EsFestivoEmiliani(fechaEvaluar As Date, fechaReal As Date) As Boolean
-    Dim fechaTraslado As Date
-    Dim diaSemana As Integer
-    diaSemana = Weekday(fechaReal, vbMonday)
-    If diaSemana = 1 Then
-        fechaTraslado = fechaReal
-    Else
-        fechaTraslado = fechaReal + (8 - diaSemana)
-    End If
-    EsFestivoEmiliani = (fechaEvaluar = fechaTraslado)
+'--- HELPERS PARA FESTIVOS ---
+
+Private Function EsFestivoTrasladable(fecha As Date, dFijo%, mFijo%, nombre$) As Boolean
+    Dim fFija As Date: fFija = DateSerial(Year(fecha), mFijo, dFijo)
+    EsFestivoTrasladable = (fecha = ProximoLunes(fFija))
 End Function
 
-' Algoritmo de Butcher para Domingo de Pascua
-Public Function CalcularPascua(ByVal Anio As Integer) As Date
-    Dim a As Integer, b As Integer, c As Integer, d As Integer, e As Integer
-    a = Anio Mod 19
-    b = Anio Mod 4
-    c = Anio Mod 7
-    d = (19 * a + 24) Mod 30
-    e = (2 * b + 4 * c + 6 * d + 5) Mod 7
-    CalcularPascua = DateSerial(Anio, 3, 22) + d + e
+Private Function ProximoLunes(fecha As Date) As Date
+    Dim dSem%: dSem = Weekday(fecha, vbMonday)
+    If dSem = 1 Then ProximoLunes = fecha Else ProximoLunes = fecha + (8 - dSem)
 End Function
 
-' ==============================================================================
-' PARAMETROS Y FECHAS ESTIMADAS
-' ==============================================================================
+Private Function CalcularDomingoPascua(a%) As Date
+    Dim m%, n%, c%, i%, j%, k%, l%, d%, mes%
+    c = a \ 100: n = a Mod 19: k = (c - 17) \ 25
+    i = (c - c \ 4 - (c - k) \ 3 + 19 * n + 15) Mod 30
+    i = i - (i \ 28) * (1 - (i \ 28) * (29 \ (i + 1)) * ((21 - n) \ 11))
+    j = (a + a \ 4 + i + 2 - c + c \ 4) Mod 7
+    l = i - j: mes = 3 + (l + 40) \ 44: d = l + 28 - 31 * (mes \ 4)
+    CalcularDomingoPascua = DateSerial(a, mes, d)
+End Function
+
+'==============================================================================
+' SECCIÓN: PARÁMETROS Y ESTIMACIONES
+'==============================================================================
+
+'==============================================================================
+' FUNCIÓN: ObtenerParametro
+' Propósito: Recupera valores de configuración (ej. Horas Legales) desde caché.
+'==============================================================================
 Public Function ObtenerParametro(nombreParam As String) As Variant
-    Dim ws    As Worksheet
-    Dim celda As Range
-    On Error Resume Next
-    Set ws    = ThisWorkbook.Sheets("PARAMETROS")
-    Set celda = ws.Columns("A").Find(nombreParam, LookIn:=xlValues, LookAt:=xlWhole)
-    If Not celda Is Nothing Then
-        ObtenerParametro = celda.Offset(0, 1).Value
-    Else
-        ObtenerParametro = 0
+    If dictParams Is Nothing Then Call CargarParametrosEnCache
+    If dictParams.Exists(nombreParam) Then ObtenerParametro = dictParams(nombreParam) Else ObtenerParametro = 0
+End Function
+
+'==============================================================================
+' SUB: CargarParametrosEnCache
+' Propósito: Lee la hoja PARAMETROS y llena el diccionario en RAM.
+'==============================================================================
+Private Sub CargarParametrosEnCache()
+    Dim ws As Worksheet, i&, ultF&, data: Set dictParams = CreateObject("Scripting.Dictionary")
+    Set ws = ThisWorkbook.Sheets("PARAMETROS"): ultF = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    If ultF >= 1 Then
+        data = ws.Range(ws.Cells(1, 1), ws.Cells(ultF, 2)).Value
+        For i = 1 To UBound(data, 1): If Trim(CStr(data(i, 1))) <> "" Then dictParams(Trim(CStr(data(i, 1)))) = data(i, 2)
+        Next i
     End If
-    On Error GoTo 0
-End Function
+End Sub
 
-Public Function CalcularMinutosDiariosBase() As Long
-    Dim horas As Double, dias As Double
-    horas = ObtenerParametro("HorasSemanalesLegales")
-    dias  = ObtenerParametro("DiasLaboralesSemana")
-    If horas = 0 Then horas = 44
-    If dias  = 0 Then dias  = 6
-    CalcularMinutosDiariosBase = CLng(horas * 60 / dias)
-End Function
-
-Public Function GetCapacidadDiariaTotal() As Long
-    Dim wsOp    As Worksheet
-    Dim i       As Long, ultFila As Long
-    Dim capTotal As Long
-    Set wsOp  = ThisWorkbook.Sheets("OPERARIAS")
-    ultFila   = wsOp.Cells(wsOp.Rows.Count, 1).End(xlUp).Row
-    For i = 4 To ultFila
-        If wsOp.Cells(i, 4).Value = "Activa" Then
-            capTotal = capTotal + Val(wsOp.Cells(i, 3).Value)
-        End If
-    Next i
-    GetCapacidadDiariaTotal = capTotal
-End Function
-
-Public Function CalcularFechaFinEstimada(idRef As String, cantidadTotal As Long, fechaInicio As Date) As Date
-    Dim tiempoUnitTotalSeg  As Long
-    Dim minutosRequeridos   As Double
-    Dim capacidadDiariaMin  As Long
-    Dim diasNecesarios      As Double
-    Dim fechaFin            As Date
-    Dim diasContados        As Integer
-
-    tiempoUnitTotalSeg = ObtenerTiempoTotalUnidad(idRef)
-    If tiempoUnitTotalSeg = 0 Then
-        MsgBox "La referencia " & idRef & " no tiene tareas o tiempos definidos.", vbExclamation
-        CalcularFechaFinEstimada = 0
-        Exit Function
-    End If
-
-    minutosRequeridos  = cantidadTotal * tiempoUnitTotalSeg / 60
-    capacidadDiariaMin = GetCapacidadDiariaTotal()
-    If capacidadDiariaMin = 0 Then capacidadDiariaMin = 528
-
-    diasNecesarios = Application.WorksheetFunction.RoundUp(minutosRequeridos / capacidadDiariaMin, 0)
-    fechaFin       = fechaInicio
-    diasContados   = 0
-
-    Do While diasContados < diasNecesarios
-        fechaFin = fechaFin + 1
-        If EsDiaLaboral(fechaFin) Then diasContados = diasContados + 1
-        If diasContados > 1000 Then Exit Do
+'==============================================================================
+' FUNCIÓN: CalcularFechaFinEstimada
+' Propósito: Proyecta la fecha de entrega basada en carga de trabajo vs capacidad.
+'==============================================================================
+Public Function CalcularFechaFinEstimada(idRef$, cantT&, fInicio As Date) As Date
+    Dim tUnitTotal&, minReq#, capD&, diasN#, fFin As Date, dContados%
+    tUnitTotal = ObtenerTiempoTotalUnidad(idRef)
+    If tUnitTotal = 0 Then Exit Function
+    
+    minReq = cantT * tUnitTotal / 60
+    capD = GetCapacidadDiariaTotal(): If capD = 0 Then capD = 528
+    
+    ' Cálculo de días necesarios (redondeo arriba)
+    diasN = Application.WorksheetFunction.RoundUp(minReq / capD, 0)
+    fFin = fInicio: dContados = 0
+    
+    ' Bucle de proyección saltando festivos
+    Do While dContados < diasN
+        fFin = fFin + 1: If EsDiaLaboral(fFin) Then dContados = dContados + 1
+        If dContados > 1000 Then Exit Do ' Failsafe
     Loop
+    CalcularFechaFinEstimada = fFin
+End Function
 
-    CalcularFechaFinEstimada = fechaFin
+'==============================================================================
+' FUNCIÓN: CalcularMinutosDiariosBase
+' Propósito: Retorna la capacidad diaria estándar (lectura de parámetros).
+'==============================================================================
+Public Function CalcularMinutosDiariosBase() As Long
+    Dim val As Variant
+    val = ObtenerParametro("TiempoDisponibleBase_Minutos")
+    If IsNumeric(val) And Val(val) > 0 Then CalcularMinutosDiariosBase = CLng(val) Else CalcularMinutosDiariosBase = 528
 End Function
