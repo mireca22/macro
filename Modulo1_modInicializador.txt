@@ -210,8 +210,9 @@ Public Sub CrearDashboardInicio()
     ' Grupo: Reportes y KPIs
     Call CrearBotonDashboard(ws, "INFORME GERENCIAL", "GenerarInformeGerencial", 5, 4, RGB(44, 62, 80))
     Call CrearBotonDashboard(ws, "AVANCE PRODUCCIÓN", "GenerarReporteAvanceProduccion", 7, 4, RGB(0, 176, 80))
-    Call CrearBotonDashboard(ws, "ANÁLISIS TIEMPOS", "GenerarReporteEficiencia", 9, 4, RGB(204, 102, 0))
+    Call CrearBotonDashboard(ws, "REPORTE DE EFICIENCIA", "GenerarReporteEficiencia", 9, 4, RGB(204, 102, 0))
     Call CrearBotonDashboard(ws, "INFORME CONSOLIDADO", "GenerarInformeGerencialProduccion", 11, 4, RGB(44, 62, 80))
+    Call CrearBotonDashboard(ws, "REPORTE DE LOTES", "GenerarReporteLotes", 15, 4, RGB(0, 128, 128))
 
     ' Grupo: Maestros (Configuración) - Mayor separación vertical
     Call CrearBotonDashboard(ws, "GESTIÓN OPERARIAS", "AbrirGestorOperarias", 11, 2, RGB(100, 100, 100))

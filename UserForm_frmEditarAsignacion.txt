@@ -59,7 +59,8 @@ Private Sub UserForm_Initialize()
 End Sub
 
 Private Sub CargarListasOperarias()
-    Set cacheOperarias = ObtenerAllOperarias()
+    ' Si es nueva asignación, filtramos solo operarias activas
+    Set cacheOperarias = ObtenerAllOperarias(isNewAssignment)
     Dim id As Variant
     cboOperaria.Clear
     If Not cacheOperarias Is Nothing Then

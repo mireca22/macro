@@ -126,6 +126,9 @@ Private Sub InsertarFilaAsignacion(fecha As Date, idOper$, nOp$, idRef$, nRef$, 
     Application.EnableEvents = False
     ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 21)).Value = Array(fecha, idOper, nOp, idRef, nRef, idLote, color, talla, numTarea, nTar, cant, tUnit, tSeg, tMin, "Pendiente", 0, obs, tDisp - tAsig - tMin, "", 0, 0)
     Application.EnableEvents = True
+
+    ' Sincronizar estado del Lote (Avance Ponderado)
+    Call ActualizarAvanceTalla(idRef, idLote, color, talla)
 End Sub
 
 '==============================================================================
@@ -153,11 +156,9 @@ Public Function ActualizarAsignacion(fila&, fecha As Date, idOper$, idRef$, idLo
     End If
     Application.EnableEvents = True
     
-    ' Actualizar hoja LOTES si hay unidades terminadas
-    If estado = "Completada" Then
-        Call ActualizarAvanceTalla(idRef, color, talla, uComp)
-        Call VerificarReferenciaCompletada(idRef)
-    End If
+    ' Sincronizar estado del Lote (Avance Ponderado por Operaciones)
+    Call ActualizarAvanceTalla(idRef, idLote, color, talla)
+    Call VerificarReferenciaCompletada(idRef)
     
     Call GenerarReporteEnHoja(fecha, "DIARIO", False)
     MsgBox "Asignación actualizada correctamente.", vbInformation
@@ -242,34 +243,65 @@ End Function
 
 '==============================================================================
 ' SUB: ActualizarAvanceTalla
-' Propósito: Incrementa el contador de completadas en la hoja LOTES.
+' Propósito: Recalcula el avance real del lote basado en todas sus tareas asignadas.
 '==============================================================================
-Private Sub ActualizarAvanceTalla(idRef As String, color As String, talla As String, unidades As Long)
-    Dim ws As Worksheet, i As Long, ultF As Long, total As Long
-    Dim data As Variant
+Private Sub ActualizarAvanceTalla(idRef As String, idLote As String, color As String, talla As String)
+    Dim wsL As Worksheet, wsA As Worksheet
+    Dim i As Long, ultFL As Long, ultFA As Long, nTasks As Long
+    Dim totalOpsDone As Long, cantRecibida As Long, filaLote As Long
+    Dim dataA As Variant, unidCompEquiv As Double, avance As Double
+
+    Set wsL = ThisWorkbook.Sheets("LOTES")
+    Set wsA = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     
-    Set ws = ThisWorkbook.Sheets("LOTES")
-    ultF = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
-    If ultF < 4 Then Exit Sub
-    
-    data = ws.Range(ws.Cells(4, 1), ws.Cells(ultF, 8)).Value
-    For i = 1 To UBound(data, 1)
-        If Trim(data(i, 2)) = idRef And Trim(data(i, 3)) = color And Trim(data(i, 4)) = talla Then
-            total = Val(ws.Cells(i + 3, 5).Value)
-            ws.Cells(i + 3, 8).Value = ws.Cells(i + 3, 8).Value + unidades
-            
-            ' Calcular % de Avance
-            If total > 0 Then ws.Cells(i + 3, 9).Value = ws.Cells(i + 3, 8).Value / total
-            
-            ' CORRECCIÓN ESTRUCTURA IF (ESTÁNDAR DE BLOQUE)
-            If ws.Cells(i + 3, 8).Value >= total Then
-                ws.Cells(i + 3, 10).Value = "Completada"
-            ElseIf ws.Cells(i + 3, 8).Value > 0 Then
-                ws.Cells(i + 3, 10).Value = "En Proceso"
-            End If
+    ' 1. Obtener número de tareas requeridas para esta referencia (desde caché)
+    nTasks = ObtenerTareasDeReferencia(idRef).Count
+    If nTasks = 0 Then Exit Sub
+
+    ' 2. Localizar el registro del Lote en la hoja física
+    ultFL = wsL.Cells(wsL.Rows.Count, 1).End(xlUp).Row
+    filaLote = 0
+    For i = 4 To ultFL
+        If Trim(wsL.Cells(i, 1).Value) = Trim(idLote) And Trim(wsL.Cells(i, 2).Value) = Trim(idRef) And _
+           Trim(wsL.Cells(i, 3).Value) = Trim(color) And Trim(wsL.Cells(i, 4).Value) = Trim(talla) Then
+            filaLote = i
+            cantRecibida = Val(wsL.Cells(i, 5).Value)
             Exit For
         End If
     Next i
+    If filaLote = 0 Then Exit Sub
+
+    ' 3. Calcular suma de unidades completadas en todas las tareas/asignaciones de este lote
+    ultFA = wsA.Cells(wsA.Rows.Count, 1).End(xlUp).Row
+    totalOpsDone = 0
+    If ultFA >= 4 Then
+        ' Leemos columnas 4 (Ref), 6 (Lote), 7 (Color), 8 (Talla) y 16 (UnidComp)
+        dataA = wsA.Range(wsA.Cells(4, 4), wsA.Cells(ultFA, 16)).Value
+        For i = 1 To UBound(dataA, 1)
+            ' Validación robusta de fila de asignación
+            If Trim(CStr(dataA(i, 1))) = Trim(idRef) And Trim(CStr(dataA(i, 3))) = Trim(idLote) And _
+               Trim(CStr(dataA(i, 4))) = Trim(color) And Trim(CStr(dataA(i, 5))) = Trim(talla) Then
+                totalOpsDone = totalOpsDone + Val(dataA(i, 13)) ' 13 es el índice relativo para la col 16
+            End If
+        Next i
+    End If
+
+    ' 4. Calcular Unidades Equivalentes y Avance Ponderado
+    unidCompEquiv = Round(totalOpsDone / nTasks, 2)
+    avance = 0: If cantRecibida > 0 Then avance = Round(unidCompEquiv / cantRecibida, 4)
+
+    ' 5. Persistir en Hoja LOTES con reglas de negocio solicitadas
+    wsL.Cells(filaLote, 8).Value = unidCompEquiv
+    wsL.Cells(filaLote, 9).Value = avance
+    
+    If avance >= 1 Then
+        wsL.Cells(filaLote, 10).Value = "Completada"
+        wsL.Cells(filaLote, 8).Value = cantRecibida ' Asegurar igualdad absoluta al finalizar
+    ElseIf avance > 0 Then
+        wsL.Cells(filaLote, 10).Value = "En Proceso"
+    Else
+        wsL.Cells(filaLote, 10).Value = "Pendiente"
+    End If
 End Sub
 
 '==============================================================================

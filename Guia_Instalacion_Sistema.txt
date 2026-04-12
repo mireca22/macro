@@ -388,7 +388,8 @@ FLUJO D — Generación de Reportes
     ├── [VER RESUMEN DIARIO]       → genera RESUMENDIARIO     (headers fila 3)
     ├── [REPORTE DE EFICIENCIA]    → genera ANALISISTIEMPOS   (headers fila 3)
     ├── [AVANCE PRODUCCION]        → genera AVANCEPRODUCCION  (headers fila 3)
-    ├── [REPORTE DE LOTES]         → genera REPORTELOTES      (headers fila 3)
+    ├── [REPORTE DE LOTES]         → genera REPORTE_LOTES     (headers fila 3)
+    ├── [INFORME CONSOLIDADO]      → genera INFORME_CONSOLIDADO (detallado)
     └── [INFORME PRODUCCION]       → genera PRODUCCIONFINALIZADA (headers fila 3)
 
 

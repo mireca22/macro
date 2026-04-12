@@ -232,12 +232,18 @@ Public Sub GenerarReporteEficiencia()
     Dim data As Variant, key As String, k As Variant, d As Variant
     Dim tEst As Double, tReal As Double, efic As Double
     
-    fStr = InputBox("Inicio (dd/mm/yyyy):", "Reporte Eficiencia", Format(Date - 7, "dd/mm/yyyy"))
+    ' Sugerir primer día del mes actual
+    fStr = InputBox("Inicio (dd/mm/yyyy):", "Reporte Eficiencia", Format(DateSerial(Year(Date), Month(Date), 1), "dd/mm/yyyy"))
     If fStr = "" Or Not IsDate(fStr) Then Exit Sub Else fIni = CDate(fStr)
-    fStr = InputBox("Fin (dd/mm/yyyy):", "Reporte Eficiencia", Format(Date, "dd/mm/yyyy"))
+    
+    ' Sugerir último día del mes de la fecha de inicio seleccionada
+    fStr = InputBox("Fin (dd/mm/yyyy):", "Reporte Eficiencia", Format(DateSerial(Year(fIni), Month(fIni) + 1, 0), "dd/mm/yyyy"))
     If fStr = "" Or Not IsDate(fStr) Then Exit Sub Else fFin = CDate(fStr)
     
-    Set wsR = ThisWorkbook.Sheets("ANALISIS_TIEMPOS")
+    ' Asegurar que la fecha de fin no sea anterior a la de inicio
+    If fFin < fIni Then MsgBox "La fecha de fin no puede ser anterior a la fecha de inicio.", vbCritical: Exit Sub
+
+    Set wsR = ThisWorkbook.Sheets("EFICIENCIA_OPERARIAS")
     Set wsA = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     Set dictP = CreateObject("Scripting.Dictionary")
     
@@ -253,7 +259,22 @@ Public Sub GenerarReporteEficiencia()
         End If
     Next i
     
+    ' Limpiar y preparar reporte
+    Application.ScreenUpdating = False
     wsR.Rows("4:" & wsR.Rows.Count).ClearContents
+    wsR.Rows("4:" & wsR.Rows.Count).Interior.ColorIndex = xlNone
+    wsR.Rows("4:" & wsR.Rows.Count).Font.ColorIndex = xlAutomatic
+    
+    ' Encabezados superiores y Rango de Fechas
+    wsR.Range("A1").Value = "REPORTE DE EFICIENCIA DE OPERARIAS"
+    wsR.Range("A1").Font.Bold = True: wsR.Range("A1").Font.Size = 14
+    wsR.Range("A2").Value = "Periodo: " & Format(fIni, "dd/mm/yyyy") & " al " & Format(fFin, "dd/mm/yyyy")
+    wsR.Range("A2").Font.Italic = True
+    
+    ' Headers de tabla
+    wsR.Range("A3:D3").Value = Array("Operaria", "Tiempo Est. (Min)", "Tiempo Real (Min)", "Eficiencia %")
+    wsR.Range("A3:D3").Font.Bold = True: wsR.Range("A3:D3").Interior.Color = RGB(220, 220, 220)
+    
     fila = 4
     For Each k In dictP.Keys
         d = dictP(k): efic = IIf(d(2) > 0, d(1) / d(2), 0)
@@ -266,7 +287,11 @@ Public Sub GenerarReporteEficiencia()
         fila = fila + 1
     Next k
     If fila > 4 Then wsR.Range("D4:D" & fila - 1).NumberFormat = "0.00%"
-    wsR.Activate: MsgBox "Análisis de eficiencia completado."
+    
+    Call AjustarAnchoColumnasInteligente(wsR)
+    wsR.Activate
+    Application.ScreenUpdating = True
+    MsgBox "Análisis de eficiencia completado.", vbInformation
 End Sub
 
 '==============================================================================
@@ -275,59 +300,110 @@ End Sub
 '==============================================================================
 Public Sub GenerarReporteAvanceProduccion()
     Dim wsA As Worksheet, wsL As Worksheet, wsT As Worksheet, wsAs As Worksheet
-    Dim dictU As Object, dictAs As Object, i As Long, ultF As Long, fila As Long
-    Dim idRef As String, key As String, cant As Long, nT As String, nomT As String
-    Dim tT As Long, tR As Long, tA As Long, p As Long, tP As Double, est As String
-    
+    Dim dictRefTasks As Object, dictAsignaciones As Object
+    Dim i As Long, j As Long, ultF As Long, fila As Long
+    Dim idRef As String, idLote As String, key As String
+    Dim nT As String, nomT As String, tT As Long
+    Dim cantLote As Long, tA As Long, p As Long, tP As Double, est As String
+    Dim dataT As Variant, dataAs As Variant, taskItem As Variant
+
     Set wsA = ThisWorkbook.Sheets("AVANCE_PRODUCCION")
     Set wsL = ThisWorkbook.Sheets("LOTES")
     Set wsT = ThisWorkbook.Sheets("TAREAS")
     Set wsAs = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    Set dictU = CreateObject("Scripting.Dictionary")
-    Set dictAs = CreateObject("Scripting.Dictionary")
     
-    ultF = wsL.Cells(wsL.Rows.Count, 1).End(xlUp).Row
-    For i = 4 To ultF
-        idRef = Trim(CStr(wsL.Cells(i, 2).Value))
-        cant = Val(wsL.Cells(i, 5).Value)
-        If idRef <> "" Then
-            If dictU.Exists(idRef) Then dictU(idRef) = dictU(idRef) + cant Else dictU(idRef) = cant
-        End If
-    Next i
-    
+    ' 1. Cargar todas las Tareas en un diccionario (ID_Referencia -> Colección de Tareas)
+    Set dictRefTasks = CreateObject("Scripting.Dictionary")
+    ultF = wsT.Cells(wsT.Rows.Count, 1).End(xlUp).Row
+    If ultF >= 4 Then
+        dataT = wsT.Range("A4:D" & ultF).Value
+        For i = 1 To UBound(dataT, 1)
+            idRef = Trim(CStr(dataT(i, 1)))
+            If idRef <> "" Then
+                If Not dictRefTasks.Exists(idRef) Then Set dictRefTasks(idRef) = New Collection
+                ' Guardar: NumeroTarea, NombreTarea, TiempoSeg
+                dictRefTasks(idRef).Add Array(CStr(dataT(i, 2)), CStr(dataT(i, 3)), Val(dataT(i, 4)))
+            End If
+        Next i
+    End If
+
+    ' 2. Cargar Asignaciones Actuales (Lote|Tarea -> Cantidad completada y Estado)
+    Set dictAsignaciones = CreateObject("Scripting.Dictionary")
     ultF = wsAs.Cells(wsAs.Rows.Count, 1).End(xlUp).Row
-    For i = 4 To ultF
-        idRef = Trim(CStr(wsAs.Cells(i, 4).Value))
-        key = idRef & "|" & Trim(CStr(wsAs.Cells(i, 9).Value))
-        cant = Val(wsAs.Cells(i, 16).Value) ' Se toma Unidades Completadas para el avance real
-        If idRef <> "" Then
-            If dictAs.Exists(key) Then dictAs(key) = dictAs(key) + cant Else dictAs(key) = cant
-        End If
-    Next i
+    If ultF >= 4 Then
+        ' Columnas: 6 (Lote), 9 (Tarea), 15 (Estado), 16 (UnidComp)
+        dataAs = wsAs.Range("A4:P" & ultF).Value
+        For i = 1 To UBound(dataAs, 1)
+            idLote = Trim(CStr(dataAs(i, 6)))
+            nT = Trim(CStr(dataAs(i, 9)))
+            If idLote <> "" And nT <> "" Then
+                key = idLote & "|" & nT
+                If Not dictAsignaciones.Exists(key) Then
+                    dictAsignaciones(key) = Array(Val(dataAs(i, 16)), CStr(dataAs(i, 15)))
+                Else
+                    Dim tmp: tmp = dictAsignaciones(key)
+                    tmp(0) = tmp(0) + Val(dataAs(i, 16))
+                    ' Si alguna está en curso, el estado acumulado es en curso (a menos que ya sea completada)
+                    If tmp(1) <> "Completada" Then tmp(1) = CStr(dataAs(i, 15))
+                    dictAsignaciones(key) = tmp
+                End If
+            End If
+        Next i
+    End If
     
+    ' 3. Limpiar Hoja y Preparar Escritura
+    Application.ScreenUpdating = False
     wsA.Rows("4:" & wsA.Rows.Count).ClearContents
-    fila = 4: ultF = wsT.Cells(wsT.Rows.Count, 1).End(xlUp).Row
-    For i = 4 To ultF
-        idRef = Trim(CStr(wsT.Cells(i, 1).Value)): nT = Trim(CStr(wsT.Cells(i, 2).Value)): nomT = Trim(CStr(wsT.Cells(i, 3).Value)): tT = Val(wsT.Cells(i, 4).Value)
-        tR = IIf(dictU.Exists(idRef), dictU(idRef), 0)
-        key = idRef & "|" & nT: tA = IIf(dictAs.Exists(key), dictAs(key), 0)
-        p = IIf(tR - tA > 0, tR - tA, 0): tP = p * tT / 60
-        
-        ' CORRECCIÓN ESTRUCTURA IF (ESTÁNDAR DE BLOQUE)
-        If tR = 0 Then
-            est = "Sin Lotes"
-        ElseIf tA >= tR Then
-            est = "COMPLETO"
-        ElseIf tA = 0 Then
-            est = "PENDIENTE"
-        Else
-            est = "EN CURSO"
-        End If
-        
-        wsA.Range("A" & fila & ":I" & fila).Value = Array(idRef, ObtenerNombreReferencia(idRef), nomT, tT, tR, tA, p, tP, est)
-        fila = fila + 1
-    Next i
-    Call AjustarAnchoColumnasInteligente(wsA): wsA.Activate: MsgBox "Estado de producción actualizado."
+    wsA.Rows("4:" & wsA.Rows.Count).Interior.ColorIndex = xlNone
+    wsA.Rows("4:" & wsA.Rows.Count).Font.ColorIndex = xlAutomatic
+    
+    ' Escribir Headers actualizados
+    wsA.Range("A3:J3").Value = Array("Lote", "Referencia", "Nombre Referencia", "Tarea", "Tiempo (Seg)", "Cant. Lote", "Cant. Terminado", "Pendiente", "Tiempo Pend (Min)", "Estado")
+    wsA.Range("A3:J3").Font.Bold = True: wsA.Range("A3:J3").Interior.Color = RGB(220, 220, 220)
+
+    fila = 4
+    ultF = wsL.Cells(wsL.Rows.Count, 1).End(xlUp).Row
+    If ultF >= 4 Then
+        Dim dataL: dataL = wsL.Range("A4:E" & ultF).Value
+        For i = 1 To UBound(dataL, 1)
+            idLote = Trim(CStr(dataL(i, 1)))
+            idRef = Trim(CStr(dataL(i, 2)))
+            cantLote = Val(dataL(i, 5))
+            
+            ' Si la referencia tiene tareas definidas, listarlas todas
+            If dictRefTasks.Exists(idRef) Then
+                For Each taskItem In dictRefTasks(idRef)
+                    nT = taskItem(0): nomT = taskItem(1): tT = taskItem(2)
+                    key = idLote & "|" & nT
+                    
+                    tA = 0: est = "PENDIENTE"
+                    If dictAsignaciones.Exists(key) Then
+                        tA = dictAsignaciones(key)(0)
+                        est = UCase(dictAsignaciones(key)(1))
+                    End If
+                    
+                    p = IIf(cantLote - tA > 0, cantLote - tA, 0)
+                    tP = (p * tT) / 60
+                    
+                    wsA.Range("A" & fila & ":J" & fila).Value = Array(idLote, idRef, ObtenerNombreReferencia(idRef), nomT, tT, cantLote, tA, p, tP, est)
+                    
+                    ' Resaltado de tareas PENDIENTES (Rosado/Rojo)
+                    If est = "PENDIENTE" Then
+                        With wsA.Range("A" & fila & ":J" & fila)
+                            .Interior.Color = RGB(255, 199, 206)
+                            .Font.Color = RGB(156, 0, 6)
+                        End With
+                    End If
+                    fila = fila + 1
+                Next taskItem
+            End If
+        Next i
+    End If
+    
+    Call AjustarAnchoColumnasInteligente(wsA)
+    wsA.Activate
+    Application.ScreenUpdating = True
+    MsgBox "Reporte de avance detallado por Lote generado.", vbInformation
 End Sub
 
 '==============================================================================
@@ -340,8 +416,9 @@ Public Sub GenerarReporteLotes()
     Dim i As Long, ultF As Long, fila As Long
     Dim idRef As String, idLote As String, color As String, talla As String
     Dim nTareas As Long, tUnitTotal As Long, cantLote As Long
-    Dim opsReq As Long, opsComp As Long, avance As Double, tEstHoras As Double
+    Dim opsReq As Double, opsComp As Double, avance As Double, tEstHoras As Double
     Dim estado As String, dataL As Variant, dataT As Variant, dataA As Variant
+    Dim key As String
     
     Set wsR = ThisWorkbook.Sheets("REPORTE_LOTES")
     Set wsL = ThisWorkbook.Sheets("LOTES")
@@ -371,16 +448,22 @@ Public Sub GenerarReporteLotes()
     Set dictOpsComp = CreateObject("Scripting.Dictionary")
     ultF = wsA.Cells(wsA.Rows.Count, 1).End(xlUp).Row
     If ultF >= 4 Then
-        dataA = wsA.Range(wsA.Cells(4, 1), wsA.Cells(ultF, 16)).Value ' Col 6=Lote, 16=UnidComp
+        ' Mapeo de progreso con clave compuesta (Ref|Lote) para garantizar integridad
+        dataA = wsA.Range(wsA.Cells(4, 1), wsA.Cells(ultF, 16)).Value 
         For i = 1 To UBound(dataA, 1)
+            idRef = Trim(CStr(dataA(i, 4)))
             idLote = Trim(CStr(dataA(i, 6)))
-            If idLote <> "" Then dictOpsComp(idLote) = dictOpsComp(idLote) + Val(dataA(i, 16))
+            If idRef <> "" And idLote <> "" Then
+                key = idRef & "|" & idLote
+                dictOpsComp(key) = dictOpsComp(key) + Val(dataA(i, 16))
+            End If
         Next i
     End If
     
     ' 3. Construir el Reporte
     Application.ScreenUpdating = False
     wsR.Rows("3:" & wsR.Rows.Count).ClearContents ' Limpiar hoja
+    wsR.Rows("3:" & wsR.Rows.Count).Interior.ColorIndex = xlNone
     
     ' Escribir encabezados si no existen en Módulo 1
     wsR.Range("A3:K3").Value = Array("Lote", "Referencia", "Color", "Talla", "Cantidad", "Tareas/Unidad", "Ops. Requeridas", "Ops. Completadas", "Avance %", "Tiempo Est. Horas", "Estado")
@@ -388,6 +471,9 @@ Public Sub GenerarReporteLotes()
     
     ultF = wsL.Cells(wsL.Rows.Count, 1).End(xlUp).Row
     If ultF >= 4 Then
+        ' Ordenar hoja LOTES por Referencia (Col B) y luego Lote (Col A) para listar agrupado
+        wsL.Range("A4:K" & ultF).Sort Key1:=wsL.Range("B4"), Order1:=xlAscending, Key2:=wsL.Range("A4"), Order2:=xlAscending, Header:=xlNo
+        
         dataL = wsL.Range(wsL.Cells(4, 1), wsL.Cells(ultF, 5)).Value
         fila = 4
         For i = 1 To UBound(dataL, 1)
@@ -397,19 +483,34 @@ Public Sub GenerarReporteLotes()
             nTareas = 0: tUnitTotal = 0
             If dictRefParams.Exists(idRef) Then nTareas = dictRefParams(idRef)(0): tUnitTotal = dictRefParams(idRef)(1)
             
-            opsReq = cantLote * nTareas
-            opsComp = 0: If dictOpsComp.Exists(idLote) Then opsComp = dictOpsComp(idLote)
+            ' Usar CDbl para evitar desbordamiento en la multiplicación de enteros grandes
+            opsReq = CDbl(cantLote) * nTareas
+            key = idRef & "|" & idLote
+            opsComp = 0: If dictOpsComp.Exists(key) Then opsComp = dictOpsComp(key)
             
-            avance = IIf(opsReq > 0, Round(opsComp / opsReq, 4), 0)
-            tEstHoras = (cantLote * tUnitTotal) / 3600
+            ' Sustitución de IIf por If real para evitar división por cero o desbordamiento en evaluación
+            If opsReq > 0 Then
+                avance = Round(opsComp / opsReq, 4)
+            Else
+                avance = 0
+            End If
+            
+            tEstHoras = (CDbl(cantLote) * tUnitTotal) / 3600
             
             If avance >= 1 Then estado = "COMPLETADO" Else If avance > 0 Then estado = "EN PROCESO" Else estado = "PENDIENTE"
             
             wsR.Range("A" & fila & ":K" & fila).Value = Array(idLote, idRef, color, talla, cantLote, nTareas, opsReq, opsComp, avance, tEstHoras, estado)
-            If estado = "COMPLETADO" Then wsR.Range("A" & fila & ":K" & fila).Interior.Color = RGB(220, 255, 220)
+            If estado = "COMPLETADO" Then 
+                wsR.Range("A" & fila & ":K" & fila).Interior.Color = RGB(198, 239, 206)
+            ElseIf estado = "EN PROCESO" Then
+                wsR.Range("A" & fila & ":K" & fila).Interior.Color = RGB(255, 235, 156)
+            End If
             fila = fila + 1
         Next i
-        wsR.Range("I4:I" & fila).NumberFormat = "0.00%": wsR.Range("J4:J" & fila).NumberFormat = "0.00"
+        If fila > 4 Then
+            wsR.Range("I4:I" & fila - 1).NumberFormat = "0.00%"
+            wsR.Range("J4:J" & fila - 1).NumberFormat = "0.00"
+        End If
     End If
     Call AjustarAnchoColumnasInteligente(wsR): wsR.Activate: Application.ScreenUpdating = True
 End Sub

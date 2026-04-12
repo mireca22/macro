@@ -287,12 +287,21 @@ Public Function ObtenerTareasDeReferencia(idRef As String) As Collection
     Set ObtenerTareasDeReferencia = col
 End Function
 
-Public Function ObtenerAllOperarias() As Collection
-    ' Retorna colección de todos los IDs de operarias activas.
+Public Function ObtenerAllOperarias(Optional soloActivas As Boolean = False) As Collection
+    ' Retorna colección de IDs de operarias.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
     Dim col As New Collection, key As Variant
     If Not dictOperarias Is Nothing Then
-        For Each key In dictOperarias.Keys: col.Add CStr(key): Next key
+        For Each key In dictOperarias.Keys
+            If Not soloActivas Then
+                col.Add CStr(key)
+            Else
+                ' El estado está en el índice 2 del Array: Array(Nombre, Tiempo, Estado, Especialidad)
+                If UCase(Trim(CStr(dictOperarias(key)(2)))) = "ACTIVA" Then
+                    col.Add CStr(key)
+                End If
+            End If
+        Next key
     End If
     Set ObtenerAllOperarias = col
 End Function
