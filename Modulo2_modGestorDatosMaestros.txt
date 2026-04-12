@@ -15,6 +15,7 @@ Private dictColores     As Object ' Diccionario para mapeo rápido de colores po
 Private dictTallas      As Object ' Diccionario para mapeo rápido de tallas por referencia
 Private dictInventario  As Object ' Estructura compleja: Ref & Lote & Color -> Collection de Tallas
 Private dictLotes       As Object ' Diccionario: ID_Referencia -> Collection de IDs de Lote
+Private dictLoteCantidades As Object ' Diccionario: Ref & Lote & Color & Talla -> Cantidad Recibida
 Private dictLoteColores As Object ' Diccionario: ID_Referencia & ID_Lote -> Collection de Colores
 Private cacheActualizado As Boolean ' Bandera de estado de carga
 
@@ -34,6 +35,7 @@ Public Sub CargarCacheEnMemoria()
     Set dictTallas = CreateObject("Scripting.Dictionary")
     Set dictInventario = CreateObject("Scripting.Dictionary")
     Set dictLotes = CreateObject("Scripting.Dictionary")
+    Set dictLoteCantidades = CreateObject("Scripting.Dictionary")
     Set dictLoteColores = CreateObject("Scripting.Dictionary")
     
     ' Llamada a cargadores específicos
@@ -130,17 +132,20 @@ End Sub
 ' Propósito: Cruza lotes, referencias, colores y tallas para consultas rápidas.
 '==============================================================================
 Private Sub CargarInventarioEnCache()
-    Dim ws As Worksheet, i&, ultF&, data, key$, keyLC$, idLote$, idRef$, color$, talla$
+    Dim ws As Worksheet, i&, ultF&, data, key$, keyLC$, keyQty$, idLote$, idRef$, color$, talla$, cant&
     Set ws = ThisWorkbook.Sheets("LOTES"): ultF = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row: If ultF < 4 Then Exit Sub
-    data = ws.Range(ws.Cells(4, 1), ws.Cells(ultF, 4)).Value
+    data = ws.Range(ws.Cells(4, 1), ws.Cells(ultF, 5)).Value
     For i = 1 To UBound(data, 1)
-        idLote = Trim(CStr(data(i, 1))): idRef = Trim(CStr(data(i, 2))): color = Trim(CStr(data(i, 3))): talla = Trim(CStr(data(i, 4)))
+        idLote = Trim(CStr(data(i, 1))): idRef = Trim(CStr(data(i, 2))): color = Trim(CStr(data(i, 3))): talla = Trim(CStr(data(i, 4))): cant = Val(data(i, 5))
         If idRef <> "" And idLote <> "" Then
             If Not dictLotes.Exists(idRef) Then dictLotes.Add idRef, New Collection
             If Not ItemInCollection(dictLotes(idRef), idLote) Then dictLotes(idRef).Add idLote
             key = idRef & idLote & color
             If Not dictInventario.Exists(key) Then dictInventario.Add key, New Collection
             If Not ItemInCollection(dictInventario(key), talla) Then dictInventario(key).Add talla
+            ' Cache de cantidades recibidas
+            keyQty = idRef & idLote & color & talla
+            dictLoteCantidades(keyQty) = cant
             keyLC = idRef & idLote
             If Not dictLoteColores.Exists(keyLC) Then dictLoteColores.Add keyLC, New Collection
             If Not ItemInCollection(dictLoteColores(keyLC), color) Then dictLoteColores(keyLC).Add color
@@ -161,51 +166,67 @@ Private Function ItemInCollection(col As Collection, val As Variant) As Boolean
 End Function
 
 '==============================================================================
+' FUNCIÓN: ExtraerID
+' Propósito: Helper privado para extraer el ID real de una cadena "ID - Nombre".
+'==============================================================================
+Private Function ExtraerID(ByVal val As Variant) As String
+    Dim s As String: s = Trim(CStr(val))
+    If InStr(s, " - ") > 0 Then
+        ExtraerID = Trim(Split(s, " - ")(0))
+    Else
+        ExtraerID = s
+    End If
+End Function
+
+'==============================================================================
 ' SECCIÓN: API DE CONSULTA PÚBLICA
 '==============================================================================
-
 Public Function ObtenerNombreOperaria(id As String) As String
     ' Retorna el nombre de la operaria desde caché.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
-    On Error Resume Next: ObtenerNombreOperaria = "": If dictOperarias.Exists(id) Then ObtenerNombreOperaria = dictOperarias(id)(0)
+    Dim rid As String: rid = ExtraerID(id)
+    On Error Resume Next: ObtenerNombreOperaria = "": If dictOperarias.Exists(rid) Then ObtenerNombreOperaria = dictOperarias(rid)(0)
 End Function
 
 Public Function ObtenerHorasDisponiblesOperaria(id As String) As Double
     ' Retorna capacidad en minutos. Default: 528.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
-    On Error Resume Next: If dictOperarias.Exists(id) Then ObtenerHorasDisponiblesOperaria = Val(dictOperarias(id)(1)) Else ObtenerHorasDisponiblesOperaria = 528
+    Dim rid As String: rid = ExtraerID(id)
+    On Error Resume Next: If dictOperarias.Exists(rid) Then ObtenerHorasDisponiblesOperaria = Val(dictOperarias(rid)(1)) Else ObtenerHorasDisponiblesOperaria = 528
 End Function
 
 Public Function ObtenerNombreReferencia(id As String) As String
     ' Retorna el nombre de la referencia desde caché.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
-    On Error Resume Next: ObtenerNombreReferencia = "": If dictReferencias.Exists(id) Then ObtenerNombreReferencia = dictReferencias(id)(0)
+    Dim rid As String: rid = ExtraerID(id)
+    On Error Resume Next: ObtenerNombreReferencia = "": If dictReferencias.Exists(rid) Then ObtenerNombreReferencia = dictReferencias(rid)(0)
 End Function
 
 Public Function ObtenerTiempoUnitario(idRef As String, numTarea As String) As Long
     ' Retorna segundos por tarea.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
-    Dim key$: key = idRef & numTarea
+    Dim key$: key = ExtraerID(idRef) & numTarea
     On Error Resume Next: ObtenerTiempoUnitario = 0: If dictTareas.Exists(key) Then ObtenerTiempoUnitario = CLng(dictTareas(key)(1))
 End Function
 
 Public Function ObtenerNombreTarea(idRef As String, numTarea As String) As String
     ' Retorna nombre de la tarea desde caché.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
-    Dim key$: key = idRef & numTarea
+    Dim key$: key = ExtraerID(idRef) & numTarea
     On Error Resume Next: ObtenerNombreTarea = "": If dictTareas.Exists(key) Then ObtenerNombreTarea = dictTareas(key)(0)
 End Function
 
 Public Function ObtenerTiempoTotalUnidad(idRef As String) As Long
     ' Retorna tiempo total acumulado de la prenda en segundos.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
-    On Error Resume Next: ObtenerTiempoTotalUnidad = 0: If dictReferencias.Exists(idRef) Then ObtenerTiempoTotalUnidad = CLng(dictReferencias(idRef)(3))
+    Dim rid As String: rid = ExtraerID(idRef)
+    On Error Resume Next: ObtenerTiempoTotalUnidad = 0: If dictReferencias.Exists(rid) Then ObtenerTiempoTotalUnidad = CLng(dictReferencias(rid)(3))
 End Function
 
 Public Function ObtenerColoresDeReferencia(idRef As String) As Collection
     ' Lista todos los colores configurados para una referencia.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
-    Dim col As New Collection, key As Variant, prefix$: prefix = idRef
+    Dim col As New Collection, key As Variant, prefix$: prefix = ExtraerID(idRef)
     If Not dictColores Is Nothing Then
         For Each key In dictColores.Keys: If InStr(1, key, prefix) = 1 Then col.Add dictColores(key)(0)
         Next key
@@ -216,13 +237,13 @@ End Function
 Public Function ObtenerColoresDeReferenciaYLote(idRef As String, idLote As String) As Collection
     ' Filtra colores que realmente llegaron en un lote físico.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
-    Dim key$: key = idRef & idLote: If dictLoteColores.Exists(key) Then Set ObtenerColoresDeReferenciaYLote = dictLoteColores(key) Else Set ObtenerColoresDeReferenciaYLote = New Collection
+    Dim key$: key = ExtraerID(idRef) & idLote: If dictLoteColores.Exists(key) Then Set ObtenerColoresDeReferenciaYLote = dictLoteColores(key) Else Set ObtenerColoresDeReferenciaYLote = New Collection
 End Function
 
 Public Function ObtenerTallasDeReferencia(idRef As String) As Collection
     ' Lista todas las tallas configuradas para una referencia.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
-    Dim col As New Collection, key As Variant, prefix$: prefix = idRef
+    Dim col As New Collection, key As Variant, prefix$: prefix = ExtraerID(idRef)
     If Not dictTallas Is Nothing Then
         For Each key In dictTallas.Keys: If InStr(1, key, prefix) = 1 Then col.Add dictTallas(key)(0)
         Next key
@@ -230,12 +251,20 @@ Public Function ObtenerTallasDeReferencia(idRef As String) As Collection
     Set ObtenerTallasDeReferencia = col
 End Function
 
+Public Function ObtenerCantidadRecibidaLote(idRef As String, idLote As String, color As String, talla As String) As Long
+    ' Retorna la cantidad total recibida de un lote específico desde el caché.
+    If Not cacheActualizado Then Call CargarCacheEnMemoria
+    Dim key$: key = ExtraerID(idRef) & Trim(idLote) & Trim(color) & Trim(talla)
+    If dictLoteCantidades.Exists(key) Then ObtenerCantidadRecibidaLote = CLng(dictLoteCantidades(key))
+End Function
+
 Public Function ObtenerLotesDeReferencia(idRef As String) As Collection
     ' Lista todos los IDs de lote disponibles para una referencia.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
     
-    If dictLotes.Exists(idRef) Then
-        Set ObtenerLotesDeReferencia = dictLotes(idRef)
+    Dim rid As String: rid = ExtraerID(idRef)
+    If dictLotes.Exists(rid) Then
+        Set ObtenerLotesDeReferencia = dictLotes(rid)
     Else
         Set ObtenerLotesDeReferencia = New Collection
     End If
@@ -244,13 +273,13 @@ End Function
 Public Function ObtenerTallasDeReferenciaLoteColor(idRef As String, idLote As String, color As String) As Collection
     ' Filtra tallas específicas de una combinación Ref-Lote-Color.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
-    Dim key$: key = idRef & idLote & color: If dictInventario.Exists(key) Then Set ObtenerTallasDeReferenciaLoteColor = dictInventario(key) Else Set ObtenerTallasDeReferenciaLoteColor = New Collection
+    Dim key$: key = ExtraerID(idRef) & idLote & color: If dictInventario.Exists(key) Then Set ObtenerTallasDeReferenciaLoteColor = dictInventario(key) Else Set ObtenerTallasDeReferenciaLoteColor = New Collection
 End Function
 
 Public Function ObtenerTareasDeReferencia(idRef As String) As Collection
     ' Lista los números de tarea habilitados para una referencia.
     If Not cacheActualizado Then Call CargarCacheEnMemoria
-    Dim col As New Collection, key As Variant, prefix$: prefix = idRef
+    Dim col As New Collection, key As Variant, prefix$: prefix = ExtraerID(idRef)
     If Not dictTareas Is Nothing Then
         For Each key In dictTareas.Keys: If InStr(1, key, prefix) = 1 Then col.Add CLng(Replace(key, prefix, ""))
         Next key
@@ -273,7 +302,9 @@ Public Function ObtenerAllReferencias() As Collection
     If Not cacheActualizado Then Call CargarCacheEnMemoria
     Dim col As New Collection, key As Variant
     If Not dictReferencias Is Nothing Then
-        For Each key In dictReferencias.Keys: col.Add CStr(key): Next key
+        For Each key In dictReferencias.Keys
+            col.Add CStr(key) & " - " & CStr(dictReferencias(key)(0))
+        Next key
     End If
     Set ObtenerAllReferencias = col
 End Function
@@ -283,14 +314,15 @@ Public Function EsCacheActualizado() As Boolean
     EsCacheActualizado = cacheActualizado
 End Function
 
-Public Sub ActualizarCacheCompleto()
-    ' Fuerza la invalidación y recarga total.
-    cacheActualizado = False: Call CargarCacheEnMemoria
-End Sub
-
 Public Sub InvalidarCache()
     ' Marca el caché como pendiente de recarga.
     cacheActualizado = False
+End Sub
+
+Public Sub ActualizarCacheCompleto()
+    ' Fuerza la invalidación y recarga total.
+    Call InvalidarCache
+    Call CargarCacheEnMemoria
 End Sub
 
 '--- AUXILIARES VISUALES ---

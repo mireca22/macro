@@ -94,7 +94,7 @@ Private Sub CargarDatosParaEditar()
     txtFecha.Value          = Format(datosActuales(1), "dd/mm/yyyy")
     cboOperaria.Value       = datosActuales(2)
     txtNombreOperaria.Value = datosActuales(3)
-    cboReferencia.Value     = datosActuales(4)
+    cboReferencia.Value     = datosActuales(4) & " - " & datosActuales(5)
     txtNombreReferencia.Value = datosActuales(5)
 
     Call CargarLotesDeReferencia(CStr(datosActuales(4)))
@@ -161,6 +161,19 @@ Private Sub cboColor_Change()
         Call CargarTallasDeReferencia(cboReferencia.Value, cboLote.Value, cboColor.Value)
     Else
         cboTalla.Clear
+    End If
+End Sub
+
+Private Sub cboTalla_Change()
+    ' Si es una nueva asignación, traer la cantidad recibida del lote por defecto
+    If isNewAssignment Then
+        If cboReferencia.Value <> "" And cboLote.Value <> "" And cboColor.Value <> "" And cboTalla.Value <> "" Then
+            Dim idRefLimpio As String
+            idRefLimpio = cboReferencia.Value
+            If InStr(idRefLimpio, " - ") > 0 Then idRefLimpio = Trim(Split(idRefLimpio, " - ")(0))
+            
+            txtCantidad.Value = ObtenerCantidadRecibidaLote(idRefLimpio, cboLote.Value, cboColor.Value, cboTalla.Value)
+        End If
     End If
 End Sub
 
@@ -250,6 +263,7 @@ Private Sub RecalcularTiempos()
     On Error GoTo 0
 End Sub
 
+
 Private Sub btnGuardar_Click()
     ' ── Validaciones ────────────────────────────────────────────────────────
     If cboOperaria.Value = "" Then
@@ -276,6 +290,35 @@ Private Sub btnGuardar_Click()
     If Not IsDate(txtFecha.Value) Then
         MsgBox "[X] La fecha no es valida (dd/mm/yyyy)", vbCritical: txtFecha.SetFocus: Exit Sub
     End If
+    
+    ' Limpiar IDs concatenados antes de enviar a lógica de guardado
+    Dim idOpLimpio As String, idRefLimpio As String
+    idOpLimpio = cboOperaria.Value
+    idRefLimpio = cboReferencia.Value
+    
+    If InStr(idOpLimpio, " - ") > 0 Then idOpLimpio = Trim(Split(idOpLimpio, " - ")(0))
+    If InStr(idRefLimpio, " - ") > 0 Then idRefLimpio = Trim(Split(idRefLimpio, " - ")(0))
+
+    ' Validación de Cantidad vs Cantidad Recibida del Lote
+    Dim cantRecibida As Long
+    cantRecibida = ObtenerCantidadRecibidaLote(idRefLimpio, cboLote.Value, cboColor.Value, cboTalla.Value)
+    If CLng(txtCantidad.Value) > cantRecibida Then
+        MsgBox "[X] Error: La cantidad asignada (" & txtCantidad.Value & ") no puede ser superior a la cantidad recibida en el lote (" & cantRecibida & ").", vbCritical, "Validación de Stock"
+        txtCantidad.SetFocus: Exit Sub
+    End If
+
+    ' Manejo seguro de unidades completadas (evitar error si está vacío)
+    Dim uCompVal As Long
+    If txtUnidadesCompletadas.Value = "" Or Not IsNumeric(txtUnidadesCompletadas.Value) Then
+        uCompVal = 0
+    Else
+        uCompVal = CLng(txtUnidadesCompletadas.Value)
+    End If
+
+    If uCompVal > cantRecibida Then
+        MsgBox "[X] Error: No se puede registrar una cantidad terminada (" & uCompVal & ") superior a la cantidad recibida en el lote (" & cantRecibida & ").", vbCritical, "Validación de Stock"
+        txtUnidadesCompletadas.SetFocus: Exit Sub
+    End If
 
     ' ── Guardar ─────────────────────────────────────────────────────────────
     Dim resultado As Boolean
@@ -283,7 +326,7 @@ Private Sub btnGuardar_Click()
 
     If isNewAssignment Then
         resultado = CrearAsignacion( _
-            cboOperaria.Value, cboReferencia.Value, cboLote.Value, _
+            idOpLimpio, idRefLimpio, cboLote.Value, _
             cboColor.Value, cboTalla.Value, cboNumeroTarea.Value, _
             CLng(txtCantidad.Value), txtObservaciones.Value)
 
@@ -299,10 +342,10 @@ Private Sub btnGuardar_Click()
         resultado = ActualizarAsignacion( _
             fila, _
             CDate(txtFecha.Value), _
-            cboOperaria.Value, cboReferencia.Value, cboLote.Value, _
+            idOpLimpio, idRefLimpio, cboLote.Value, _
             cboColor.Value, cboTalla.Value, cboNumeroTarea.Value, _
             CLng(txtCantidad.Value), cboEstado.Value, _
-            CLng(txtUnidadesCompletadas.Value), txtObservaciones.Value, _
+            uCompVal, txtObservaciones.Value, _
             txtFechaReal.Value, Val(txtTiempoReal.Value))
 
         If resultado Then Unload Me

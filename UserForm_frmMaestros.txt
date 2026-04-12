@@ -104,7 +104,7 @@ Private Sub UserFormInitialize()
             CargarReferenciasCombo
             
             If ModoEdicion Then
-                cboRef.Value = ActiveSheet.Cells(FilaEdicion, 1).Value
+                cboRef.Value = ActiveSheet.Cells(FilaEdicion, 1).Value & " - " & ObtenerNombreReferencia(ActiveSheet.Cells(FilaEdicion, 1).Value)
                 txt2.Value = ActiveSheet.Cells(FilaEdicion, 2).Value
             End If
         
@@ -120,7 +120,7 @@ Private Sub UserFormInitialize()
             CargarReferenciasCombo
             
             If ModoEdicion Then
-                cboRef.Value = ActiveSheet.Cells(FilaEdicion, 1).Value
+                cboRef.Value = ActiveSheet.Cells(FilaEdicion, 1).Value & " - " & ObtenerNombreReferencia(ActiveSheet.Cells(FilaEdicion, 1).Value)
                 txt2.Value = ActiveSheet.Cells(FilaEdicion, 2).Value
             End If
         
@@ -156,7 +156,7 @@ Private Sub UserFormInitialize()
             If ModoEdicion Then
                 Set wsLotes = ThisWorkbook.Sheets("LOTES")
                 txt1.Value = wsLotes.Cells(FilaEdicion, 1).Value
-                cboRef.Value = wsLotes.Cells(FilaEdicion, 2).Value
+                cboRef.Value = wsLotes.Cells(FilaEdicion, 2).Value & " - " & ObtenerNombreReferencia(wsLotes.Cells(FilaEdicion, 2).Value)
                 cboRefChange
                 cboColor.Value = wsLotes.Cells(FilaEdicion, 3).Value
                 cboTalla.Value = wsLotes.Cells(FilaEdicion, 4).Value
@@ -195,7 +195,7 @@ Private Sub UserFormInitialize()
             
             If ModoEdicion Then
                 Set wsTareas = ThisWorkbook.Sheets("TAREAS")
-                cboRef.Value = wsTareas.Cells(FilaEdicion, 1).Value
+                cboRef.Value = wsTareas.Cells(FilaEdicion, 1).Value & " - " & ObtenerNombreReferencia(wsTareas.Cells(FilaEdicion, 1).Value)
                 txt2.Value = wsTareas.Cells(FilaEdicion, 2).Value
                 txt3.Value = wsTareas.Cells(FilaEdicion, 3).Value
                 txt4.Value = wsTareas.Cells(FilaEdicion, 4).Value
@@ -599,12 +599,15 @@ End Sub
 Private Sub btnGuardar_Click()
     Dim datos(0 To 6) As Variant
     
+    Dim rid As String: rid = cboRef.Value
+    If InStr(rid, " - ") > 0 Then rid = Trim(Split(rid, " - ")(0))
+    
     If UCase$(TipoMaestroActual) = "TALLAS" Or UCase$(TipoMaestroActual) = "TAREAS" Or UCase$(TipoMaestroActual) = "LOTES" Or UCase$(TipoMaestroActual) = "COLORES" Then
-        If Len(Trim$(cboRef.Value)) = 0 Then
+        If Len(Trim$(rid)) = 0 Then
             MsgBox "X Seleccione una referencia", vbCritical
             Exit Sub
         End If
-        datos(0) = cboRef.Value
+        datos(0) = rid
     Else
         If Len(Trim$(txt1.Value)) = 0 Then
             MsgBox "X Campo ID obligatorio", vbCritical
@@ -615,7 +618,7 @@ Private Sub btnGuardar_Click()
     
     If UCase$(TipoMaestroActual) = "LOTES" Then
         datos(0) = txt1.Value
-        datos(1) = cboRef.Value
+        datos(1) = rid
         datos(2) = cboColor.Value
         datos(3) = cboTalla.Value
         datos(4) = txt4.Value

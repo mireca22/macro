@@ -112,15 +112,27 @@ End Sub
 ' Propósito: Informe consolidado por Referencia para la gerencia (v4.0).
 '==============================================================================
 Public Sub GenerarInformeGerencial()
-    Dim wsG As Worksheet, wsL As Worksheet, wsA As Worksheet
-    Dim dictRef As Object, i As Long, ultF As Long, fila As Long
-    Dim data As Variant, idRef As String, cant As Long
-    Dim k As Variant, res As Variant, av As Double, efic As Double, fEnt As Date, est As String
+    Dim wsG As Worksheet, wsL As Worksheet, wsA As Worksheet, wsT As Worksheet
+    Dim dictRef As Object, dictTaskCount As Object, i As Long, ultF As Long, fila As Long
+    Dim data As Variant, dataT As Variant, idRef As String, cant As Long, unidCompEquiv As Double
+    Dim k As Variant, res As Variant, av As Double, efic As Double, fEnt As Date, est As String, nTasks As Long
     
-    Set wsG = ThisWorkbook.Sheets("INFORME_PRODUCCION")
+    Set wsG = ThisWorkbook.Sheets("INFORME_CONSOLIDADO")
     Set wsL = ThisWorkbook.Sheets("LOTES")
     Set wsA = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    Set wsT = ThisWorkbook.Sheets("TAREAS")
     Set dictRef = CreateObject("Scripting.Dictionary")
+    Set dictTaskCount = CreateObject("Scripting.Dictionary")
+    
+    ' 1. Obtener conteo de tareas por referencia para cálculo de avance ponderado
+    ultF = wsT.Cells(wsT.Rows.Count, 1).End(xlUp).Row
+    If ultF >= 4 Then
+        dataT = wsT.Range("A4:A" & ultF).Value
+        For i = 1 To UBound(dataT, 1)
+            idRef = Trim(CStr(dataT(i, 1)))
+            If idRef <> "" Then dictTaskCount(idRef) = dictTaskCount(idRef) + 1
+        Next i
+    End If
     
     Application.ScreenUpdating = False
     
@@ -147,7 +159,8 @@ Public Sub GenerarInformeGerencial()
             idRef = Trim(CStr(data(i, 4)))
             If dictRef.Exists(idRef) Then
                 res = dictRef(idRef)
-                If data(i, 15) = "Completada" Then res(2) = res(2) + Val(data(i, 16))
+                ' Se suma el avance real de cada tarea (unidades procesadas)
+                res(2) = res(2) + Val(data(i, 16))
                 res(3) = res(3) + Val(data(i, 14)): res(4) = res(4) + Val(data(i, 20))
                 dictRef(idRef) = res
             End If
@@ -160,7 +173,15 @@ Public Sub GenerarInformeGerencial()
     fila = 4
     For Each k In dictRef.Keys
         res = dictRef(k)
-        av = IIf(res(1) > 0, res(2) / res(1), 0)
+        nTasks = 0: If dictTaskCount.Exists(CStr(k)) Then nTasks = dictTaskCount(CStr(k))
+        
+        ' Normalizar unidades (Terminadas): Suma de ops / cantidad de tareas (redondeado a 2 decimales de unidad)
+        unidCompEquiv = 0: If nTasks > 0 Then unidCompEquiv = Round(res(2) / nTasks, 2)
+        
+        ' Avance = Unidades Equivalentes Terminadas / Cantidad Recibida
+        ' Si una tarea no está asignada, res(2) no aumenta, manteniendo el avance en 0% para esa parte.
+        av = 0: If res(1) > 0 Then av = Round(unidCompEquiv / res(1), 4)
+        
         efic = IIf(res(4) > 0, res(3) / res(4), 0)
         fEnt = CalcularFechaFinEstimada(CStr(k), CLng(res(1) - res(2)), Date)
         
@@ -175,7 +196,7 @@ Public Sub GenerarInformeGerencial()
         
         wsG.Cells(fila, 1).Value = res(0)
         wsG.Cells(fila, 2).Value = res(1)
-        wsG.Cells(fila, 3).Value = res(2)
+        wsG.Cells(fila, 3).Value = unidCompEquiv
         wsG.Cells(fila, 4).Value = av
         wsG.Cells(fila, 5).Value = res(3)
         wsG.Cells(fila, 6).Value = res(4)
@@ -192,8 +213,8 @@ Public Sub GenerarInformeGerencial()
     Next k
     
     If fila > 4 Then
-        wsG.Range("D4:D" & fila - 1).NumberFormat = "0%"
-        wsG.Range("G4:G" & fila - 1).NumberFormat = "0%"
+        wsG.Range("D4:D" & fila - 1).NumberFormat = "0.00%"
+        wsG.Range("G4:G" & fila - 1).NumberFormat = "0.00%"
         wsG.Range("H4:H" & fila - 1).NumberFormat = "dd/mm/yyyy"
         wsG.Range("D4:D" & fila - 1).FormatConditions.AddDatabar
     End If
@@ -244,7 +265,7 @@ Public Sub GenerarReporteEficiencia()
         End If
         fila = fila + 1
     Next k
-    If fila > 4 Then wsR.Range("D4:D" & fila - 1).NumberFormat = "0%"
+    If fila > 4 Then wsR.Range("D4:D" & fila - 1).NumberFormat = "0.00%"
     wsR.Activate: MsgBox "Análisis de eficiencia completado."
 End Sub
 
@@ -278,7 +299,7 @@ Public Sub GenerarReporteAvanceProduccion()
     For i = 4 To ultF
         idRef = Trim(CStr(wsAs.Cells(i, 4).Value))
         key = idRef & "|" & Trim(CStr(wsAs.Cells(i, 9).Value))
-        cant = Val(wsAs.Cells(i, 11).Value)
+        cant = Val(wsAs.Cells(i, 16).Value) ' Se toma Unidades Completadas para el avance real
         If idRef <> "" Then
             If dictAs.Exists(key) Then dictAs(key) = dictAs(key) + cant Else dictAs(key) = cant
         End If
@@ -379,7 +400,7 @@ Public Sub GenerarReporteLotes()
             opsReq = cantLote * nTareas
             opsComp = 0: If dictOpsComp.Exists(idLote) Then opsComp = dictOpsComp(idLote)
             
-            avance = IIf(opsReq > 0, opsComp / opsReq, 0)
+            avance = IIf(opsReq > 0, Round(opsComp / opsReq, 4), 0)
             tEstHoras = (cantLote * tUnitTotal) / 3600
             
             If avance >= 1 Then estado = "COMPLETADO" Else If avance > 0 Then estado = "EN PROCESO" Else estado = "PENDIENTE"
@@ -388,12 +409,16 @@ Public Sub GenerarReporteLotes()
             If estado = "COMPLETADO" Then wsR.Range("A" & fila & ":K" & fila).Interior.Color = RGB(220, 255, 220)
             fila = fila + 1
         Next i
-        wsR.Range("I4:I" & fila).NumberFormat = "0%": wsR.Range("J4:J" & fila).NumberFormat = "0.00"
+        wsR.Range("I4:I" & fila).NumberFormat = "0.00%": wsR.Range("J4:J" & fila).NumberFormat = "0.00"
     End If
     Call AjustarAnchoColumnasInteligente(wsR): wsR.Activate: Application.ScreenUpdating = True
 End Sub
 
 
+'==============================================================================
+' SUB: GenerarInformeGerencialProduccion
+' Propósito: Calcula el reporte de avance general por cada referencia
+'==============================================================================
 Sub GenerarInformeGerencialProduccion()
     'Genera un informe de avance agrupado por referencia con formato de texto
     Dim wsInforme As Worksheet, wsRecep As Worksheet, wsAsig As Worksheet, wsTareas As Worksheet, wsRef As Worksheet
@@ -406,7 +431,7 @@ Sub GenerarInformeGerencialProduccion()
     Dim cant As Long, opsDone As Long, tasksCount As Long
     Dim key As String
     
-    Set wsInforme = ThisWorkbook.Sheets("INFORME_PRODUCCION")
+    Set wsInforme = ThisWorkbook.Sheets("INFORME_CONSOLIDADO")
     Set wsRecep = ThisWorkbook.Sheets("LOTES")
     Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     Set wsTareas = ThisWorkbook.Sheets("TAREAS")
@@ -506,24 +531,6 @@ Sub GenerarInformeGerencialProduccion()
         End If
     Next i
     
-    '5. Calcular Lotes Terminados (Cantidad Terminada)
-    Dim k As Variant
-    For Each k In dictLoteStatus.Keys
-        arrL = dictLoteStatus(k)
-        'Si OpsDone >= OpsReq, el lote está terminado
-        If arrL(1) > 0 And arrL(2) >= arrL(1) Then
-            Dim partes() As String
-            partes = Split(k, "|") '0=Lote, 1=Ref
-            idRef = partes(1)
-            
-            If dictRefData.Exists(idRef) Then
-                arr = dictRefData(idRef)
-                arr(4) = arr(4) + arrL(0) 'Sumar cantidad del lote a terminados
-                dictRefData(idRef) = arr
-            End If
-        End If
-    Next k
-    
     '6. Generar Informe Visual
     ' Ajuste v3.2: Respetar botón VOLVER en Fila 2 (Limpiar solo desde fila 4)
     wsInforme.Rows("4:" & wsInforme.Rows.Count).Clear
@@ -540,15 +547,21 @@ Sub GenerarInformeGerencialProduccion()
     Dim fila As Long
     fila = 7
     
+    Dim k As Variant
     For Each k In dictRefData.Keys
         arr = dictRefData(k)
         'arr: 0=Desc, 1=TotalQty, 2=TotalOpsReq, 3=TotalOpsDone, 4=FinishedQty
         
+        ' Calcular unidades terminadas equivalentes
+        tasksCount = 0: If dictRefTasks.Exists(k) Then tasksCount = dictRefTasks(k)
+        If tasksCount > 0 Then arr(4) = Round(arr(3) / tasksCount, 2) Else arr(4) = 0
+        
         Dim avance As Double
-        If arr(2) > 0 Then avance = arr(3) / arr(2) Else avance = 0
+        ' Avance = Unidades terminadas equivalentes / Cantidad Recibida (Redondeo a 4 decimales para precisión de %)
+        If arr(1) > 0 Then avance = Round(arr(4) / arr(1), 4) Else avance = 0
         
         'Bloque de referencia
-        wsInforme.Cells(fila, 2).Value = "Referencia:  " & k
+        wsInforme.Cells(fila, 2).Value = k
         wsInforme.Cells(fila, 2).Font.Bold = True
         fila = fila + 1
         
@@ -558,7 +571,7 @@ Sub GenerarInformeGerencialProduccion()
         wsInforme.Cells(fila, 2).Value = "Cantidad Recibida: " & arr(1)
         fila = fila + 1
         
-        wsInforme.Cells(fila, 2).Value = "Avance: " & Format(avance, "0%")
+        wsInforme.Cells(fila, 2).Value = "Avance: " & Format(avance, "0.00%")
         'Barra de progreso visual simple
         If avance > 0 Then
             wsInforme.Cells(fila, 3).Value = String(Int(avance * 10), "█")
@@ -566,7 +579,7 @@ Sub GenerarInformeGerencialProduccion()
         End If
         fila = fila + 1
         
-        wsInforme.Cells(fila, 2).Value = "Cantidad terminadas: " & arr(4)
+        wsInforme.Cells(fila, 2).Value = "Unidades terminadas: " & Format(arr(4), "#,##0.0")
         fila = fila + 2 'Espacio entre referencias
     Next k
     

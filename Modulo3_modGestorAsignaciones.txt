@@ -29,6 +29,12 @@ Public Function CrearAsignacion(idOper As String, idRef As String, idLote As Str
     nTar = ObtenerNombreTarea(idRef, numTarea)
     tUnit = ObtenerTiempoUnitario(idRef, numTarea)
     
+    ' VALIDACIÓN 0: Tarea única por lote (Evitar duplicidad en nuevas asignaciones)
+    If ValidarTareaAsignadaPreviamente(idRef, idLote, color, talla, numTarea) Then
+        MsgBox "[X] Error: La tarea N° " & numTarea & " (" & nTar & ") ya ha sido asignada previamente para este lote (" & idLote & ") y talla (" & talla & ").", vbCritical, "Validación de Duplicados"
+        CrearAsignacion = False: Exit Function
+    End If
+
     ' Cálculos de carga de tiempo
     tTotalSeg = cantidad * tUnit: tTotalMin = tTotalSeg / 60
 
@@ -209,6 +215,29 @@ Public Function ValidarStockProduccion(idRef$, idLote$, color$, talla$, numTarea
     Else
         ValidarStockProduccion = True
     End If
+End Function
+
+'==============================================================================
+' FUNCIÓN: ValidarTareaAsignadaPreviamente
+' Propósito: Comprueba si una tarea específica ya existe para un lote/talla.
+'==============================================================================
+Private Function ValidarTareaAsignadaPreviamente(idRef$, idLote$, color$, talla$, numTarea$) As Boolean
+    Dim wsA As Worksheet, i&, ultF&, data
+    Set wsA = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    ultF = wsA.Cells(wsA.Rows.Count, 1).End(xlUp).Row
+    
+    If ultF < 4 Then ValidarTareaAsignadaPreviamente = False: Exit Function
+
+    ' Leemos columnas 4 (Ref), 6 (Lote), 7 (Color), 8 (Talla) y 9 (Tarea)
+    data = wsA.Range(wsA.Cells(4, 4), wsA.Cells(ultF, 9)).Value
+    For i = 1 To UBound(data, 1)
+        If CStr(data(i, 1)) = idRef And CStr(data(i, 3)) = idLote And _
+           CStr(data(i, 4)) = color And CStr(data(i, 5)) = talla And _
+           CStr(data(i, 6)) = numTarea Then
+            ValidarTareaAsignadaPreviamente = True: Exit Function
+        End If
+    Next i
+    ValidarTareaAsignadaPreviamente = False
 End Function
 
 '==============================================================================

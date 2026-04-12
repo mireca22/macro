@@ -54,6 +54,7 @@ Public Sub BuscarYEditarReferencia()
     
     On Error Resume Next: id = wsI.OLEObjects("cboBuscarRef").Object.Value: On Error GoTo 0
     If Trim(id) = "" Then MsgBox "Ingrese un ID de referencia.", vbInformation: Exit Sub
+    If InStr(id, " - ") > 0 Then id = Trim(Split(id, " - ")(0))
     
     ' Búsqueda exacta en columna A
     Set cell = wsR.Columns("A").Find(id, LookIn:=xlValues, LookAt:=xlWhole)
@@ -184,6 +185,9 @@ Sub GuardarRegistroMaestro(ByVal datos As Variant)
         Case "TAREAS": Set ws = ThisWorkbook.Sheets("TAREAS"): fila = IIf(ModoEdicion, FilaEdicion, ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1): ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 7)).Value = Array(datos(0), datos(1), datos(2), datos(3), datos(4), datos(5), datos(6)): Call ActualizarTiempoTotalReferencia(CStr(datos(0)))
     End Select
     
+    ' Actualizar la fila de edición global para permitir la transición fluida de Nuevo -> Editar
+    If fila > 0 Then FilaEdicion = fila
+
     If Not ws Is Nothing Then Call AjustarAnchoColumnasInteligente(ws)
     Call ActualizarCacheCompleto
     Application.ScreenUpdating = True

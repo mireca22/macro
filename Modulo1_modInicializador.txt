@@ -22,7 +22,11 @@ Public Sub InicializarSistema()
     If respuesta = vbCancel Then Exit Sub
     reinicioTotal = (respuesta = vbYes)
 
-    Call InvalidarCache
+    ' Intentar invalidar caché si el módulo 2 está presente
+    On Error Resume Next
+    Call ActualizarCacheCompleto
+    On Error GoTo 0
+    
     Application.ScreenUpdating = False
 
     ' Secuencia lógica de construcción del sistema
@@ -36,8 +40,7 @@ Public Sub InicializarSistema()
     Call CrearBotonesMaestros
     Call CrearComboTrazabilidad
     Call ActualizarCalendarioNoLaboral
-    Call CrearBotonesVolver    
-    Call ActualizarCacheCompleto
+    Call CrearBotonesVolver
 
     Application.ScreenUpdating = True
     MsgBox "SISTEMA INICIALIZADO" & vbCrLf & _
@@ -67,7 +70,7 @@ Public Sub CrearHojas(Optional reiniciarTotal As Boolean = False)
     Dim ws As Worksheet, nombresHojas As Variant, i&
     nombresHojas = Array("INICIO", "MANUAL", "ASIGNACIONES_DIARIAS", "OPERARIAS", _
         "REFERENCIAS", "COLORES", "TALLAS", "TAREAS", "LOTES", "EFICIENCIA_OPERARIAS", _
-        "DIAS_NO_LABORALES", "AVANCE_PRODUCCION", "REPORTE_LOTES", "INFORME_PRODUCCION", _
+        "DIAS_NO_LABORALES", "AVANCE_PRODUCCION", "REPORTE_LOTES", "INFORME_CONSOLIDADO", _
         "RESUMEN_DIARIO", "PRODUCCION_FINALIZADA", "ANALISIS_TIEMPOS", _
         "ARCHIVO_ASIGNACIONES", "PARAMETROS", "MATRIZ_ASIGNACION", "TRAZABILIDAD_LOTE")
 
