@@ -1,7 +1,7 @@
 Option Explicit
 
 '==============================================================================
-' MODULO 7 - modReportes v3.3.6 (DOCUMENTACIÓN EXHAUSTIVA)
+' MODULO 7 - modReportes v3.3.7 (FILTRO OPERARIAS ACTIVAS)
 ' Propósito: Motor de generación de inteligencia de negocios (BI).
 '            Procesa datos históricos para generar reportes de ocupación,
 '            eficiencia, avance de producción y trazabilidad.
@@ -33,24 +33,23 @@ End Sub
 ' Propósito: Calcula la ocupación por operaria vs su capacidad instalada.
 '==============================================================================
 Public Sub GenerarReporteEnHoja(fecha As Date, tipo As String, Optional activar As Boolean = False)
-    Dim wsR As Worksheet, wsA As Worksheet, wsO As Worksheet, dictO As Object
+    Dim wsR As Worksheet, wsA As Worksheet, dictO As Object
     Dim i As Long, ultF As Long, fila As Long
     Dim idOp As String, nomOp As String, cap As Double
     Dim fFila As Date, data As Variant, k As Variant, d As Variant
     Dim ocu As Double, disp As Double, est As String
+    Dim colOp As Collection
     
     Set wsR = ThisWorkbook.Sheets("RESUMEN_DIARIO")
     Set wsA = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    Set wsO = ThisWorkbook.Sheets("OPERARIAS")
     Set dictO = CreateObject("Scripting.Dictionary")
     
-    ultF = wsO.Cells(wsO.Rows.Count, 1).End(xlUp).Row
-    For i = 4 To ultF
-        idOp = Trim(CStr(wsO.Cells(i, 1).Value))
-        nomOp = Trim(CStr(wsO.Cells(i, 2).Value))
-        cap = Val(wsO.Cells(i, 3).Value)
-        If idOp <> "" Then dictO(idOp) = Array(nomOp, cap, 0)
-    Next i
+    ' 1. Inicializar con operarias activas desde caché (Filtro solicitado)
+    Set colOp = ObtenerAllOperarias(True)
+    For Each k In colOp
+        idOp = CStr(k)
+        dictO(idOp) = Array(ObtenerNombreOperaria(idOp), ObtenerHorasDisponiblesOperaria(idOp), 0)
+    Next k
     
     ultF = wsA.Cells(wsA.Rows.Count, 1).End(xlUp).Row
     If ultF >= 4 Then
@@ -226,11 +225,11 @@ End Sub
 ' Propósito: Compara tiempos estándar vs reales para medir desempeño por operaria.
 '==============================================================================
 Public Sub GenerarReporteEficiencia()
-    Dim wsR As Worksheet, wsA As Worksheet, dictP As Object
-    Dim i As Long, ultF As Long, fila As Long
-    Dim fIni As Date, fFin As Date, fStr As String
+    Dim wsR As Worksheet, wsA As Worksheet, dictP As Object, colOp As Collection, dictActivas As Object
+    Dim i As Long, ultF As Long, fila As Long, dLab As Long
+    Dim fIni As Date, fFin As Date, fStr As String, fIter As Date
     Dim data As Variant, key As String, k As Variant, d As Variant
-    Dim tEst As Double, tReal As Double, efic As Double
+    Dim tProd As Double, capOp As Double, efic As Double, idOp As String
     
     ' Sugerir primer día del mes actual
     fStr = InputBox("Inicio (dd/mm/yyyy):", "Reporte Eficiencia", Format(DateSerial(Year(Date), Month(Date), 1), "dd/mm/yyyy"))
@@ -243,18 +242,45 @@ Public Sub GenerarReporteEficiencia()
     ' Asegurar que la fecha de fin no sea anterior a la de inicio
     If fFin < fIni Then MsgBox "La fecha de fin no puede ser anterior a la fecha de inicio.", vbCritical: Exit Sub
 
+    ' 1. Calcular días laborales en el rango (descontando festivos y fines de semana)
+    dLab = 0
+    For fIter = fIni To fFin
+        If EsDiaLaboral(fIter) Then dLab = dLab + 1
+    Next fIter
+
     Set wsR = ThisWorkbook.Sheets("EFICIENCIA_OPERARIAS")
     Set wsA = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     Set dictP = CreateObject("Scripting.Dictionary")
     
+    ' 2. Crear set de operarias activas para filtrado rápido
+    Set dictActivas = CreateObject("Scripting.Dictionary")
+    Set colOp = ObtenerAllOperarias(True)
+    For Each k In colOp: dictActivas(CStr(k)) = True: Next k
+
+    ' 3. Sumar minutos producidos (Solo operarias activas que tengan asignación en el periodo)
     ultF = wsA.Cells(wsA.Rows.Count, 1).End(xlUp).Row: If ultF < 4 Then Exit Sub
     data = wsA.Range(wsA.Cells(4, 1), wsA.Cells(ultF, 21)).Value
     For i = 1 To UBound(data, 1)
         If IsDate(data(i, 1)) Then
-            If data(i, 1) >= fIni And data(i, 1) <= fFin And data(i, 15) = "Completada" Then
-                key = Trim(CStr(data(i, 2)))
-                tEst = Val(data(i, 14)): tReal = Val(data(i, 20))
-                If Not dictP.Exists(key) Then dictP(key) = Array(Trim(CStr(data(i, 3))), tEst, tReal) Else d = dictP(key): d(1) = d(1) + tEst: d(2) = d(2) + tReal: dictP(key) = d
+            If data(i, 1) >= fIni And data(i, 1) <= fFin Then
+                idOp = Trim(CStr(data(i, 2)))
+                
+                ' Solo procesar si la operaria está actualmente activa
+                If dictActivas.Exists(idOp) Then
+                    ' Si tiene al menos una asignación en el rango, la incluimos en el reporte
+                    If Not dictP.Exists(idOp) Then
+                        capOp = ObtenerHorasDisponiblesOperaria(idOp) * dLab
+                        dictP(idOp) = Array(ObtenerNombreOperaria(idOp), capOp, 0)
+                    End If
+                    
+                    ' Sumar producción solo de tareas terminadas
+                    If data(i, 15) = "Completada" Then
+                        d = dictP(idOp)
+                        tProd = Val(data(i, 14)) ' Col 14: Tiempo_Total_Asignado_Minutos
+                        d(2) = d(2) + tProd
+                        dictP(idOp) = d
+                    End If
+                End If
             End If
         End If
     Next i
@@ -272,12 +298,13 @@ Public Sub GenerarReporteEficiencia()
     wsR.Range("A2").Font.Italic = True
     
     ' Headers de tabla
-    wsR.Range("A3:D3").Value = Array("Operaria", "Tiempo Est. (Min)", "Tiempo Real (Min)", "Eficiencia %")
+    wsR.Range("A3:D3").Value = Array("Operaria", "Disponibilidad (Min)", "Producción (Min)", "Eficiencia %")
     wsR.Range("A3:D3").Font.Bold = True: wsR.Range("A3:D3").Interior.Color = RGB(220, 220, 220)
     
     fila = 4
     For Each k In dictP.Keys
-        d = dictP(k): efic = IIf(d(2) > 0, d(1) / d(2), 0)
+        d = dictP(k)
+        efic = IIf(d(1) > 0, d(2) / d(1), 0) ' Eficiencia = Producido / Disponible
         wsR.Cells(fila, 1).Value = d(0): wsR.Cells(fila, 2).Value = d(1): wsR.Cells(fila, 3).Value = d(2): wsR.Cells(fila, 4).Value = efic
         If efic < 0.8 Then
             wsR.Cells(fila, 4).Font.Color = vbRed
