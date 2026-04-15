@@ -114,7 +114,8 @@ Public Sub GenerarInformeGerencial()
     Dim wsG As Worksheet, wsL As Worksheet, wsA As Worksheet, wsT As Worksheet
     Dim dictRef As Object, dictTaskCount As Object, i As Long, ultF As Long, fila As Long
     Dim data As Variant, dataT As Variant, idRef As String, cant As Long, unidCompEquiv As Double
-    Dim k As Variant, res As Variant, av As Double, efic As Double, fEnt As Date, est As String, nTasks As Long
+    Dim k As Variant, res As Variant, av As Double, efic As Double, fEnt As Date, est As String, totalTimePerUnit As Double
+    Dim estadoLote As String, totalOpsProyectadas As Double
     
     Set wsG = ThisWorkbook.Sheets("INFORME_CONSOLIDADO")
     Set wsL = ThisWorkbook.Sheets("LOTES")
@@ -123,13 +124,13 @@ Public Sub GenerarInformeGerencial()
     Set dictRef = CreateObject("Scripting.Dictionary")
     Set dictTaskCount = CreateObject("Scripting.Dictionary")
     
-    ' 1. Obtener conteo de tareas por referencia para cálculo de avance ponderado
+    ' 1. Obtener carga total de tiempo por unidad (Suma de Segundos de todas las tareas)
     ultF = wsT.Cells(wsT.Rows.Count, 1).End(xlUp).Row
     If ultF >= 4 Then
-        dataT = wsT.Range("A4:A" & ultF).Value
+        dataT = wsT.Range("A4:D" & ultF).Value
         For i = 1 To UBound(dataT, 1)
             idRef = Trim(CStr(dataT(i, 1)))
-            If idRef <> "" Then dictTaskCount(idRef) = dictTaskCount(idRef) + 1
+            If idRef <> "" Then dictTaskCount(idRef) = dictTaskCount(idRef) + Val(dataT(i, 4))
         Next i
     End If
     
@@ -137,15 +138,20 @@ Public Sub GenerarInformeGerencial()
     
     ultF = wsL.Cells(wsL.Rows.Count, 1).End(xlUp).Row
     If ultF >= 4 Then
-        data = wsL.Range(wsL.Cells(4, 1), wsL.Cells(ultF, 6)).Value
+        ' Accedemos hasta la columna 10 para validar el Estado del Lote
+        data = wsL.Range(wsL.Cells(4, 1), wsL.Cells(ultF, 10)).Value
         For i = 1 To UBound(data, 1)
             idRef = Trim(CStr(data(i, 2)))
             cant = Val(data(i, 5))
+            estadoLote = Trim(CStr(data(i, 10)))
+            
             If idRef <> "" Then
                 If Not dictRef.Exists(idRef) Then
-                    dictRef(idRef) = Array(ObtenerNombreReferencia(idRef), cant, 0, 0, 0)
+                    ' Array: 0:Nombre, 1:TotalQty, 2:OpsDone, 3:tAsig, 4:tReal, 5:UnidTerminadasReales
+                    dictRef(idRef) = Array(ObtenerNombreReferencia(idRef), cant, 0, 0, 0, IIf(estadoLote = "Completada", cant, 0))
                 Else
                     res = dictRef(idRef): res(1) = res(1) + cant: dictRef(idRef) = res
+                    If estadoLote = "Completada" Then res(5) = res(5) + cant: dictRef(idRef) = res
                 End If
             End If
         Next i
@@ -158,8 +164,8 @@ Public Sub GenerarInformeGerencial()
             idRef = Trim(CStr(data(i, 4)))
             If dictRef.Exists(idRef) Then
                 res = dictRef(idRef)
-                ' Se suma el avance real de cada tarea (unidades procesadas)
-                res(2) = res(2) + Val(data(i, 16))
+                ' PROGRESO PONDERADO: Unidades Completadas (Col 16) * Tiempo Unitario Tarea (Col 12)
+                res(2) = res(2) + (CDbl(data(i, 16)) * CDbl(data(i, 12)))
                 res(3) = res(3) + Val(data(i, 14)): res(4) = res(4) + Val(data(i, 20))
                 dictRef(idRef) = res
             End If
@@ -172,17 +178,19 @@ Public Sub GenerarInformeGerencial()
     fila = 4
     For Each k In dictRef.Keys
         res = dictRef(k)
-        nTasks = 0: If dictTaskCount.Exists(CStr(k)) Then nTasks = dictTaskCount(CStr(k))
+        totalTimePerUnit = 0: If dictTaskCount.Exists(CStr(k)) Then totalTimePerUnit = dictTaskCount(CStr(k))
         
-        ' Normalizar unidades (Terminadas): Suma de ops / cantidad de tareas (redondeado a 2 decimales de unidad)
-        unidCompEquiv = 0: If nTasks > 0 Then unidCompEquiv = Round(res(2) / nTasks, 2)
+        ' 1. Unidades Terminadas (Solo lotes físicos con todas las tareas al 100%)
+        unidCompEquiv = res(5)
         
-        ' Avance = Unidades Equivalentes Terminadas / Cantidad Recibida
-        ' Si una tarea no está asignada, res(2) no aumenta, manteniendo el avance en 0% para esa parte.
-        av = 0: If res(1) > 0 Then av = Round(unidCompEquiv / res(1), 4)
+        ' 2. Avance % (Segundos producidos reales / Segundos totales proyectados por la cantidad recibida)
+        totalOpsProyectadas = CDbl(res(1)) * totalTimePerUnit
+        av = 0
+        If totalOpsProyectadas > 0 Then av = Round(res(2) / totalOpsProyectadas, 4)
         
         efic = IIf(res(4) > 0, res(3) / res(4), 0)
-        fEnt = CalcularFechaFinEstimada(CStr(k), CLng(res(1) - res(2)), Date)
+        ' Estimación de fecha fin basada en el esfuerzo remanente real
+        fEnt = CalcularFechaFinEstimada(CStr(k), CLng(res(1) - IIf(totalTimePerUnit > 0, res(2) / totalTimePerUnit, 0)), Date)
         
         ' Corrección estructura IF
         If av >= 1 Then
