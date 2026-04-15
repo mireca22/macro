@@ -1,7 +1,7 @@
 Option Explicit
 
 '==============================================================================
-' MODULO 7 - modReportes v3.3.7 (FILTRO OPERARIAS ACTIVAS)
+' MODULO 7 - modReportes v3.3.8 (AVANCE PRODUCCION CORREGIDO)
 ' Propósito: Motor de generación de inteligencia de negocios (BI).
 '            Procesa datos históricos para generar reportes de ocupación,
 '            eficiencia, avance de producción y trazabilidad.
@@ -51,7 +51,7 @@ Public Sub GenerarReporteEnHoja(fecha As Date, tipo As String, Optional activar 
         dictO(idOp) = Array(ObtenerNombreOperaria(idOp), ObtenerHorasDisponiblesOperaria(idOp), 0)
     Next k
     
-    ultF = wsA.Cells(wsA.Rows.Count, 1).End(xlUp).Row
+    ultF = wsA.Cells(wsA.Rows.count, 1).End(xlUp).Row
     If ultF >= 4 Then
         data = wsA.Range(wsA.Cells(4, 1), wsA.Cells(ultF, 15)).Value
         For i = 1 To UBound(data, 1)
@@ -59,7 +59,7 @@ Public Sub GenerarReporteEnHoja(fecha As Date, tipo As String, Optional activar 
                 If Int(data(i, 1)) = Int(fecha) Then
                     idOp = Trim(CStr(data(i, 2)))
                     If dictO.Exists(idOp) Then
-                        d = dictO(idOp): d(2) = d(2) + Val(data(i, 14)): dictO(idOp) = d
+                        d = dictO(idOp): d(2) = d(2) + val(data(i, 14)): dictO(idOp) = d
                     End If
                 End If
             End If
@@ -67,8 +67,8 @@ Public Sub GenerarReporteEnHoja(fecha As Date, tipo As String, Optional activar 
     End If
     
     Application.ScreenUpdating = False
-    wsR.Rows("4:" & wsR.Rows.Count).ClearContents
-    wsR.Rows("4:" & wsR.Rows.Count).Interior.ColorIndex = xlNone
+    wsR.Rows("4:" & wsR.Rows.count).ClearContents
+    wsR.Rows("4:" & wsR.Rows.count).Interior.ColorIndex = xlNone
     
     fila = 4
     For Each k In dictO.Keys
@@ -76,7 +76,6 @@ Public Sub GenerarReporteEnHoja(fecha As Date, tipo As String, Optional activar 
         ocu = IIf(d(1) > 0, d(2) / d(1), 0)
         disp = d(1) - d(2)
         
-        ' Corrección estructura IF
         If ocu > 1.05 Then
             est = "SOBRECARGA"
         ElseIf ocu >= 0.9 Then
@@ -93,9 +92,9 @@ Public Sub GenerarReporteEnHoja(fecha As Date, tipo As String, Optional activar 
         wsR.Cells(fila, 6).Value = est
         
         Select Case est
-            Case "SOBRECARGA": wsR.Cells(fila, 6).Interior.Color = RGB(255, 199, 206)
-            Case "ÓPTIMA":     wsR.Cells(fila, 6).Interior.Color = RGB(198, 239, 206)
-            Case "DISPONIBLE": wsR.Cells(fila, 6).Interior.Color = RGB(255, 235, 156)
+            Case "SOBRECARGA": wsR.Cells(fila, 6).Interior.color = RGB(255, 199, 206)
+            Case "ÓPTIMA":     wsR.Cells(fila, 6).Interior.color = RGB(198, 239, 206)
+            Case "DISPONIBLE": wsR.Cells(fila, 6).Interior.color = RGB(255, 235, 156)
         End Select
         fila = fila + 1
     Next k
@@ -125,29 +124,27 @@ Public Sub GenerarInformeGerencial()
     Set dictTaskCount = CreateObject("Scripting.Dictionary")
     
     ' 1. Obtener carga total de tiempo por unidad (Suma de Segundos de todas las tareas)
-    ultF = wsT.Cells(wsT.Rows.Count, 1).End(xlUp).Row
+    ultF = wsT.Cells(wsT.Rows.count, 1).End(xlUp).Row
     If ultF >= 4 Then
         dataT = wsT.Range("A4:D" & ultF).Value
         For i = 1 To UBound(dataT, 1)
             idRef = Trim(CStr(dataT(i, 1)))
-            If idRef <> "" Then dictTaskCount(idRef) = dictTaskCount(idRef) + Val(dataT(i, 4))
+            If idRef <> "" Then dictTaskCount(idRef) = dictTaskCount(idRef) + val(dataT(i, 4))
         Next i
     End If
     
     Application.ScreenUpdating = False
     
-    ultF = wsL.Cells(wsL.Rows.Count, 1).End(xlUp).Row
+    ultF = wsL.Cells(wsL.Rows.count, 1).End(xlUp).Row
     If ultF >= 4 Then
-        ' Accedemos hasta la columna 10 para validar el Estado del Lote
         data = wsL.Range(wsL.Cells(4, 1), wsL.Cells(ultF, 10)).Value
         For i = 1 To UBound(data, 1)
             idRef = Trim(CStr(data(i, 2)))
-            cant = Val(data(i, 5))
+            cant = val(data(i, 5))
             estadoLote = Trim(CStr(data(i, 10)))
             
             If idRef <> "" Then
                 If Not dictRef.Exists(idRef) Then
-                    ' Array: 0:Nombre, 1:TotalQty, 2:OpsDone, 3:tAsig, 4:tReal, 5:UnidTerminadasReales
                     dictRef(idRef) = Array(ObtenerNombreReferencia(idRef), cant, 0, 0, 0, IIf(estadoLote = "Completada", cant, 0))
                 Else
                     res = dictRef(idRef): res(1) = res(1) + cant: dictRef(idRef) = res
@@ -157,42 +154,37 @@ Public Sub GenerarInformeGerencial()
         Next i
     End If
     
-    ultF = wsA.Cells(wsA.Rows.Count, 1).End(xlUp).Row
+    ultF = wsA.Cells(wsA.Rows.count, 1).End(xlUp).Row
     If ultF >= 4 Then
         data = wsA.Range(wsA.Cells(4, 1), wsA.Cells(ultF, 21)).Value
         For i = 1 To UBound(data, 1)
             idRef = Trim(CStr(data(i, 4)))
             If dictRef.Exists(idRef) Then
                 res = dictRef(idRef)
-                ' PROGRESO PONDERADO: Unidades Completadas (Col 16) * Tiempo Unitario Tarea (Col 12)
                 res(2) = res(2) + (CDbl(data(i, 16)) * CDbl(data(i, 12)))
-                res(3) = res(3) + Val(data(i, 14)): res(4) = res(4) + Val(data(i, 20))
+                res(3) = res(3) + val(data(i, 14)): res(4) = res(4) + val(data(i, 20))
                 dictRef(idRef) = res
             End If
         Next i
     End If
     
-    wsG.Rows("4:" & wsG.Rows.Count).ClearContents
-    wsG.Rows("4:" & wsG.Rows.Count).Interior.ColorIndex = xlNone
+    wsG.Rows("4:" & wsG.Rows.count).ClearContents
+    wsG.Rows("4:" & wsG.Rows.count).Interior.ColorIndex = xlNone
     
     fila = 4
     For Each k In dictRef.Keys
         res = dictRef(k)
         totalTimePerUnit = 0: If dictTaskCount.Exists(CStr(k)) Then totalTimePerUnit = dictTaskCount(CStr(k))
         
-        ' 1. Unidades Terminadas (Solo lotes físicos con todas las tareas al 100%)
         unidCompEquiv = res(5)
         
-        ' 2. Avance % (Segundos producidos reales / Segundos totales proyectados por la cantidad recibida)
         totalOpsProyectadas = CDbl(res(1)) * totalTimePerUnit
         av = 0
         If totalOpsProyectadas > 0 Then av = Round(res(2) / totalOpsProyectadas, 4)
         
         efic = IIf(res(4) > 0, res(3) / res(4), 0)
-        ' Estimación de fecha fin basada en el esfuerzo remanente real
         fEnt = CalcularFechaFinEstimada(CStr(k), CLng(res(1) - IIf(totalTimePerUnit > 0, res(2) / totalTimePerUnit, 0)), Date)
         
-        ' Corrección estructura IF
         If av >= 1 Then
             est = "TERMINADO"
         ElseIf av > 0 Then
@@ -212,9 +204,9 @@ Public Sub GenerarInformeGerencial()
         wsG.Cells(fila, 9).Value = est
         
         If est = "TERMINADO" Then
-            wsG.Cells(fila, 9).Interior.Color = RGB(198, 239, 206)
+            wsG.Cells(fila, 9).Interior.color = RGB(198, 239, 206)
         ElseIf est = "EN CURSO" Then
-            wsG.Cells(fila, 9).Interior.Color = RGB(255, 235, 156)
+            wsG.Cells(fila, 9).Interior.color = RGB(255, 235, 156)
         End If
         fila = fila + 1
     Next k
@@ -239,18 +231,14 @@ Public Sub GenerarReporteEficiencia()
     Dim data As Variant, key As String, k As Variant, d As Variant
     Dim tProd As Double, capOp As Double, efic As Double, idOp As String
     
-    ' Sugerir primer día del mes actual
     fStr = InputBox("Inicio (dd/mm/yyyy):", "Reporte Eficiencia", Format(DateSerial(Year(Date), Month(Date), 1), "dd/mm/yyyy"))
     If fStr = "" Or Not IsDate(fStr) Then Exit Sub Else fIni = CDate(fStr)
     
-    ' Sugerir último día del mes de la fecha de inicio seleccionada
     fStr = InputBox("Fin (dd/mm/yyyy):", "Reporte Eficiencia", Format(DateSerial(Year(fIni), Month(fIni) + 1, 0), "dd/mm/yyyy"))
     If fStr = "" Or Not IsDate(fStr) Then Exit Sub Else fFin = CDate(fStr)
     
-    ' Asegurar que la fecha de fin no sea anterior a la de inicio
     If fFin < fIni Then MsgBox "La fecha de fin no puede ser anterior a la fecha de inicio.", vbCritical: Exit Sub
 
-    ' 1. Calcular días laborales en el rango (descontando festivos y fines de semana)
     dLab = 0
     For fIter = fIni To fFin
         If EsDiaLaboral(fIter) Then dLab = dLab + 1
@@ -260,31 +248,26 @@ Public Sub GenerarReporteEficiencia()
     Set wsA = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     Set dictP = CreateObject("Scripting.Dictionary")
     
-    ' 2. Crear set de operarias activas para filtrado rápido
     Set dictActivas = CreateObject("Scripting.Dictionary")
     Set colOp = ObtenerAllOperarias(True)
     For Each k In colOp: dictActivas(CStr(k)) = True: Next k
 
-    ' 3. Sumar minutos producidos (Solo operarias activas que tengan asignación en el periodo)
-    ultF = wsA.Cells(wsA.Rows.Count, 1).End(xlUp).Row: If ultF < 4 Then Exit Sub
+    ultF = wsA.Cells(wsA.Rows.count, 1).End(xlUp).Row: If ultF < 4 Then Exit Sub
     data = wsA.Range(wsA.Cells(4, 1), wsA.Cells(ultF, 21)).Value
     For i = 1 To UBound(data, 1)
         If IsDate(data(i, 1)) Then
             If data(i, 1) >= fIni And data(i, 1) <= fFin Then
                 idOp = Trim(CStr(data(i, 2)))
                 
-                ' Solo procesar si la operaria está actualmente activa
                 If dictActivas.Exists(idOp) Then
-                    ' Si tiene al menos una asignación en el rango, la incluimos en el reporte
                     If Not dictP.Exists(idOp) Then
                         capOp = ObtenerHorasDisponiblesOperaria(idOp) * dLab
                         dictP(idOp) = Array(ObtenerNombreOperaria(idOp), capOp, 0)
                     End If
                     
-                    ' Sumar producción solo de tareas terminadas
                     If data(i, 15) = "Completada" Then
                         d = dictP(idOp)
-                        tProd = Val(data(i, 14)) ' Col 14: Tiempo_Total_Asignado_Minutos
+                        tProd = val(data(i, 14))
                         d(2) = d(2) + tProd
                         dictP(idOp) = d
                     End If
@@ -293,31 +276,28 @@ Public Sub GenerarReporteEficiencia()
         End If
     Next i
     
-    ' Limpiar y preparar reporte
     Application.ScreenUpdating = False
-    wsR.Rows("4:" & wsR.Rows.Count).ClearContents
-    wsR.Rows("4:" & wsR.Rows.Count).Interior.ColorIndex = xlNone
-    wsR.Rows("4:" & wsR.Rows.Count).Font.ColorIndex = xlAutomatic
+    wsR.Rows("4:" & wsR.Rows.count).ClearContents
+    wsR.Rows("4:" & wsR.Rows.count).Interior.ColorIndex = xlNone
+    wsR.Rows("4:" & wsR.Rows.count).Font.ColorIndex = xlAutomatic
     
-    ' Encabezados superiores y Rango de Fechas
     wsR.Range("A1").Value = "REPORTE DE EFICIENCIA DE OPERARIAS"
     wsR.Range("A1").Font.Bold = True: wsR.Range("A1").Font.Size = 14
     wsR.Range("A2").Value = "Periodo: " & Format(fIni, "dd/mm/yyyy") & " al " & Format(fFin, "dd/mm/yyyy")
     wsR.Range("A2").Font.Italic = True
     
-    ' Headers de tabla
     wsR.Range("A3:D3").Value = Array("Operaria", "Disponibilidad (Min)", "Producción (Min)", "Eficiencia %")
-    wsR.Range("A3:D3").Font.Bold = True: wsR.Range("A3:D3").Interior.Color = RGB(220, 220, 220)
+    wsR.Range("A3:D3").Font.Bold = True: wsR.Range("A3:D3").Interior.color = RGB(220, 220, 220)
     
     fila = 4
     For Each k In dictP.Keys
         d = dictP(k)
-        efic = IIf(d(1) > 0, d(2) / d(1), 0) ' Eficiencia = Producido / Disponible
+        efic = IIf(d(1) > 0, d(2) / d(1), 0)
         wsR.Cells(fila, 1).Value = d(0): wsR.Cells(fila, 2).Value = d(1): wsR.Cells(fila, 3).Value = d(2): wsR.Cells(fila, 4).Value = efic
         If efic < 0.8 Then
-            wsR.Cells(fila, 4).Font.Color = vbRed
+            wsR.Cells(fila, 4).Font.color = vbRed
         ElseIf efic > 0.95 Then
-            wsR.Cells(fila, 4).Font.Color = RGB(0, 128, 0)
+            wsR.Cells(fila, 4).Font.color = RGB(0, 128, 0)
         End If
         fila = fila + 1
     Next k
@@ -331,114 +311,395 @@ End Sub
 
 '==============================================================================
 ' SUB: GenerarReporteAvanceProduccion
-' Propósito: Analiza qué tareas faltan para completar una referencia completa.
+' Propósito: Muestra el avance por referencia en la hoja AVANCE_PRODUCCION.
 '==============================================================================
 Public Sub GenerarReporteAvanceProduccion()
-    Dim wsA As Worksheet, wsL As Worksheet, wsT As Worksheet, wsAs As Worksheet
-    Dim dictRefTasks As Object, dictAsignaciones As Object
-    Dim i As Long, j As Long, ultF As Long, fila As Long
-    Dim idRef As String, idLote As String, key As String
-    Dim nT As String, nomT As String, tT As Long
-    Dim cantLote As Long, tA As Long, p As Long, tP As Double, est As String
-    Dim dataT As Variant, dataAs As Variant, taskItem As Variant
-
-    Set wsA = ThisWorkbook.Sheets("AVANCE_PRODUCCION")
+    Dim wsAv    As Worksheet   ' Hoja de salida: AVANCE_PRODUCCION
+    Dim wsL     As Worksheet   ' Hoja LOTES
+    Dim wsT     As Worksheet   ' Hoja TAREAS
+    Dim wsAs    As Worksheet   ' Hoja ASIGNACIONES_DIARIAS
+    
+    ' Diccionario: Tiempo total por referencia (minutos por unidad completa)
+    ' Key: idRef, Value: Double (tiempo total unitario en minutos)
+    Dim dictTiempoTotalRef As Object
+    
+    ' Diccionario: Tiempo por tarea específica (para cálculo de minutos ejecutados)
+    ' Key: idRef & "|" & numTarea, Value: Double (tiempo unitario en minutos)
+    Dim dictTiempoTarea As Object
+    
+    ' Diccionario acumulador por referencia:
+    ' Key: idRef
+    ' Value: Array(
+    '   0 = NombreRef              String
+    '   1 = TotalCantidadLotes     Double   (suma de CantidadLote)
+    '   2 = TotalMinutosRequeridos Double   (suma de CantidadLote × TiempoTotalRef)
+    '   3 = TotalMinutosEjecutados Double   (suma de UnidadesCompletadas × TiempoUnitarioTarea)
+    '   4 = UnidadesTerminadas     Double   (lotes donde todas las tareas >= CantidadLote)
+    ' )
+    Dim dictRef As Object
+    
+    ' Diccionario: Por lote, almacenar cantidad
+    ' Key: idRef & "|" & idLote
+    ' Value: Array(
+    '   0 = CantidadLote           Double
+    '   1 = MinutosRequeridosLote  Double (CantidadLote × TiempoTotalRef)
+    ' )
+    Dim dictLoteInfo As Object
+    
+    ' Diccionario para acumular minutos ejecutados por tarea dentro de cada lote
+    ' Key: idRef & "|" & idLote & "|" & numTarea
+    ' Value: Double (minutos ejecutados = UnidadesCompletadas × TiempoUnitarioTarea)
+    Dim dictMinutosEjecutadosPorTarea As Object
+    
+    ' Diccionario para almacenar las tareas que tiene cada lote
+    ' Key: idRef & "|" & idLote
+    ' Value: Collection de números de tarea
+    Dim dictTareasDelLote As Object
+    
+    Dim i               As Long
+    Dim ultF            As Long
+    Dim fila            As Long
+    Dim idRef           As String
+    Dim idLote          As String
+    Dim numTarea        As String
+    Dim cantLote        As Double
+    Dim tiempoUnitarioSeg As Long
+    Dim tiempoUnitarioMin As Double
+    Dim tiempoTotalRefMin  As Double
+    Dim minutosEjecutados  As Double
+    Dim keyLote        As String
+    Dim keyTarea       As String
+    Dim keyTareaLote   As String
+    Dim dataL          As Variant
+    Dim dataT          As Variant
+    Dim dataAs         As Variant
+    Dim k              As Variant
+    Dim arrRef         As Variant
+    Dim tareaNum       As Variant
+    Dim colTareas      As Collection
+    Dim loteCompleto   As Boolean
+    Dim tareaReq       As Variant
+    Dim minutosNecesariosTarea As Double
+    Dim minutosRealTarea As Double
+    Dim estado         As String
+    Dim avance         As Double
+    Dim minutosReq     As Double
+    Dim minutosEjec    As Double
+    Dim unidTerminadas As Double
+    
+    Set wsAv = ThisWorkbook.Sheets("AVANCE_PRODUCCION")
     Set wsL = ThisWorkbook.Sheets("LOTES")
     Set wsT = ThisWorkbook.Sheets("TAREAS")
     Set wsAs = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     
-    ' 1. Cargar todas las Tareas en un diccionario (ID_Referencia -> Colección de Tareas)
-    Set dictRefTasks = CreateObject("Scripting.Dictionary")
-    ultF = wsT.Cells(wsT.Rows.Count, 1).End(xlUp).Row
+    Set dictTiempoTotalRef = CreateObject("Scripting.Dictionary")
+    Set dictTiempoTarea = CreateObject("Scripting.Dictionary")
+    Set dictRef = CreateObject("Scripting.Dictionary")
+    Set dictLoteInfo = CreateObject("Scripting.Dictionary")
+    Set dictMinutosEjecutadosPorTarea = CreateObject("Scripting.Dictionary")
+    Set dictTareasDelLote = CreateObject("Scripting.Dictionary")
+    
+    Application.ScreenUpdating = False
+    
+    '--------------------------------------------------------------------------
+    ' PASO 1: Cargar tiempos unitarios por tarea (en minutos) desde TAREAS
+    '--------------------------------------------------------------------------
+    ultF = wsT.Cells(wsT.Rows.count, 1).End(xlUp).Row
     If ultF >= 4 Then
-        dataT = wsT.Range("A4:D" & ultF).Value
+        dataT = wsT.Range(wsT.Cells(4, 1), wsT.Cells(ultF, 4)).Value
         For i = 1 To UBound(dataT, 1)
             idRef = Trim(CStr(dataT(i, 1)))
-            If idRef <> "" Then
-                If Not dictRefTasks.Exists(idRef) Then Set dictRefTasks(idRef) = New Collection
-                ' Guardar: NumeroTarea, NombreTarea, TiempoSeg
-                dictRefTasks(idRef).Add Array(CStr(dataT(i, 2)), CStr(dataT(i, 3)), Val(dataT(i, 4)))
+            numTarea = Trim(CStr(dataT(i, 2)))
+            tiempoUnitarioSeg = CLng(val(dataT(i, 4)))
+            tiempoUnitarioMin = tiempoUnitarioSeg / 60
+            
+            If idRef <> "" And numTarea <> "" Then
+                keyTarea = idRef & "|" & numTarea
+                dictTiempoTarea(keyTarea) = tiempoUnitarioMin
             End If
         Next i
     End If
-
-    ' 2. Cargar Asignaciones Actuales (Lote|Tarea -> Cantidad completada y Estado)
-    Set dictAsignaciones = CreateObject("Scripting.Dictionary")
-    ultF = wsAs.Cells(wsAs.Rows.Count, 1).End(xlUp).Row
+    
+    '--------------------------------------------------------------------------
+    ' PASO 2: Calcular tiempo total por referencia (suma de tiempos de tareas)
+    '--------------------------------------------------------------------------
+    For Each k In dictTiempoTarea.Keys
+        idRef = Split(CStr(k), "|")(0)
+        If Not dictTiempoTotalRef.Exists(idRef) Then
+            dictTiempoTotalRef(idRef) = CDbl(dictTiempoTarea(k))
+        Else
+            dictTiempoTotalRef(idRef) = dictTiempoTotalRef(idRef) + CDbl(dictTiempoTarea(k))
+        End If
+    Next k
+    
+    '--------------------------------------------------------------------------
+    ' PASO 3: Procesar LOTES para construir estructura base
+    '--------------------------------------------------------------------------
+    ultF = wsL.Cells(wsL.Rows.count, 1).End(xlUp).Row
     If ultF >= 4 Then
-        ' Columnas: 6 (Lote), 9 (Tarea), 15 (Estado), 16 (UnidComp)
-        dataAs = wsAs.Range("A4:P" & ultF).Value
-        For i = 1 To UBound(dataAs, 1)
-            idLote = Trim(CStr(dataAs(i, 6)))
-            nT = Trim(CStr(dataAs(i, 9)))
-            If idLote <> "" And nT <> "" Then
-                key = idLote & "|" & nT
-                If Not dictAsignaciones.Exists(key) Then
-                    dictAsignaciones(key) = Array(Val(dataAs(i, 16)), CStr(dataAs(i, 15)))
+        dataL = wsL.Range(wsL.Cells(4, 1), wsL.Cells(ultF, 5)).Value
+        For i = 1 To UBound(dataL, 1)
+            idLote = Trim(CStr(dataL(i, 1)))
+            idRef = Trim(CStr(dataL(i, 2)))
+            cantLote = CDbl(val(dataL(i, 5)))
+            
+            If idRef <> "" And idLote <> "" And cantLote > 0 Then
+                ' Obtener tiempo total unitario de la referencia (en minutos)
+                tiempoTotalRefMin = 0
+                If dictTiempoTotalRef.Exists(idRef) Then
+                    tiempoTotalRefMin = dictTiempoTotalRef(idRef)
+                End If
+                
+                ' Guardar información del lote
+                keyLote = idRef & "|" & idLote
+                If Not dictLoteInfo.Exists(keyLote) Then
+                    dictLoteInfo(keyLote) = Array(cantLote, cantLote * tiempoTotalRefMin)
+                End If
+                
+                ' Inicializar colección de tareas para este lote (usando SET)
+                If Not dictTareasDelLote.Exists(keyLote) Then
+                    Set dictTareasDelLote(keyLote) = New Collection
+                End If
+                
+                ' Acumular en dictRef (estructura principal)
+                If Not dictRef.Exists(idRef) Then
+                    dictRef(idRef) = Array( _
+                        ObtenerNombreReferencia(idRef), _
+                        cantLote, _
+                        cantLote * tiempoTotalRefMin, _
+                        0, _
+                        0 _
+                    )
                 Else
-                    Dim tmp: tmp = dictAsignaciones(key)
-                    tmp(0) = tmp(0) + Val(dataAs(i, 16))
-                    ' Si alguna está en curso, el estado acumulado es en curso (a menos que ya sea completada)
-                    If tmp(1) <> "Completada" Then tmp(1) = CStr(dataAs(i, 15))
-                    dictAsignaciones(key) = tmp
+                    arrRef = dictRef(idRef)
+                    arrRef(1) = arrRef(1) + cantLote
+                    arrRef(2) = arrRef(2) + (cantLote * tiempoTotalRefMin)
+                    dictRef(idRef) = arrRef
                 End If
             End If
         Next i
     End If
     
-    ' 3. Limpiar Hoja y Preparar Escritura
-    Application.ScreenUpdating = False
-    wsA.Rows("4:" & wsA.Rows.Count).ClearContents
-    wsA.Rows("4:" & wsA.Rows.Count).Interior.ColorIndex = xlNone
-    wsA.Rows("4:" & wsA.Rows.Count).Font.ColorIndex = xlAutomatic
-    
-    ' Escribir Headers actualizados
-    wsA.Range("A3:J3").Value = Array("Lote", "Referencia", "Nombre Referencia", "Tarea", "Tiempo (Seg)", "Cant. Lote", "Cant. Terminado", "Pendiente", "Tiempo Pend (Min)", "Estado")
-    wsA.Range("A3:J3").Font.Bold = True: wsA.Range("A3:J3").Interior.Color = RGB(220, 220, 220)
-
-    fila = 4
-    ultF = wsL.Cells(wsL.Rows.Count, 1).End(xlUp).Row
+    '--------------------------------------------------------------------------
+    ' PASO 4: Procesar ASIGNACIONES_DIARIAS
+    '   a) Acumular minutos ejecutados por referencia
+    '   b) Acumular minutos ejecutados por lote+tarea
+    '   c) Registrar qué tareas existen por lote
+    '--------------------------------------------------------------------------
+    ultF = wsAs.Cells(wsAs.Rows.count, 1).End(xlUp).Row
     If ultF >= 4 Then
-        Dim dataL: dataL = wsL.Range("A4:E" & ultF).Value
-        For i = 1 To UBound(dataL, 1)
-            idLote = Trim(CStr(dataL(i, 1)))
-            idRef = Trim(CStr(dataL(i, 2)))
-            cantLote = Val(dataL(i, 5))
+        dataAs = wsAs.Range(wsAs.Cells(4, 1), wsAs.Cells(ultF, 16)).Value
+        For i = 1 To UBound(dataAs, 1)
+            idRef = Trim(CStr(dataAs(i, 4)))
+            idLote = Trim(CStr(dataAs(i, 6)))
+            numTarea = Trim(CStr(dataAs(i, 9)))
+            Dim uComp As Double
+            uComp = CDbl(val(dataAs(i, 16)))  ' Unidades Completadas
             
-            ' Si la referencia tiene tareas definidas, listarlas todas
-            If dictRefTasks.Exists(idRef) Then
-                For Each taskItem In dictRefTasks(idRef)
-                    nT = taskItem(0): nomT = taskItem(1): tT = taskItem(2)
-                    key = idLote & "|" & nT
+            If idRef <> "" And idLote <> "" And numTarea <> "" And uComp > 0 Then
+                ' Obtener tiempo unitario de esta tarea (en minutos)
+                keyTarea = idRef & "|" & numTarea
+                tiempoUnitarioMin = 0
+                If dictTiempoTarea.Exists(keyTarea) Then
+                    tiempoUnitarioMin = dictTiempoTarea(keyTarea)
+                End If
+                
+                ' Calcular minutos ejecutados en esta asignación
+                minutosEjecutados = uComp * tiempoUnitarioMin
+                
+                ' a) Acumular minutos ejecutados en dictRef
+                If dictRef.Exists(idRef) Then
+                    arrRef = dictRef(idRef)
+                    arrRef(3) = arrRef(3) + minutosEjecutados
+                    dictRef(idRef) = arrRef
+                End If
+                
+                ' b) Acumular minutos ejecutados por lote+tarea
+                keyTareaLote = idRef & "|" & idLote & "|" & numTarea
+                If Not dictMinutosEjecutadosPorTarea.Exists(keyTareaLote) Then
+                    dictMinutosEjecutadosPorTarea(keyTareaLote) = minutosEjecutados
+                Else
+                    dictMinutosEjecutadosPorTarea(keyTareaLote) = dictMinutosEjecutadosPorTarea(keyTareaLote) + minutosEjecutados
+                End If
+                
+                ' c) Registrar esta tarea en la colección del lote (usando SET)
+                keyLote = idRef & "|" & idLote
+                If dictTareasDelLote.Exists(keyLote) Then
+                    Set colTareas = dictTareasDelLote(keyLote)
                     
-                    tA = 0: est = "PENDIENTE"
-                    If dictAsignaciones.Exists(key) Then
-                        tA = dictAsignaciones(key)(0)
-                        est = UCase(dictAsignaciones(key)(1))
+                    ' Verificar si ya existe para evitar duplicados
+                    Dim tareaExiste As Boolean
+                    tareaExiste = False
+                    For Each tareaNum In colTareas
+                        If CStr(tareaNum) = numTarea Then
+                            tareaExiste = True
+                            Exit For
+                        End If
+                    Next tareaNum
+                    
+                    If Not tareaExiste Then
+                        colTareas.Add numTarea
                     End If
                     
-                    p = IIf(cantLote - tA > 0, cantLote - tA, 0)
-                    tP = (p * tT) / 60
-                    
-                    wsA.Range("A" & fila & ":J" & fila).Value = Array(idLote, idRef, ObtenerNombreReferencia(idRef), nomT, tT, cantLote, tA, p, tP, est)
-                    
-                    ' Resaltado de tareas PENDIENTES (Rosado/Rojo)
-                    If est = "PENDIENTE" Then
-                        With wsA.Range("A" & fila & ":J" & fila)
-                            .Interior.Color = RGB(255, 199, 206)
-                            .Font.Color = RGB(156, 0, 6)
-                        End With
-                    End If
-                    fila = fila + 1
-                Next taskItem
+                    ' Reasignar la colección modificada
+                    Set dictTareasDelLote(keyLote) = colTareas
+                End If
             End If
         Next i
     End If
     
-    Call AjustarAnchoColumnasInteligente(wsA)
-    wsA.Activate
-    Application.ScreenUpdating = True
-    MsgBox "Reporte de avance detallado por Lote generado.", vbInformation
+    '--------------------------------------------------------------------------
+    ' PASO 5: Calcular Unidades Terminadas por referencia
+    '   Un lote está TERMINADO cuando para CADA tarea que debería tener
+    '   (según las tareas definidas en la referencia), los minutos ejecutados
+    '   equivalen a haber completado al menos la CantidadLote.
+    '
+    '   Es decir: minutosEjecutados_en_tarea >= (CantidadLote × tiempoUnitario_tarea)
+    '--------------------------------------------------------------------------
+    For Each k In dictLoteInfo.Keys
+        idRef = Split(CStr(k), "|")(0)
+        idLote = Split(CStr(k), "|")(1)
+        cantLote = dictLoteInfo(k)(0)
+        
+        ' Obtener el tiempo total unitario de la referencia
+        tiempoTotalRefMin = 0
+        If dictTiempoTotalRef.Exists(idRef) Then
+            tiempoTotalRefMin = dictTiempoTotalRef(idRef)
+        End If
+        
+        ' Determinar cuántas tareas DEBERÍA tener este lote
+        ' (todas las tareas definidas para la referencia)
+        Dim tareasRequeridas As New Collection
+        Dim taskKey As Variant
+        For Each taskKey In dictTiempoTarea.Keys
+            If Left(CStr(taskKey), Len(idRef)) = idRef And Mid(CStr(taskKey), Len(idRef) + 1, 1) = "|" Then
+                Dim tareaNumReq As String
+                tareaNumReq = Split(CStr(taskKey), "|")(1)
+                tareasRequeridas.Add tareaNumReq
+            End If
+        Next taskKey
+        
+        If tareasRequeridas.count = 0 Then GoTo SiguienteLote2
+        
+        ' Verificar que TODAS las tareas requeridas están completas al 100%
+        loteCompleto = True
+        For Each tareaReq In tareasRequeridas
+            keyTareaLote = idRef & "|" & idLote & "|" & tareaReq
+            
+            ' Obtener tiempo unitario de esta tarea
+            keyTarea = idRef & "|" & tareaReq
+            tiempoUnitarioMin = 0
+            If dictTiempoTarea.Exists(keyTarea) Then
+                tiempoUnitarioMin = dictTiempoTarea(keyTarea)
+            End If
+            
+            ' Minutos necesarios para completar esta tarea al 100%
+            minutosNecesariosTarea = cantLote * tiempoUnitarioMin
+            
+            ' Minutos realmente ejecutados
+            minutosRealTarea = 0
+            If dictMinutosEjecutadosPorTarea.Exists(keyTareaLote) Then
+                minutosRealTarea = dictMinutosEjecutadosPorTarea(keyTareaLote)
+            End If
+            
+            ' Si no alcanza el 100%, el lote no está terminado
+            If minutosRealTarea < minutosNecesariosTarea - 0.001 Then
+                loteCompleto = False
+                Exit For
+            End If
+        Next tareaReq
+        
+        ' Si el lote está completo, sumar su cantidad a UnidadesTerminadas
+        If loteCompleto And tareasRequeridas.count > 0 Then
+            If dictRef.Exists(idRef) Then
+                arrRef = dictRef(idRef)
+                arrRef(4) = arrRef(4) + cantLote
+                dictRef(idRef) = arrRef
+            End If
+        End If
+            
+SiguienteLote2:
+        Next k
+        
+        '--------------------------------------------------------------------------
+        ' PASO 6: Escribir resultados en hoja AVANCE_PRODUCCION
+        '--------------------------------------------------------------------------
+        wsAv.Rows("4:" & wsAv.Rows.count).ClearContents
+        wsAv.Rows("4:" & wsAv.Rows.count).Interior.ColorIndex = xlNone
+        wsAv.Rows("4:" & wsAv.Rows.count).Font.ColorIndex = xlAutomatic
+        
+        ' Headers
+        wsAv.Range("A3:H3").Value = Array( _
+            "Referencia", _
+            "Nombre", _
+            "Total Unid. Lotes", _
+            "Minutos Requeridos", _
+            "Minutos Ejecutados", _
+            "Avance %", _
+            "Unidades Terminadas", _
+            "Estado" _
+        )
+        wsAv.Range("A3:H3").Font.Bold = True
+        wsAv.Range("A3:H3").Interior.color = RGB(220, 220, 220)
+        
+        fila = 4
+        For Each k In dictRef.Keys
+            arrRef = dictRef(k)
+            
+            minutosReq = CDbl(arrRef(2))
+            minutosEjec = CDbl(arrRef(3))
+            unidTerminadas = CDbl(arrRef(4))
+            
+            ' Avance = minutos ejecutados / minutos requeridos
+            avance = 0
+            If minutosReq > 0 Then
+                avance = Round(minutosEjec / minutosReq, 4)
+            End If
+            
+            ' Determinar estado
+            If avance >= 1 Then
+                estado = "TERMINADO"
+            ElseIf avance > 0 Then
+                estado = "EN CURSO"
+            Else
+                estado = "PENDIENTE"
+            End If
+            
+            wsAv.Cells(fila, 1).Value = CStr(k)
+            wsAv.Cells(fila, 2).Value = arrRef(0)
+            wsAv.Cells(fila, 3).Value = arrRef(1)
+            wsAv.Cells(fila, 4).Value = Round(minutosReq, 2)
+            wsAv.Cells(fila, 5).Value = Round(minutosEjec, 2)
+            wsAv.Cells(fila, 6).Value = avance
+            wsAv.Cells(fila, 7).Value = unidTerminadas
+            wsAv.Cells(fila, 8).Value = estado
+            
+            ' Formato condicional de fila
+            Select Case estado
+                Case "TERMINADO"
+                    wsAv.Range("A" & fila & ":H" & fila).Interior.color = RGB(198, 239, 206)
+                    wsAv.Range("A" & fila & ":H" & fila).Font.color = RGB(0, 97, 0)
+                Case "EN CURSO"
+                    wsAv.Range("A" & fila & ":H" & fila).Interior.color = RGB(255, 235, 156)
+                    wsAv.Range("A" & fila & ":H" & fila).Font.color = RGB(156, 87, 0)
+                Case "PENDIENTE"
+                    wsAv.Range("A" & fila & ":H" & fila).Interior.color = RGB(255, 199, 206)
+                    wsAv.Range("A" & fila & ":H" & fila).Font.color = RGB(156, 0, 6)
+            End Select
+            
+            fila = fila + 1
+        Next k
+        
+        If fila > 4 Then
+            wsAv.Range("F4:F" & fila - 1).NumberFormat = "0.00%"
+            wsAv.Range("D4:E" & fila - 1).NumberFormat = "#,##0.00"
+        End If
+        
+        Call AjustarAnchoColumnasInteligente(wsAv)
+        wsAv.Activate
+        Application.ScreenUpdating = True
+        MsgBox "Reporte de avance de producción generado (basado en minutos ponderados).", vbInformation
+
 End Sub
 
 '==============================================================================
@@ -462,68 +723,63 @@ Public Sub GenerarReporteLotes()
     
     ' 1. Mapear Referencias -> Cantidad de Tareas y Tiempo Total
     Set dictRefParams = CreateObject("Scripting.Dictionary")
-    ultF = wsT.Cells(wsT.Rows.Count, 1).End(xlUp).Row
+    ultF = wsT.Cells(wsT.Rows.count, 1).End(xlUp).Row
     If ultF >= 4 Then
         dataT = wsT.Range(wsT.Cells(4, 1), wsT.Cells(ultF, 4)).Value
         For i = 1 To UBound(dataT, 1)
             idRef = Trim(CStr(dataT(i, 1)))
             If idRef <> "" Then
                 If Not dictRefParams.Exists(idRef) Then
-                    dictRefParams(idRef) = Array(1, Val(dataT(i, 4))) ' (ConteoTareas, TiempoTotal)
+                    dictRefParams(idRef) = Array(1, val(dataT(i, 4)))
                 Else
                     Dim arr: arr = dictRefParams(idRef)
-                    arr(0) = arr(0) + 1: arr(1) = arr(1) + Val(dataT(i, 4))
+                    arr(0) = arr(0) + 1: arr(1) = arr(1) + val(dataT(i, 4))
                     dictRefParams(idRef) = arr
                 End If
             End If
         Next i
     End If
     
-    ' 2. Mapear Lotes -> Total de Operaciones Completadas (suma de todas las tareas)
+    ' 2. Mapear Lotes -> Total de Operaciones Completadas
     Set dictOpsComp = CreateObject("Scripting.Dictionary")
-    ultF = wsA.Cells(wsA.Rows.Count, 1).End(xlUp).Row
+    ultF = wsA.Cells(wsA.Rows.count, 1).End(xlUp).Row
     If ultF >= 4 Then
-        ' Mapeo de progreso con clave compuesta (Ref|Lote) para garantizar integridad
-        dataA = wsA.Range(wsA.Cells(4, 1), wsA.Cells(ultF, 16)).Value 
+        dataA = wsA.Range(wsA.Cells(4, 1), wsA.Cells(ultF, 16)).Value
         For i = 1 To UBound(dataA, 1)
             idRef = Trim(CStr(dataA(i, 4)))
             idLote = Trim(CStr(dataA(i, 6)))
             If idRef <> "" And idLote <> "" Then
                 key = idRef & "|" & idLote
-                dictOpsComp(key) = dictOpsComp(key) + Val(dataA(i, 16))
+                dictOpsComp(key) = dictOpsComp(key) + val(dataA(i, 16))
             End If
         Next i
     End If
     
     ' 3. Construir el Reporte
     Application.ScreenUpdating = False
-    wsR.Rows("3:" & wsR.Rows.Count).ClearContents ' Limpiar hoja
-    wsR.Rows("3:" & wsR.Rows.Count).Interior.ColorIndex = xlNone
+    wsR.Rows("3:" & wsR.Rows.count).ClearContents
+    wsR.Rows("3:" & wsR.Rows.count).Interior.ColorIndex = xlNone
     
-    ' Escribir encabezados si no existen en Módulo 1
     wsR.Range("A3:K3").Value = Array("Lote", "Referencia", "Color", "Talla", "Cantidad", "Tareas/Unidad", "Ops. Requeridas", "Ops. Completadas", "Avance %", "Tiempo Est. Horas", "Estado")
-    wsR.Range("A3:K3").Font.Bold = True: wsR.Range("A3:K3").Interior.Color = RGB(220, 220, 220)
+    wsR.Range("A3:K3").Font.Bold = True: wsR.Range("A3:K3").Interior.color = RGB(220, 220, 220)
     
-    ultF = wsL.Cells(wsL.Rows.Count, 1).End(xlUp).Row
+    ultF = wsL.Cells(wsL.Rows.count, 1).End(xlUp).Row
     If ultF >= 4 Then
-        ' Ordenar hoja LOTES por Referencia (Col B) y luego Lote (Col A) para listar agrupado
         wsL.Range("A4:K" & ultF).Sort Key1:=wsL.Range("B4"), Order1:=xlAscending, Key2:=wsL.Range("A4"), Order2:=xlAscending, Header:=xlNo
         
         dataL = wsL.Range(wsL.Cells(4, 1), wsL.Cells(ultF, 5)).Value
         fila = 4
         For i = 1 To UBound(dataL, 1)
             idLote = Trim(CStr(dataL(i, 1))): idRef = Trim(CStr(dataL(i, 2)))
-            color = dataL(i, 3): talla = dataL(i, 4): cantLote = Val(dataL(i, 5))
+            color = dataL(i, 3): talla = dataL(i, 4): cantLote = val(dataL(i, 5))
             
             nTareas = 0: tUnitTotal = 0
             If dictRefParams.Exists(idRef) Then nTareas = dictRefParams(idRef)(0): tUnitTotal = dictRefParams(idRef)(1)
             
-            ' Usar CDbl para evitar desbordamiento en la multiplicación de enteros grandes
             opsReq = CDbl(cantLote) * nTareas
             key = idRef & "|" & idLote
             opsComp = 0: If dictOpsComp.Exists(key) Then opsComp = dictOpsComp(key)
             
-            ' Sustitución de IIf por If real para evitar división por cero o desbordamiento en evaluación
             If opsReq > 0 Then
                 avance = Round(opsComp / opsReq, 4)
             Else
@@ -535,10 +791,10 @@ Public Sub GenerarReporteLotes()
             If avance >= 1 Then estado = "COMPLETADO" Else If avance > 0 Then estado = "EN PROCESO" Else estado = "PENDIENTE"
             
             wsR.Range("A" & fila & ":K" & fila).Value = Array(idLote, idRef, color, talla, cantLote, nTareas, opsReq, opsComp, avance, tEstHoras, estado)
-            If estado = "COMPLETADO" Then 
-                wsR.Range("A" & fila & ":K" & fila).Interior.Color = RGB(198, 239, 206)
+            If estado = "COMPLETADO" Then
+                wsR.Range("A" & fila & ":K" & fila).Interior.color = RGB(198, 239, 206)
             ElseIf estado = "EN PROCESO" Then
-                wsR.Range("A" & fila & ":K" & fila).Interior.Color = RGB(255, 235, 156)
+                wsR.Range("A" & fila & ":K" & fila).Interior.color = RGB(255, 235, 156)
             End If
             fila = fila + 1
         Next i
@@ -556,171 +812,310 @@ End Sub
 ' Propósito: Calcula el reporte de avance general por cada referencia
 '==============================================================================
 Sub GenerarInformeGerencialProduccion()
-    'Genera un informe de avance agrupado por referencia con formato de texto
-    Dim wsInforme As Worksheet, wsRecep As Worksheet, wsAsig As Worksheet, wsTareas As Worksheet, wsRef As Worksheet
-    Dim dictRefData As Object 'Key: ID_Ref, Value: Array(Desc, TotalQty, TotalOpsReq, TotalOpsDone, FinishedQty)
-    Dim dictRefTasks As Object 'Key: ID_Ref, Value: NumTareas
-    Dim dictLoteStatus As Object 'Key: Lote|Ref, Value: Array(Qty, OpsReq, OpsDone)
+    Dim wsInforme As Worksheet, wsL As Worksheet, wsA As Worksheet, wsT As Worksheet, wsRef As Worksheet
+    Dim dictRefData As Object
+    Dim dictTiempoTarea As Object
+    Dim dictTiempoTotalRef As Object
+    Dim dictMinutosEjecutadosPorLote As Object
+    Dim dictTareasPorLote As Object
+    Dim dictLoteCantidad As Object
     
-    Dim i As Long, ultFila As Long
-    Dim idRef As String, idLote As String, desc As String
-    Dim cant As Long, opsDone As Long, tasksCount As Long
-    Dim key As String
+    Dim i As Long, j As Long, ultFila As Long
+    Dim idRef As String, idLote As String, numTarea As String
+    Dim cantLote As Double, uComp As Double
+    Dim tiempoUnitarioMin As Double, tiempoTotalRefMin As Double
+    Dim keyTarea As Variant
+    Dim keyLote As Variant, keyTareaLote As Variant
+    Dim minutosEjecutados As Double
+    Dim fila As Long
+    Dim k As Variant
     
     Set wsInforme = ThisWorkbook.Sheets("INFORME_CONSOLIDADO")
-    Set wsRecep = ThisWorkbook.Sheets("LOTES")
-    Set wsAsig = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    Set wsTareas = ThisWorkbook.Sheets("TAREAS")
+    Set wsL = ThisWorkbook.Sheets("LOTES")
+    Set wsA = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    Set wsT = ThisWorkbook.Sheets("TAREAS")
     Set wsRef = ThisWorkbook.Sheets("REFERENCIAS")
     
     Set dictRefData = CreateObject("Scripting.Dictionary")
-    Set dictRefTasks = CreateObject("Scripting.Dictionary")
-    Set dictLoteStatus = CreateObject("Scripting.Dictionary")
+    Set dictTiempoTarea = CreateObject("Scripting.Dictionary")
+    Set dictTiempoTotalRef = CreateObject("Scripting.Dictionary")
+    Set dictMinutosEjecutadosPorLote = CreateObject("Scripting.Dictionary")
+    Set dictTareasPorLote = CreateObject("Scripting.Dictionary")
+    Set dictLoteCantidad = CreateObject("Scripting.Dictionary")
     
     Application.ScreenUpdating = False
     
-    '1. Contar Tareas por Referencia
-    ultFila = wsTareas.Cells(wsTareas.Rows.Count, 1).End(xlUp).Row
+    '--------------------------------------------------------------------------
+    ' PASO 1: Cargar tiempos unitarios por tarea (en minutos)
+    '--------------------------------------------------------------------------
+    ultFila = wsT.Cells(wsT.Rows.count, 1).End(xlUp).Row
     For i = 4 To ultFila
-        idRef = wsTareas.Cells(i, 1).Value
-        If idRef <> "" Then
-            If dictRefTasks.Exists(idRef) Then
-                dictRefTasks(idRef) = dictRefTasks(idRef) + 1
-            Else
-                dictRefTasks(idRef) = 1
-            End If
-        End If
-    Next i
-    
-    '2. Cargar Datos Base de Referencias (Descripción)
-    ultFila = wsRef.Cells(wsRef.Rows.Count, 1).End(xlUp).Row
-    For i = 4 To ultFila
-        idRef = wsRef.Cells(i, 1).Value
-        desc = wsRef.Cells(i, 3).Value 'Col 3: Descripción
-        If idRef <> "" Then
-            'Array: 0=Desc, 1=TotalQty, 2=TotalOpsReq, 3=TotalOpsDone, 4=FinishedQty
-            dictRefData(idRef) = Array(desc, 0, 0, 0, 0)
-        End If
-    Next i
-    
-    '3. Procesar Recepción (Lotes y Cantidades)
-    ultFila = wsRecep.Cells(wsRecep.Rows.Count, 1).End(xlUp).Row
-    For i = 4 To ultFila
-        idLote = wsRecep.Cells(i, 1).Value
-        idRef = wsRecep.Cells(i, 2).Value
-        cant = Val(wsRecep.Cells(i, 5).Value)
+        idRef = Trim(CStr(wsT.Cells(i, 1).Value))
+        numTarea = Trim(CStr(wsT.Cells(i, 2).Value))
+        tiempoUnitarioMin = val(wsT.Cells(i, 4).Value) / 60
         
-        If idRef <> "" And idLote <> "" Then
-            'Actualizar datos globales de referencia
-            If dictRefData.Exists(idRef) Then
-                Dim arr As Variant
-                arr = dictRefData(idRef)
-                arr(1) = arr(1) + cant 'TotalQty
+        If idRef <> "" And numTarea <> "" Then
+            keyTarea = idRef & "|" & numTarea
+            dictTiempoTarea(keyTarea) = tiempoUnitarioMin
+        End If
+    Next i
+    
+    '--------------------------------------------------------------------------
+    ' PASO 2: Calcular tiempo total por referencia
+    '--------------------------------------------------------------------------
+    For Each keyTarea In dictTiempoTarea.Keys
+        idRef = Split(CStr(keyTarea), "|")(0)
+        If Not dictTiempoTotalRef.Exists(idRef) Then
+            dictTiempoTotalRef(idRef) = dictTiempoTarea(keyTarea)
+        Else
+            dictTiempoTotalRef(idRef) = dictTiempoTotalRef(idRef) + dictTiempoTarea(keyTarea)
+        End If
+    Next keyTarea
+    
+    '--------------------------------------------------------------------------
+    ' PASO 3: Cargar datos de LOTES
+    '--------------------------------------------------------------------------
+    ultFila = wsL.Cells(wsL.Rows.count, 1).End(xlUp).Row
+    For i = 4 To ultFila
+        idLote = Trim(CStr(wsL.Cells(i, 1).Value))
+        idRef = Trim(CStr(wsL.Cells(i, 2).Value))
+        cantLote = val(wsL.Cells(i, 5).Value)
+        
+        If idRef <> "" And idLote <> "" And cantLote > 0 Then
+            ' Guardar cantidad del lote
+            keyLote = idRef & "|" & idLote
+            dictLoteCantidad(keyLote) = cantLote
+            
+            ' Inicializar estructura de tareas por lote
+            If Not dictTareasPorLote.Exists(keyLote) Then
+                Set dictTareasPorLote(keyLote) = New Collection
+            End If
+            
+            ' Inicializar acumulador de minutos por lote
+            If Not dictMinutosEjecutadosPorLote.Exists(keyLote) Then
+                dictMinutosEjecutadosPorLote(keyLote) = 0
+            End If
+            
+            ' Inicializar datos de referencia
+            If Not dictRefData.Exists(idRef) Then
+                Dim nombreRef As String
+                Dim celdaRef As Range
+                Set celdaRef = wsRef.Columns(1).Find(idRef, LookIn:=xlValues, LookAt:=xlWhole)
+                If Not celdaRef Is Nothing Then
+                    nombreRef = wsRef.Cells(celdaRef.Row, 3).Value
+                Else
+                    nombreRef = ""
+                End If
                 
-                tasksCount = 0
-                If dictRefTasks.Exists(idRef) Then tasksCount = dictRefTasks(idRef)
-                arr(2) = arr(2) + (cant * tasksCount) 'TotalOpsReq
-                
-                dictRefData(idRef) = arr
+                ' Array sin comentarios después del guion bajo
+                dictRefData(idRef) = Array(nombreRef, 0, 0, 0, 0)
             End If
             
-            'Inicializar tracking de lote individual
-            key = idLote & "|" & idRef
-            tasksCount = 0
-            If dictRefTasks.Exists(idRef) Then tasksCount = dictRefTasks(idRef)
-            
-            If dictLoteStatus.Exists(key) Then
-                Dim arrL As Variant
-                arrL = dictLoteStatus(key)
-                arrL(0) = arrL(0) + cant
-                arrL(1) = arrL(1) + (cant * tasksCount)
-                dictLoteStatus(key) = arrL
-            Else
-                'Array: 0=Qty, 1=OpsReq, 2=OpsDone
-                dictLoteStatus(key) = Array(cant, cant * tasksCount, 0)
+            ' Acumular cantidad total
+            Dim arrTemp As Variant
+            arrTemp = dictRefData(idRef)
+            arrTemp(1) = arrTemp(1) + cantLote
+            ' Minutos requeridos = cantidad x tiempo total de la referencia
+            If dictTiempoTotalRef.Exists(idRef) Then
+                arrTemp(2) = arrTemp(2) + (cantLote * dictTiempoTotalRef(idRef))
             End If
+            dictRefData(idRef) = arrTemp
         End If
     Next i
     
-    '4. Procesar Asignaciones (Progreso Real)
-    ultFila = wsAsig.Cells(wsAsig.Rows.Count, 1).End(xlUp).Row
+    '--------------------------------------------------------------------------
+    ' PASO 4: Procesar ASIGNACIONES_DIARIAS
+    '--------------------------------------------------------------------------
+    ultFila = wsA.Cells(wsA.Rows.count, 1).End(xlUp).Row
     For i = 4 To ultFila
-        idRef = wsAsig.Cells(i, 4).Value
-        idLote = wsAsig.Cells(i, 6).Value
-        opsDone = Val(wsAsig.Cells(i, 16).Value) 'Unidades Completadas
+        idRef = Trim(CStr(wsA.Cells(i, 4).Value))
+        idLote = Trim(CStr(wsA.Cells(i, 6).Value))
+        numTarea = Trim(CStr(wsA.Cells(i, 9).Value))
+        uComp = val(wsA.Cells(i, 16).Value)
         
-        If idRef <> "" And idLote <> "" Then
-            'Actualizar global ref
-            If dictRefData.Exists(idRef) Then
-                arr = dictRefData(idRef)
-                arr(3) = arr(3) + opsDone
-                dictRefData(idRef) = arr
+        If idRef <> "" And idLote <> "" And numTarea <> "" And uComp > 0 Then
+            keyLote = idRef & "|" & idLote
+            keyTarea = idRef & "|" & numTarea
+            
+            ' Obtener tiempo unitario de esta tarea
+            tiempoUnitarioMin = 0
+            If dictTiempoTarea.Exists(keyTarea) Then
+                tiempoUnitarioMin = dictTiempoTarea(keyTarea)
             End If
             
-            'Actualizar lote
-            key = idLote & "|" & idRef
-            If dictLoteStatus.Exists(key) Then
-                arrL = dictLoteStatus(key)
-                arrL(2) = arrL(2) + opsDone
-                dictLoteStatus(key) = arrL
+            ' Calcular minutos ejecutados
+            minutosEjecutados = uComp * tiempoUnitarioMin
+            
+            ' Acumular minutos ejecutados por lote
+            If dictMinutosEjecutadosPorLote.Exists(keyLote) Then
+                dictMinutosEjecutadosPorLote(keyLote) = dictMinutosEjecutadosPorLote(keyLote) + minutosEjecutados
+            End If
+            
+            ' Registrar tarea en el lote
+            If dictTareasPorLote.Exists(keyLote) Then
+                Dim colTareas As Collection
+                Set colTareas = dictTareasPorLote(keyLote)
+                
+                Dim tareaExiste As Boolean
+                tareaExiste = False
+                Dim tItem As Variant
+                For Each tItem In colTareas
+                    If CStr(tItem) = numTarea Then
+                        tareaExiste = True
+                        Exit For
+                    End If
+                Next tItem
+                
+                If Not tareaExiste Then
+                    colTareas.Add numTarea
+                    Set dictTareasPorLote(keyLote) = colTareas
+                End If
+            End If
+            
+            ' Acumular minutos ejecutados en dictRefData
+            If dictRefData.Exists(idRef) Then
+                arrTemp = dictRefData(idRef)
+                arrTemp(3) = arrTemp(3) + minutosEjecutados
+                dictRefData(idRef) = arrTemp
             End If
         End If
     Next i
     
-    '6. Generar Informe Visual
-    ' Ajuste v3.2: Respetar botón VOLVER en Fila 2 (Limpiar solo desde fila 4)
-    wsInforme.Rows("4:" & wsInforme.Rows.Count).Clear
-    wsInforme.Rows("4:" & wsInforme.Rows.Count).Interior.Color = xlNone
+    '--------------------------------------------------------------------------
+    ' PASO 5: Calcular Unidades Terminadas (lotes 100% completos)
+    '--------------------------------------------------------------------------
+    Dim lotesKeys As Variant
+    lotesKeys = dictLoteCantidad.Keys
     
-    'Encabezado
-    wsInforme.Range("B4").Value = "INFORME DETALLADO DE PRODUCCIÓN"
-    wsInforme.Range("B4").Font.Size = 14
-    wsInforme.Range("B4").Font.Bold = True
-    
-    wsInforme.Range("B5").Value = Format(Date, "mmmm d \d\e yyyy")
-    wsInforme.Range("B5").Font.Italic = True
-    
-    Dim fila As Long
-    fila = 7
-    
-    Dim k As Variant
-    For Each k In dictRefData.Keys
-        arr = dictRefData(k)
-        'arr: 0=Desc, 1=TotalQty, 2=TotalOpsReq, 3=TotalOpsDone, 4=FinishedQty
+    For Each keyLote In lotesKeys
+        idRef = Split(keyLote, "|")(0)
+        idLote = Split(keyLote, "|")(1)
+        cantLote = dictLoteCantidad(keyLote)
         
-        ' Calcular unidades terminadas equivalentes
-        tasksCount = 0: If dictRefTasks.Exists(k) Then tasksCount = dictRefTasks(k)
-        If tasksCount > 0 Then arr(4) = Round(arr(3) / tasksCount, 2) Else arr(4) = 0
+        ' Obtener todas las tareas que DEBERÍA tener esta referencia
+        Dim tareasRequeridas As New Collection
+        Dim tk As Variant
+        For Each tk In dictTiempoTarea.Keys
+            If Left(CStr(tk), Len(idRef)) = idRef And Mid(CStr(tk), Len(idRef) + 1, 1) = "|" Then
+                Dim tareaNumReq As String
+                tareaNumReq = Split(CStr(tk), "|")(1)
+                tareasRequeridas.Add tareaNumReq
+            End If
+        Next tk
         
-        Dim avance As Double
-        ' Avance = Unidades terminadas equivalentes / Cantidad Recibida (Redondeo a 4 decimales para precisión de %)
-        If arr(1) > 0 Then avance = Round(arr(4) / arr(1), 4) Else avance = 0
+        If tareasRequeridas.count = 0 Then GoTo SiguienteLote
         
-        'Bloque de referencia
-        wsInforme.Cells(fila, 2).Value = k
-        wsInforme.Cells(fila, 2).Font.Bold = True
-        fila = fila + 1
+        ' Verificar si TODAS las tareas requeridas están completas al 100%
+        Dim loteCompleto As Boolean
+        loteCompleto = True
         
-        wsInforme.Cells(fila, 2).Value = "Descripción: " & arr(0)
-        fila = fila + 1
+        Dim tareaReq As Variant
+        For Each tareaReq In tareasRequeridas
+            Dim keyTareaReq As String
+            keyTareaReq = idRef & "|" & tareaReq
+            
+            ' Obtener tiempo unitario de esta tarea
+            Dim tiempoUnitarioTarea As Double
+            tiempoUnitarioTarea = 0
+            If dictTiempoTarea.Exists(keyTareaReq) Then
+                tiempoUnitarioTarea = dictTiempoTarea(keyTareaReq)
+            End If
+            
+            ' Minutos necesarios para completar esta tarea al 100%
+            Dim minutosNecesarios As Double
+            minutosNecesarios = cantLote * tiempoUnitarioTarea
+            
+            ' Calcular minutos reales ejecutados para esta tarea específica
+            Dim minutosRealesTarea As Double
+            minutosRealesTarea = 0
+            
+            For j = 4 To wsA.Cells(wsA.Rows.count, 1).End(xlUp).Row
+                If Trim(CStr(wsA.Cells(j, 4).Value)) = idRef And _
+                   Trim(CStr(wsA.Cells(j, 6).Value)) = idLote And _
+                   Trim(CStr(wsA.Cells(j, 9).Value)) = tareaReq Then
+                    
+                    Dim uCompTarea As Double
+                    uCompTarea = val(wsA.Cells(j, 16).Value)
+                    minutosRealesTarea = minutosRealesTarea + (uCompTarea * tiempoUnitarioTarea)
+                End If
+            Next j
+            
+            If minutosRealesTarea < minutosNecesarios - 0.001 Then
+                loteCompleto = False
+                Exit For
+            End If
+        Next tareaReq
         
-        wsInforme.Cells(fila, 2).Value = "Cantidad Recibida: " & arr(1)
-        fila = fila + 1
-        
-        wsInforme.Cells(fila, 2).Value = "Avance: " & Format(avance, "0.00%")
-        'Barra de progreso visual simple
-        If avance > 0 Then
-            wsInforme.Cells(fila, 3).Value = String(Int(avance * 10), "█")
-            wsInforme.Cells(fila, 3).Font.Color = RGB(0, 150, 0)
+        If loteCompleto And tareasRequeridas.count > 0 Then
+            If dictRefData.Exists(idRef) Then
+                arrTemp = dictRefData(idRef)
+                arrTemp(4) = arrTemp(4) + cantLote
+                dictRefData(idRef) = arrTemp
+            End If
         End If
-        fila = fila + 1
+            
+SiguienteLote:
+        Next keyLote
         
-        wsInforme.Cells(fila, 2).Value = "Unidades terminadas: " & Format(arr(4), "#,##0.0")
-        fila = fila + 2 'Espacio entre referencias
-    Next k
-    
-    wsInforme.Columns("B").AutoFit
-    wsInforme.Activate
-    Application.ScreenUpdating = True
-    MsgBox "Informe de producción generado.", vbInformation
+        '--------------------------------------------------------------------------
+        ' PASO 6: Generar informe visual
+        '--------------------------------------------------------------------------
+        wsInforme.Rows("4:" & wsInforme.Rows.count).Clear
+        wsInforme.Rows("4:" & wsInforme.Rows.count).Interior.color = xlNone
+        
+        wsInforme.Range("B4").Value = "INFORME DETALLADO DE PRODUCCIÓN"
+        wsInforme.Range("B4").Font.Size = 14
+        wsInforme.Range("B4").Font.Bold = True
+        
+        wsInforme.Range("B5").Value = Format(Date, "mmmm d \d\e yyyy")
+        wsInforme.Range("B5").Font.Italic = True
+        
+        fila = 7
+        
+        For Each k In dictRefData.Keys
+            arrTemp = dictRefData(k)
+            
+            Dim totalCantidad As Double
+            Dim totalMinutosReq As Double
+            Dim totalMinutosEjec As Double
+            Dim unidTerm As Double
+            Dim avanceRef As Double
+            
+            totalCantidad = CDbl(arrTemp(1))
+            totalMinutosReq = CDbl(arrTemp(2))
+            totalMinutosEjec = CDbl(arrTemp(3))
+            unidTerm = CDbl(arrTemp(4))
+            
+            avanceRef = 0
+            If totalMinutosReq > 0 Then
+                avanceRef = Round(totalMinutosEjec / totalMinutosReq, 4)
+            End If
+            
+            wsInforme.Cells(fila, 2).Value = k
+            wsInforme.Cells(fila, 2).Font.Bold = True
+            fila = fila + 1
+            
+            wsInforme.Cells(fila, 2).Value = "Descripción: " & arrTemp(0)
+            fila = fila + 1
+            
+            wsInforme.Cells(fila, 2).Value = "Cantidad Recibida: " & totalCantidad
+            fila = fila + 1
+            
+            wsInforme.Cells(fila, 2).Value = "Avance: " & Format(avanceRef, "0.00%")
+            If avanceRef > 0 Then
+                wsInforme.Cells(fila, 3).Value = String(Int(avanceRef * 10), "|")
+                wsInforme.Cells(fila, 3).Font.color = RGB(0, 150, 0)
+            End If
+            fila = fila + 1
+            
+            wsInforme.Cells(fila, 2).Value = "Unidades terminadas: " & Format(unidTerm, "#,##0")
+            fila = fila + 2
+        Next k
+        
+        wsInforme.Columns("B").AutoFit
+        wsInforme.Activate
+        Application.ScreenUpdating = True
+        MsgBox "Informe de producción generado (corregido).", vbInformation
+
 End Sub
+
