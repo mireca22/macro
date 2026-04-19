@@ -1119,3 +1119,35 @@ SiguienteLote:
 
 End Sub
 
+'==============================================================================
+' SUB: RecalcularSistemaLotes
+' Propósito: Sincroniza tiempos totales de referencias y actualiza fechas estimadas.
+'==============================================================================
+Public Sub RecalcularSistemaLotes()
+    Dim wsR As Worksheet, wsL As Worksheet, i As Long, ultF As Long, idRef As String, cantPend As Long
+    Dim fInicio As Date
+    
+    Application.ScreenUpdating = False
+    
+    ' 1. Actualizar Tiempos Totales en Referencias (Suma de tareas)
+    Set wsR = ThisWorkbook.Sheets("REFERENCIAS")
+    ultF = wsR.Cells(wsR.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultF
+        idRef = Trim(CStr(wsR.Cells(i, 1).Value))
+        If idRef <> "" Then Call ActualizarTiempoTotalReferencia(idRef)
+    Next i
+    
+    ' 2. Actualizar Fechas Estimadas en Lotes según unidades pendientes
+    Set wsL = ThisWorkbook.Sheets("LOTES")
+    ultF = wsL.Cells(wsL.Rows.Count, 1).End(xlUp).Row
+    For i = 4 To ultF
+        idRef = Trim(CStr(wsL.Cells(i, 2).Value))
+        cantPend = Val(wsL.Cells(i, 5).Value) - Val(wsL.Cells(i, 8).Value)
+        If cantPend < 0 Then cantPend = 0
+        fInicio = IIf(IsDate(wsL.Cells(i, 7).Value), wsL.Cells(i, 7).Value, Date)
+        wsL.Cells(i, 11).Value = CalcularFechaFinEstimada(idRef, cantPend, fInicio)
+    Next i
+    
+    Application.ScreenUpdating = True
+    MsgBox "Recálculo de tiempos estándar y proyecciones de entrega finalizado.", vbInformation
+End Sub

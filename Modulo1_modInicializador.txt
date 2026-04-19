@@ -128,12 +128,12 @@ Public Sub CrearHeaders()
     ws.Range("A3:B3").Value = Array("ID_Referencia", "Talla")
 
     Set ws = ThisWorkbook.Sheets("LOTES")
-    ws.Range("A3:K3").Value = Array("ID_Lote", "ID_Referencia", "Color", "Talla", "Cantidad_Recibida", _
+    ws.Range("A3:L3").Value = Array("ID_Lote", "ID_Referencia", "Color", "Talla", "Cantidad_Recibida", _
         "Fecha_Recepcion", "Fecha_Inicio_Produccion", "Unidades_Completadas", _
-        "Porcentaje_Avance", "Estado", "Fecha_Fin_Estimada")
+        "Porcentaje_Avance", "Estado", "Fecha_Fin_Estimada", "Fecha_Fin_Real")
 
     Set ws = ThisWorkbook.Sheets("TAREAS")
-    ws.Range("A3:F3").Value = Array("ID_Referencia", "Numero_Tarea", "Nombre_Tarea", "Tiempo_Segundos", "Descripcion_Tarea", "Dificultad")
+    ws.Range("A3:G3").Value = Array("ID_Referencia", "Numero_Tarea", "Nombre_Tarea", "Tiempo_Segundos", "Fecha", "Descripcion_Tarea", "Dificultad")
 
     Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     ws.Range("A3:U3").Value = Array("Fecha", "ID_Operaria", "Nombre_Operaria", "ID_Referencia", _
@@ -213,6 +213,7 @@ Public Sub CrearDashboardInicio()
     Call CrearBotonDashboard(ws, "REPORTE DE EFICIENCIA", "GenerarReporteEficiencia", 9, 4, RGB(204, 102, 0))
     Call CrearBotonDashboard(ws, "INFORME CONSOLIDADO", "GenerarInformeGerencialProduccion", 11, 4, RGB(44, 62, 80))
     Call CrearBotonDashboard(ws, "REPORTE DE LOTES", "GenerarReporteLotes", 15, 4, RGB(0, 128, 128))
+    Call CrearBotonDashboard(ws, "ACTUALIZAR PROYECCIONES", "RecalcularSistemaLotes", 17, 4, RGB(44, 62, 80))
 
     ' Grupo: Maestros (Configuración) - Mayor separación vertical
     Call CrearBotonDashboard(ws, "GESTIÓN OPERARIAS", "AbrirGestorOperarias", 11, 2, RGB(100, 100, 100))

@@ -145,6 +145,46 @@ Function GenerarNuevoID(hoja$, col&, pref$) As String
 End Function
 
 '==============================================================================
+' FUNCIÓN: GenerarIDLoteTextil
+' Propósito: Genera un ID de lote: Referencia + Consecutivo(2) + Color + Talla.
+'            Todo en MAYÚSCULAS.
+'==============================================================================
+Public Function GenerarIDLoteTextil(ByVal idRef As String, ByVal color As String, ByVal talla As String) As String
+    Dim ws As Worksheet, i As Long, ultF As Long, maxConsec As Long, currConsec As Long
+    Dim currentID As String, midPart As String
+    
+    ' Limpiar y poner en mayúsculas
+    idRef = UCase(Trim(idRef))
+    If InStr(idRef, " - ") > 0 Then idRef = Trim(Split(idRef, " - ")(0))
+    color = UCase(Trim(color))
+    talla = UCase(Trim(talla))
+    
+    If idRef = "" Then GenerarIDLoteTextil = "": Exit Function
+    
+    Set ws = ThisWorkbook.Sheets("LOTES")
+    ultF = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    maxConsec = 0
+    
+    If ultF >= 4 Then
+        ' Buscamos el máximo consecutivo existente para esta referencia específica
+        For i = 4 To ultF
+            If UCase(Trim(ws.Cells(i, 2).Value)) = idRef Then
+                currentID = UCase(Trim(ws.Cells(i, 1).Value))
+                ' El consecutivo empieza en Len(idRef) + 2 (después de la ref y un espacio)
+                midPart = Mid(currentID, Len(idRef) + 2, 2)
+                If IsNumeric(midPart) Then
+                    currConsec = CLng(midPart)
+                    If currConsec > maxConsec Then maxConsec = currConsec
+                End If
+            End If
+        Next i
+    End If
+    
+    ' Retornar el ID estructurado con espacios: REF CC COLOR TALLA
+    GenerarIDLoteTextil = idRef & " " & Format(maxConsec + 1, "00") & " " & color & " " & talla
+End Function
+
+'==============================================================================
 ' SUB: GuardarRegistroMaestro
 ' Propósito: Punto de guardado universal. Maneja la escritura y el refresco de caché.
 '==============================================================================
@@ -171,15 +211,19 @@ Sub GuardarRegistroMaestro(ByVal datos As Variant)
         Case "COLORES", "TALLAS": Set ws = ThisWorkbook.Sheets(TipoMaestroActual): fila = IIf(ModoEdicion, FilaEdicion, ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1): ws.Cells(fila, 1).Value = datos(0): ws.Cells(fila, 2).Value = datos(1)
         Case "LOTES"
             ' Lógica de edición vs acumulación inteligente para nuevos ingresos
-            Set ws = ThisWorkbook.Sheets("LOTES"): If ModoEdicion Then fila = FilaEdicion: ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 7)).Value = Array(datos(0), datos(1), datos(2), datos(3), datos(4), datos(5), datos(6)): GoTo FinR
+            Set ws = ThisWorkbook.Sheets("LOTES"): If ModoEdicion Then fila = FilaEdicion: ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 7)).Value = Array(datos(0), datos(1), datos(2), datos(3), datos(4), datos(5), datos(6)): ws.Cells(fila, 11).Value = CalcularFechaFinEstimada(CStr(datos(1)), CLng(datos(4)) - Val(ws.Cells(fila, 8).Value), CDate(datos(6))): ws.Cells(fila, 12).Value = datos(7): GoTo FinR
             exist = False: Dim uF&: uF = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
             If uF >= 4 Then
                 dataArr = ws.Range(ws.Cells(4, 1), ws.Cells(uF, 4)).Value: For i = 1 To UBound(dataArr, 1)
-                    If dataArr(i, 1) = datos(0) And dataArr(i, 2) = datos(1) And dataArr(i, 3) = datos(2) And dataArr(i, 4) = datos(3) Then fila = i + 3: ws.Cells(fila, 5).Value = ws.Cells(fila, 5).Value + CLng(datos(4)): exist = True: Exit For
+                    If dataArr(i, 1) = datos(0) And dataArr(i, 2) = datos(1) And dataArr(i, 3) = datos(2) And dataArr(i, 4) = datos(3) Then
+                        fila = i + 3: ws.Cells(fila, 5).Value = ws.Cells(fila, 5).Value + CLng(datos(4))
+                        ws.Cells(fila, 11).Value = CalcularFechaFinEstimada(CStr(datos(1)), Val(ws.Cells(fila, 5).Value) - Val(ws.Cells(fila, 8).Value), CDate(ws.Cells(fila, 7).Value))
+                        exist = True: Exit For
+                    End If
                 Next i
             End If
             If Not exist Then
-                fila = uF + 1: ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 7)).Value = Array(datos(0), datos(1), datos(2), datos(3), datos(4), datos(5), datos(6)): ws.Cells(fila, 8).Value = 0: ws.Cells(fila, 9).Value = 0: ws.Cells(fila, 10).Value = "Pendiente": ws.Cells(fila, 11).Value = CalcularFechaFinEstimada(CStr(datos(1)), CLng(datos(4)), CDate(datos(6)))
+                fila = uF + 1: ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 7)).Value = Array(datos(0), datos(1), datos(2), datos(3), datos(4), datos(5), datos(6)): ws.Cells(fila, 8).Value = 0: ws.Cells(fila, 9).Value = 0: ws.Cells(fila, 10).Value = "Pendiente": ws.Cells(fila, 11).Value = CalcularFechaFinEstimada(CStr(datos(1)), CLng(datos(4)), CDate(datos(6))): ws.Cells(fila, 12).Value = datos(7)
             End If
             FinR:
         Case "TAREAS": Set ws = ThisWorkbook.Sheets("TAREAS"): fila = IIf(ModoEdicion, FilaEdicion, ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1): ws.Range(ws.Cells(fila, 1), ws.Cells(fila, 7)).Value = Array(datos(0), datos(1), datos(2), datos(3), datos(4), datos(5), datos(6)): Call ActualizarTiempoTotalReferencia(CStr(datos(0)))

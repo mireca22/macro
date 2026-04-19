@@ -30,7 +30,7 @@ Private Sub UserFormInitialize()
         Me.Caption = "NUEVO " & TipoMaestroActual
     End If
     
-    For i = 1 To 6
+    For i = 1 To 7
         Me.Controls("lbl" & i).Visible = False
         Me.Controls("txt" & i).Visible = False
         Me.Controls("txt" & i).Value = ""
@@ -131,6 +131,7 @@ Private Sub UserFormInitialize()
             ConfigurarCampo 4, "Cantidad Recibida", False
             ConfigurarCampo 5, "Fecha Recepción", False
             ConfigurarCampo 6, "Fecha Inicio Prod", False
+            ConfigurarCampo 7, "Fecha Fin Real", False
             
             txt1.Visible = True
             txt1.Width = 70
@@ -163,6 +164,7 @@ Private Sub UserFormInitialize()
                 txt4.Value = wsLotes.Cells(FilaEdicion, 5).Value
                 txt5.Value = wsLotes.Cells(FilaEdicion, 6).Value
                 txt6.Value = wsLotes.Cells(FilaEdicion, 7).Value
+                txt7.Value = wsLotes.Cells(FilaEdicion, 12).Value
             Else
                 txt5.Value = Format(Date, "dd/mm/yyyy")
                 txt6.Value = Format(Date, "dd/mm/yyyy")
@@ -594,10 +596,31 @@ Private Sub cboRefChange()
             Next c
         End If
     End If
+    
+    ' Actualizar ID automáticamente para el contexto de Lotes
+    ActualizarIDLoteAutomatico
+End Sub
+
+Private Sub cboColor_Change()
+    ActualizarIDLoteAutomatico
+End Sub
+
+Private Sub cboTalla_Change()
+    ActualizarIDLoteAutomatico
+End Sub
+
+'==============================================================================
+' SUB: ActualizarIDLoteAutomatico
+' Propósito: Refresca el campo ID_Lote basado en los inputs actuales (Ref, Col, Tal).
+'==============================================================================
+Private Sub ActualizarIDLoteAutomatico()
+    If UCase$(TipoMaestroActual) = "LOTES" And Not ModoEdicion Then
+        txt1.Value = GenerarIDLoteTextil(cboRef.Value, cboColor.Value, cboTalla.Value)
+    End If
 End Sub
 
 Private Sub btnGuardar_Click()
-    Dim datos(0 To 6) As Variant
+    Dim datos(0 To 7) As Variant
     
     Dim rid As String: rid = cboRef.Value
     If InStr(rid, " - ") > 0 Then rid = Trim(Split(rid, " - ")(0))
@@ -624,6 +647,7 @@ Private Sub btnGuardar_Click()
         datos(4) = txt4.Value
         datos(5) = txt5.Value
         datos(6) = txt6.Value
+        datos(7) = txt7.Value
     ElseIf UCase$(TipoMaestroActual) = "TAREAS" Then
         datos(1) = txt2.Value
         datos(2) = txt3.Value
