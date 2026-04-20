@@ -1,10 +1,11 @@
 Option Explicit
 
 '==============================================================================
-' UserForm: frmGestionLotes v3.2.2
+' UserForm: frmGestionLotes v3.2.3
 ' CORRECCIÓN: CargarAsignacionesDelLote se llama automaticamente al cerrar
 '   frmEditarAsignacion, tanto desde btnNuevaAsignacion como desde
 '   EditarAsignacionSeleccionada. No requiere clic en Refrescar.
+' MEJORA v3.2.3: Lotes ordenados por Fecha_Recepcion (columna 6) ascendentemente
 '==============================================================================
 
 Public idRef As String
@@ -14,8 +15,8 @@ Public idRef As String
 ' ------------------------------------------------------------------------------
 Private Sub UserForm_Initialize()
     With lstLotes
-        .ColumnCount = 5
-        .ColumnWidths = "180;80;50;60;80"
+        .ColumnCount = 6
+        .ColumnWidths = "180;80;50;60;80;0"  ' col 6 oculta: FilaReal
     End With
     With lstAsignaciones
         .ColumnCount = 6
@@ -35,29 +36,96 @@ Public Sub IniciarConReferencia(refID As String)
 End Sub
 
 ' ------------------------------------------------------------------------------
-' CARGA DE LOTES FILTRADOS POR REFERENCIA
+' CARGA DE LOTES FILTRADOS POR REFERENCIA Y ORDENADOS POR FECHA
 ' ------------------------------------------------------------------------------
 Private Sub CargarLotes(Optional selectID As String = "")
     Dim wsLotes As Worksheet
-    Dim i As Long, ultFila As Long
+    Dim i As Long, j As Long, ultFila As Long
+    Dim lotesTemp() As Variant
+    Dim count As Long
+    
     Set wsLotes = ThisWorkbook.Sheets("LOTES")
     ultFila = wsLotes.Cells(wsLotes.Rows.Count, 1).End(xlUp).Row
 
-    lstLotes.Clear
+    ' Primera pasada: contar lotes de esta referencia
+    count = 0
     For i = 4 To ultFila
         If Trim(CStr(wsLotes.Cells(i, 2).Value)) = Trim(Me.idRef) Then
-            lstLotes.AddItem wsLotes.Cells(i, 1).Value
-            lstLotes.List(lstLotes.ListCount - 1, 1) = wsLotes.Cells(i, 3).Value
-            lstLotes.List(lstLotes.ListCount - 1, 2) = wsLotes.Cells(i, 4).Value
-            lstLotes.List(lstLotes.ListCount - 1, 3) = wsLotes.Cells(i, 5).Value
-            lstLotes.List(lstLotes.ListCount - 1, 4) = wsLotes.Cells(i, 10).Value
-            
-            ' Restaurar seleccion si se solicita
-            If selectID <> "" And Trim(CStr(wsLotes.Cells(i, 1).Value)) = Trim(selectID) Then
-                lstLotes.ListIndex = lstLotes.ListCount - 1
-            End If
+            count = count + 1
         End If
     Next i
+    
+    If count = 0 Then
+        lstLotes.Clear
+        Me.Caption = "Gestion de Lotes - " & Me.idRef & " (Sin lotes registrados)"
+        lstAsignaciones.Clear
+        lblTituloAsig.Caption = "Asignaciones: (seleccione un lote arriba)"
+        btnEditarAsignacion.Enabled = False
+        Exit Sub
+    End If
+    
+    ' Redimensionar array temporal (6 columnas: ID, Color, Talla, Cantidad, Estado, FechaRecepcion)
+    ReDim lotesTemp(1 To count, 1 To 6)
+    
+    ' Segunda pasada: cargar datos
+    count = 0
+    For i = 4 To ultFila
+        If Trim(CStr(wsLotes.Cells(i, 2).Value)) = Trim(Me.idRef) Then
+            count = count + 1
+            lotesTemp(count, 1) = wsLotes.Cells(i, 1).Value   ' ID_Lote
+            lotesTemp(count, 2) = wsLotes.Cells(i, 3).Value   ' Color
+            lotesTemp(count, 3) = wsLotes.Cells(i, 4).Value   ' Talla
+            lotesTemp(count, 4) = wsLotes.Cells(i, 5).Value   ' Cantidad
+            lotesTemp(count, 5) = wsLotes.Cells(i, 10).Value  ' Estado
+            lotesTemp(count, 6) = wsLotes.Cells(i, 6).Value   ' Fecha_Recepcion (para ordenar)
+        End If
+    Next i
+    
+    ' --- ORDENAMIENTO POR FECHA DE RECEPCIÓN (col6) ASCENDENTE ---
+    Dim m As Long, n As Long
+    Dim temp1 As Variant, temp2 As Variant, temp3 As Variant, temp4 As Variant, temp5 As Variant, temp6 As Variant
+    Dim fecha1 As Date, fecha2 As Date
+    
+    If count > 1 Then
+        For m = 1 To count - 1
+            For n = m + 1 To count
+                ' Convertir a fecha para comparar
+                On Error Resume Next
+                fecha1 = CDate(lotesTemp(m, 6))
+                fecha2 = CDate(lotesTemp(n, 6))
+                On Error GoTo 0
+                
+                If fecha1 > fecha2 Then
+                    ' Intercambiar todas las columnas
+                    temp1 = lotesTemp(m, 1): temp2 = lotesTemp(m, 2): temp3 = lotesTemp(m, 3)
+                    temp4 = lotesTemp(m, 4): temp5 = lotesTemp(m, 5): temp6 = lotesTemp(m, 6)
+                    
+                    lotesTemp(m, 1) = lotesTemp(n, 1): lotesTemp(m, 2) = lotesTemp(n, 2)
+                    lotesTemp(m, 3) = lotesTemp(n, 3): lotesTemp(m, 4) = lotesTemp(n, 4)
+                    lotesTemp(m, 5) = lotesTemp(n, 5): lotesTemp(m, 6) = lotesTemp(n, 6)
+                    
+                    lotesTemp(n, 1) = temp1: lotesTemp(n, 2) = temp2: lotesTemp(n, 3) = temp3
+                    lotesTemp(n, 4) = temp4: lotesTemp(n, 5) = temp5: lotesTemp(n, 6) = temp6
+                End If
+            Next n
+        Next m
+    End If
+    
+    ' Llenar el ListBox
+    lstLotes.Clear
+    For m = 1 To count
+        lstLotes.AddItem lotesTemp(m, 1)   ' ID_Lote
+        lstLotes.List(lstLotes.ListCount - 1, 1) = lotesTemp(m, 2)   ' Color
+        lstLotes.List(lstLotes.ListCount - 1, 2) = lotesTemp(m, 3)   ' Talla
+        lstLotes.List(lstLotes.ListCount - 1, 3) = lotesTemp(m, 4)   ' Cantidad
+        lstLotes.List(lstLotes.ListCount - 1, 4) = lotesTemp(m, 5)   ' Estado
+        lstLotes.List(lstLotes.ListCount - 1, 5) = m                 ' Índice temporal (no se usa)
+        
+        ' Restaurar seleccion si se solicita
+        If selectID <> "" And Trim(CStr(lotesTemp(m, 1))) = Trim(selectID) Then
+            lstLotes.ListIndex = lstLotes.ListCount - 1
+        End If
+    Next m
 
     If lstLotes.ListCount = 0 Then
         Me.Caption = "Gestion de Lotes - " & Me.idRef & " (Sin lotes registrados)"
@@ -107,7 +175,7 @@ Private Sub CargarAsignacionesDelLote()
         Next j
     End If
 
-    ' --- ORDENAMIENTO POR IDENTIFICADOR DE TAREA (Columna 2) ---
+    ' --- ORDENAMIENTO POR IDENTIFICADOR DE TAREA (Columna 2 del ListBox) ---
     If lstAsignaciones.ListCount > 1 Then
         For m = 0 To lstAsignaciones.ListCount - 2
             For n = m + 1 To lstAsignaciones.ListCount - 1
@@ -135,7 +203,6 @@ End Sub
 
 ' ------------------------------------------------------------------------------
 ' BOTON: NUEVA ASIGNACION
-' CORRECCIÓN: CargarAsignacionesDelLote se llama automaticamente al volver
 ' ------------------------------------------------------------------------------
 Private Sub btnNuevaAsignacion_Click()
     Dim currentLote As String
@@ -145,7 +212,7 @@ Private Sub btnNuevaAsignacion_Click()
     End If
 
     currentLote = lstLotes.List(lstLotes.ListIndex, 0)
-    PreselectRefID  = Me.idRef
+    PreselectRefID = Me.idRef
     PreselectLoteID = currentLote
     FilaActual = 0
     FilaValida = False
@@ -173,8 +240,6 @@ End Sub
 
 ' ------------------------------------------------------------------------------
 ' EDITAR ASIGNACION SELECCIONADA
-' CORRECCIÓN: variable local lngFilaReal (evita nombre ambiguo)
-'             CargarAsignacionesDelLote se llama automaticamente al volver
 ' ------------------------------------------------------------------------------
 Private Sub EditarAsignacionSeleccionada()
     Dim currentLote As String

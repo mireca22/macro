@@ -1,7 +1,7 @@
 Option Explicit
 
 '==============================================================================
-' MODULO 5 - modUtilidadesHelpers v3.3.6 (DOCUMENTACIÓN EXHAUSTIVA)
+' MODULO 5 - modUtilidadesHelpers v3.3.7 (ACTUALIZADO)
 ' Propósito: Funciones transversales de soporte técnico.
 '            Maneja cálculos de tiempo, formatos visuales dinámicos, 
 '            calendario de festivos y gestión de parámetros globales.
@@ -32,10 +32,73 @@ Public Sub AjustarAnchoColumnasInteligente(ws As Worksheet)
             col.WrapText = False
         End If
     Next col
-    ' Ajuste de alto de fila para visualización clara
     Dim lastRow As Long: lastRow = ws.UsedRange.Rows.Count + ws.UsedRange.Row - 1
     If lastRow > 3 Then ws.Rows("3:" & lastRow).EntireRow.AutoFit
     On Error GoTo 0
+End Sub
+
+'==============================================================================
+' SUB: OrdenarHojaPorMultiplesColumnas
+' Propósito: Ordena una hoja por múltiples columnas (ej: Referencia ascendente, luego Fecha ascendente)
+' Parámetros:
+'   ws - Hoja a ordenar
+'   columnas - Array con los números de columna (ej: Array(2, 6))
+'   ordenes - Array con los órdenes (xlAscending o xlDescending)
+'   headerRow - Fila donde están los encabezados (normalmente 3)
+'==============================================================================
+Public Sub OrdenarHojaPorMultiplesColumnas(ws As Worksheet, columnas As Variant, ordenes As Variant, Optional headerRow As Long = 3)
+    Dim sortRange As Range
+    Dim lastRow As Long
+    Dim i As Integer
+    
+    On Error GoTo ErrorHandler
+    
+    ' Determinar última fila con datos (usando columna 1 como referencia)
+    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    If lastRow <= headerRow Then Exit Sub
+    
+    ' Rango a ordenar
+    Set sortRange = ws.Range(ws.Cells(headerRow + 1, 1), ws.Cells(lastRow, ws.UsedRange.Columns.Count))
+    
+    Application.ScreenUpdating = False
+    
+    ' Limpiar ordenamiento existente
+    ws.Sort.SortFields.Clear
+    
+    ' Agregar cada columna como criterio de ordenamiento
+    For i = LBound(columnas) To UBound(columnas)
+        ws.Sort.SortFields.Add Key:=ws.Columns(columnas(i)), _
+                               SortOn:=xlSortOnValues, _
+                               Order:=ordenes(i), _
+                               DataOption:=xlSortNormal
+    Next i
+    
+    ' Aplicar ordenamiento
+    With ws.Sort
+        .SetRange sortRange
+        .Header = xlNo
+        .MatchCase = False
+        .Orientation = xlTopToBottom
+        .SortMethod = xlPinYin
+        .Apply
+    End With
+    
+    Application.ScreenUpdating = True
+    
+ErrorHandler:
+    On Error GoTo 0
+End Sub
+
+'==============================================================================
+' FUNCIÓN: OrdenarLotesPorReferenciaYFecha
+' Propósito: Ordena la hoja LOTES por Referencia (columna 2) y luego por Fecha_Recepcion (columna 6)
+'==============================================================================
+Public Sub OrdenarLotesPorReferenciaYFecha()
+    Dim wsL As Worksheet
+    Set wsL = ThisWorkbook.Sheets("LOTES")
+    
+    ' Ordenar por: col2 (Referencia) ascendente, luego col6 (Fecha_Recepcion) ascendente
+    Call OrdenarHojaPorMultiplesColumnas(wsL, Array(2, 6), Array(xlAscending, xlAscending), 3)
 End Sub
 
 '==============================================================================
@@ -52,25 +115,21 @@ Public Sub AplicarFormatoAsignaciones()
     Application.Calculation = xlCalculationManual
     Call AjustarAnchoColumnasInteligente(ws)
     
-    ' Agrupación de filas para aplicar color en un solo paso COM
     For fila = 4 To ultF
         If fila Mod 2 = 0 Then
             If rngPar Is Nothing Then Set rngPar = ws.Rows(fila) Else Set rngPar = Union(rngPar, ws.Rows(fila))
         Else
             If rngImpar Is Nothing Then Set rngImpar = ws.Rows(fila) Else Set rngImpar = Union(rngImpar, ws.Rows(fila))
         End If
-        ' Límite de 500 filas por bloque para estabilidad de memoria
         If fila Mod 500 = 0 Then
             If Not rngPar Is Nothing Then rngPar.Interior.Color = RGB(240, 240, 240): Set rngPar = Nothing
             If Not rngImpar Is Nothing Then rngImpar.Interior.Color = RGB(255, 255, 255): Set rngImpar = Nothing
         End If
     Next fila
     
-    ' Aplicación de bloques remanentes
     If Not rngPar Is Nothing Then rngPar.Interior.Color = RGB(240, 240, 240)
     If Not rngImpar Is Nothing Then rngImpar.Interior.Color = RGB(255, 255, 255)
     
-    ' Alineaciones estándar de columnas
     With ws
         .Columns("B:C").HorizontalAlignment = xlCenter
         .Columns("E:E").HorizontalAlignment = xlCenter
@@ -89,11 +148,6 @@ End Sub
 ' SECCIÓN: VALIDADORES Y UTILIDADES DE DATOS (UI)
 '==============================================================================
 
-'==============================================================================
-' FUNCIÓN: IsNumericValue
-' Propósito: Validador de entrada para UserForms. Maneja nulos y texto.
-' Retorno: Boolean (True si el valor puede tratarse como número).
-'==============================================================================
 Public Function IsNumericValue(val As Variant) As Boolean
     If IsNull(val) Then IsNumericValue = False: Exit Function
     If Trim(CStr(val)) = "" Then IsNumericValue = False: Exit Function
@@ -141,7 +195,7 @@ Public Sub LimpiarControles(parent As Object)
         ElseIf TypeName(ctrl) = "ListBox" Then
             ctrl.Clear
         ElseIf TypeName(ctrl) = "Frame" Then
-            Call LimpiarControles(ctrl) ' Recursividad para frames anidados
+            Call LimpiarControles(ctrl)
         End If
     Next ctrl
 End Sub
@@ -175,10 +229,6 @@ Public Function ObtenerEstadisticasHoy() As Variant
     ObtenerEstadisticasHoy = stats
 End Function
 
-'==============================================================================
-' FUNCIÓN: GetCapacidadDiariaTotal
-' Propósito: Suma la capacidad de todas las operarias activas para planificación global.
-'==============================================================================
 Public Function GetCapacidadDiariaTotal() As Long
     Dim wsOp As Worksheet, i&, ultF&, data, capT&
     Set wsOp = ThisWorkbook.Sheets("OPERARIAS"): ultF = wsOp.Cells(wsOp.Rows.Count, 1).End(xlUp).Row
@@ -203,7 +253,6 @@ Public Sub ActualizarCalendarioNoLaboral()
     Dim ws As Worksheet, ultF&, fIni As Date, fFin As Date, fIter As Date, desc$, cont&
     Set ws = ThisWorkbook.Sheets("DIAS_NO_LABORALES"): ultF = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
     
-    ' Definición de rango de fechas (desde el último registro hasta fin de año)
     If ultF > 3 Then fIni = ws.Cells(ultF, 1).Value + 1 Else fIni = DateSerial(Year(Date), 1, 1)
     fFin = DateSerial(Year(Date), 12, 31)
     
@@ -212,11 +261,9 @@ Public Sub ActualizarCalendarioNoLaboral()
     Application.ScreenUpdating = False
     For fIter = fIni To fFin
         desc = ""
-        ' Identificación de fines de semana
         If Weekday(fIter, vbMonday) = 6 Then desc = "Sábado"
         If Weekday(fIter, vbMonday) = 7 Then desc = "Domingo"
         
-        ' Cálculo de festivos dinámicos
         Dim fest$: fest = ObtenerFestivoColombia(fIter)
         If fest <> "" Then If desc <> "" Then desc = desc & " - " & fest Else desc = fest
         
@@ -236,7 +283,6 @@ End Sub
 '==============================================================================
 Public Function EsDiaLaboral(fecha As Date) As Boolean
     Dim ws As Worksheet, res As Variant: Set ws = ThisWorkbook.Sheets("DIAS_NO_LABORALES")
-    ' Uso de Application.Match para búsqueda ultra-rápida en la columna A
     res = Application.Match(CLng(fecha), ws.Columns(1), 0)
     EsDiaLaboral = IsError(res)
 End Function
@@ -249,7 +295,6 @@ Public Function ObtenerFestivoColombia(fecha As Date) As String
     Dim d%, m%, a%, fDesc$, fDomPascua As Date
     d = Day(fecha): m = Month(fecha): a = Year(fecha)
     
-    ' 1. Festivos de Fecha Fija (No se mueven)
     If d = 1 And m = 1 Then fDesc = "Año Nuevo": GoTo Finalizar
     If d = 1 And m = 5 Then fDesc = "Día del Trabajo": GoTo Finalizar
     If d = 20 And m = 7 Then fDesc = "Independencia de Colombia": GoTo Finalizar
@@ -257,7 +302,6 @@ Public Function ObtenerFestivoColombia(fecha As Date) As String
     If d = 8 And m = 12 Then fDesc = "Inmaculada Concepción": GoTo Finalizar
     If d = 25 And m = 12 Then fDesc = "Navidad": GoTo Finalizar
     
-    ' 2. Festivos de Fecha Fija (Ley Emiliani - Se mueven al siguiente lunes si no son lunes)
     If EsFestivoTrasladable(fecha, 6, 1, "Reyes Magos") Then fDesc = "Reyes Magos": GoTo Finalizar
     If EsFestivoTrasladable(fecha, 19, 3, "San José") Then fDesc = "San José": GoTo Finalizar
     If EsFestivoTrasladable(fecha, 29, 6, "San Pedro y San Pablo") Then fDesc = "San Pedro y San Pablo": GoTo Finalizar
@@ -266,7 +310,6 @@ Public Function ObtenerFestivoColombia(fecha As Date) As String
     If EsFestivoTrasladable(fecha, 1, 11, "Todos los Santos") Then fDesc = "Todos los Santos": GoTo Finalizar
     If EsFestivoTrasladable(fecha, 11, 11, "Independencia de Cartagena") Then fDesc = "Independencia de Cartagena": GoTo Finalizar
     
-    ' 3. Festivos Basados en la Pascua (Variables)
     fDomPascua = CalcularDomingoPascua(a)
     If fecha = fDomPascua - 3 Then fDesc = "Jueves Santo": GoTo Finalizar
     If fecha = fDomPascua - 2 Then fDesc = "Viernes Santo": GoTo Finalizar
@@ -339,14 +382,12 @@ Public Function CalcularFechaFinEstimada(idRef$, cantT&, fInicio As Date) As Dat
     minReq = cantT * tUnitTotal / 60
     capD = GetCapacidadDiariaTotal(): If capD = 0 Then capD = 528
     
-    ' Cálculo de días necesarios (redondeo arriba)
     diasN = Application.WorksheetFunction.RoundUp(minReq / capD, 0)
     fFin = fInicio: dContados = 0
     
-    ' Bucle de proyección saltando festivos
     Do While dContados < diasN
         fFin = fFin + 1: If EsDiaLaboral(fFin) Then dContados = dContados + 1
-        If dContados > 1000 Then Exit Do ' Failsafe
+        If dContados > 1000 Then Exit Do
     Loop
     CalcularFechaFinEstimada = fFin
 End Function

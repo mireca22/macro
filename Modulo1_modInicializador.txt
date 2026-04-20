@@ -214,6 +214,7 @@ Public Sub CrearDashboardInicio()
     Call CrearBotonDashboard(ws, "INFORME CONSOLIDADO", "GenerarInformeGerencialProduccion", 11, 4, RGB(44, 62, 80))
     Call CrearBotonDashboard(ws, "REPORTE DE LOTES", "GenerarReporteLotes", 15, 4, RGB(0, 128, 128))
     Call CrearBotonDashboard(ws, "ACTUALIZAR PROYECCIONES", "RecalcularSistemaLotes", 17, 4, RGB(44, 62, 80))
+    Call CrearBotonDashboard(ws, "ASIGNACIONES POR OPERARIA", "MostrarReporteAsignacionesPorOperaria", 19, 4, RGB(0, 112, 192))
 
     ' Grupo: Maestros (Configuración) - Mayor separación vertical
     Call CrearBotonDashboard(ws, "GESTIÓN OPERARIAS", "AbrirGestorOperarias", 11, 2, RGB(100, 100, 100))
@@ -221,8 +222,8 @@ Public Sub CrearDashboardInicio()
     Call CrearBotonDashboard(ws, "GESTIÓN LOTES", "AbrirGestorLotes", 15, 2, RGB(0, 100, 0))
 
     ' Grupo: Sistema
-    Call CrearBotonDashboard(ws, "RECARGAR CACHÉ", "ActualizarCacheCompleto", 19, 2, RGB(255, 140, 0))
-    Call CrearBotonDashboard(ws, "RESETEAR SISTEMA", "InicializarSistema", 19, 4, RGB(192, 0, 0))
+    Call CrearBotonDashboard(ws, "RECARGAR CACHÉ", "ActualizarCacheCompleto", 21, 2, RGB(255, 140, 0))
+    Call CrearBotonDashboard(ws, "RESETEAR SISTEMA", "InicializarSistema", 21, 4, RGB(192, 0, 0))
 
     ' Buscador de Referencias (Reubicado)
     ws.Range("D12").Value = "Búsqueda Rápida de Referencia:"
@@ -341,4 +342,12 @@ End Sub
 Private Sub EscribirSeccionManual(ws As Worksheet, ByRef f&, tit$, cont$)
     ws.Cells(f, 2).Value = tit: ws.Cells(f, 2).Font.Bold = True: ws.Cells(f, 2).Interior.Color = RGB(0, 122, 204): ws.Cells(f, 2).Font.Color = RGB(255, 255, 255)
     f = f + 1: ws.Cells(f, 2).Value = cont: f = f + 2
+End Sub
+
+'==============================================================================
+' SUB: MostrarReporteAsignacionesPorOperaria
+' Propósito: Abre o genera la hoja de reporte de asignaciones por operaria
+'==============================================================================
+Public Sub MostrarReporteAsignacionesPorOperaria()
+    Call GenerarReporteAsignacionesPorOperaria
 End Sub
