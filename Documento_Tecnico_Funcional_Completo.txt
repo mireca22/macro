@@ -134,6 +134,19 @@ El sistema sigue una arquitectura de capas simple pero efectiva, contenida dentr
     *   `ActualizarCascadaReferencia()`: Procedimiento de mantenimiento que recorre todas las hojas dependientes para actualizar un ID de referencia si ha sido modificado.
 
 ---
+### **Modulo8_modReporteAsignacionesPorOperaria.txt**
+---
+*   **Función Principal:** Generador de comprobantes de trabajo individuales.
+*   **Descripción Funcional:**
+    *   Permite al supervisor filtrar y visualizar las tareas asignadas a una operaria específica en una fecha determinada.
+    *   Genera un formato optimizado para impresión con totales de unidades y minutos.
+*   **Detalles Técnicos:**
+    *   Utiliza controles ActiveX (`OLEObjects`) insertados dinámicamente (ComboBoxes y Botones) directamente en la hoja de cálculo.
+    *   `ObtenerOperariasPorFecha()`: Filtra el universo de asignaciones para extraer solo las operarias activas en un día específico, mejorando la UX al evitar listas vacías.
+    *   Implementa un sistema de "indicador de carga" visual para procesos de filtrado masivo.
+    *   Configura automáticamente el `PrintArea` y ajustes de página para garantizar una impresión profesional en una sola hoja.
+
+---
 ### **UserForm_frmMaestros.txt**
 ---
 *   **Función Principal:** Un formulario "camaleónico" para la gestión de todos los maestros.

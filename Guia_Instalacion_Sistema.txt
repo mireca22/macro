@@ -1,7 +1,7 @@
 
 ╔══════════════════════════════════════════════════════════════════════════════════════╗
-║         SISTEMA DE GESTIÓN DE PRODUCCIÓN TEXTIL v3.2 — GUÍA DE INSTALACIÓN          ║
-║                      Última actualización: March 07, 2026                            ║
+║         SISTEMA DE GESTIÓN DE PRODUCCIÓN TEXTIL v3.3 — GUÍA DE INSTALACIÓN          ║
+║                      Última actualización: March 08, 2026                            ║
 ╚══════════════════════════════════════════════════════════════════════════════════════╝
 
 CARACTERÍSTICAS DE LA VERSIÓN v3.2
@@ -18,7 +18,7 @@ CARACTERÍSTICAS DE LA VERSIÓN v3.2
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PASO 1 — INSTALAR LOS MÓDULOS VBA (6 módulos)
+PASO 1 — INSTALAR LOS MÓDULOS VBA (7 módulos)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   1.1  Abrir Excel → Alt+F11
@@ -36,8 +36,9 @@ PASO 1 — INSTALAR LOS MÓDULOS VBA (6 módulos)
     4. Modulo4_modSeleccionFilas.txt          → Sub RegistrarFilaEnFormulario()
     5. Modulo5_modUtilidadesHelpers.txt       → Sub AplicarFormatoAsignaciones()
     6. Modulo6_modGestorMaestros.txt          → Sub AbrirGestorOperarias()
+    7. Modulo8_modReporteAsignacionesPorOperaria.txt → Sub GenerarReporteAsignacionesPorOperaria()
 
-  ✅ Verificación: En el editor VBA debes tener 6 módulos sin líneas rojas.
+  ✅ Verificación: En el editor VBA debes tener 7 módulos de código sin líneas rojas.
 
   VARIABLES GLOBALES REQUERIDAS EN MÓDULO 6 (verificar que existen):
 
@@ -325,7 +326,7 @@ PASO 3 — EJECUTAR EL INICIALIZADOR
   4. Esperar mensaje "✅ OK — SISTEMA INICIALIZADO"
 
   RESULTADO:
-    ✅ 19 hojas creadas con pestañas de colores
+    ✅ 22 hojas creadas con pestañas de colores (v3.3)
     ✅ Estructura unificada: Fila 1 (sep 15px) + Fila 2 (botón 45px) + Fila 3 (headers)
     ✅ Dashboard INICIO con todos los botones
     ✅ Botón VOLVER A INICIO en TODAS las hojas incluyendo EFICIENCIAOPERARIAS
@@ -390,7 +391,8 @@ FLUJO D — Generación de Reportes
     ├── [AVANCE PRODUCCION]        → genera AVANCEPRODUCCION  (headers fila 3)
     ├── [REPORTE DE LOTES]         → genera REPORTE_LOTES     (headers fila 3)
     ├── [INFORME CONSOLIDADO]      → genera INFORME_CONSOLIDADO (detallado)
-    └── [INFORME PRODUCCION]       → genera PRODUCCIONFINALIZADA (headers fila 3)
+    ├── [INFORME PRODUCCION]       → genera PRODUCCIONFINALIZADA (headers fila 3)
+    └── [ASIGNACIONES POR OPERARIA] → genera REPORTE_ASIGNACIONES_OPERARIA (Interactivo)
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -427,14 +429,15 @@ PASO 6 — ESTRUCTURA DE HOJAS v3.2
     Fila 3  │ Altura 20px   │ Headers (negrita + fondo gris)
     Fila 4+ │ Altura 20px   │ Datos (alternancia de colores)
 
-  HOJAS DEL SISTEMA (19 total):
+  HOJAS DEL SISTEMA (22 total):
     Pestaña Azul Claro  → INICIO
     Pestaña Amarilla    → MANUAL
-    Pestaña Roja        → LOTES, ASIGNACIONES_DIARIAS, EFICIENCIAOPERARIAS
+    Pestaña Roja        → LOTES, ASIGNACIONES_DIARIAS, EFICIENCIAOPERARIAS, TRAZABILIDAD_LOTE
     Pestaña Azul Oscuro → OPERARIAS, REFERENCIAS, COLORES, TALLAS, TAREAS, DIASNOLABORALES
     Pestaña Verde       → RESUMENDIARIO, AVANCEPRODUCCION, REPORTELOTES,
-                          INFORMEPRODUCCION, PRODUCCIONFINALIZADA, ANALISISTIEMPOS
-    Pestaña Gris        → PARAMETROS, ARCHIVOASIGNACIONES
+                          INFORMEPRODUCCION, PRODUCCIONFINALIZADA, ANALISISTIEMPOS, 
+                          REPORTE_ASIGNACIONES_OPERARIA
+    Pestaña Gris        → PARAMETROS, ARCHIVOASIGNACIONES, MATRIZ_ASIGNACION
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -493,6 +496,7 @@ ARCHIVOS DEL SISTEMA (versión actualizada)
     Modulo4_modSeleccionFilas.txt                 v3.1
     Modulo5_modUtilidadesHelpers.txt              v3.2  ← reportes en fila 3+
     Modulo6_modGestorMaestros.txt                 v3.2  ← + PreselectLoteID
+    Modulo8_modReporteAsignacionesPorOperaria.txt v1.5  ← NUEVO: Comprobantes
 
   USERFORMS:
     UserForm_Optimizado_frmEditarAsignacion.txt   v3.2  ← preselección PreselectLoteID

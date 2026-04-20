@@ -1,9 +1,10 @@
 Option Explicit
 
 '==============================================================================
-' MODULO 8 - modReporteAsignacionesPorOperaria v1.4
+' MODULO 8 - modReporteAsignacionesPorOperaria v1.5
 ' Propósito: Generar reporte imprimible de asignaciones por operaria y fecha
-' MEJORAS v1.4:
+' MEJORAS v1.5:
+'   - Simplificación de eliminación de controles (sin funciones auxiliares)
 '   - Corrección de errores al eliminar controles inexistentes
 '   - Manejo seguro de creación de hoja y controles
 '   - Indicador de carga (spinner visual y mensaje)
@@ -76,7 +77,7 @@ Public Sub GenerarReporteAsignacionesPorOperaria(Optional fechaSeleccionada As V
     wsReporte.Columns("C").ColumnWidth = 25
     wsReporte.Columns("D").ColumnWidth = 30
     
-    ' Configurar controles de la hoja (siempre se configuran al abrir)
+    ' Configurar controles de la hoja
     Call ConfigurarControlesReporte(wsReporte)
     
     ' Si no se proporcionaron filtros, salir
@@ -175,36 +176,30 @@ End Sub
 ' Propósito: Agrega o actualiza los controles desplegables en la hoja de reporte
 '==============================================================================
 Private Sub ConfigurarControlesReporte(ws As Worksheet)
-    Dim oleObj As OLEObject
     Dim colFechas As Collection
     Dim cboFecha As Object
     Dim cboOperaria As Object
-    Dim btnGenerar As Object
-    Dim btnImprimir As Object
-    Dim btnRefrescar As Object
-    Dim lblMensaje As Object
     Dim fecha As Variant
     
-    ' Eliminar controles existentes (con manejo de errores)
+    ' Eliminar controles existentes (usando On Error Resume Next para ignorar si no existen)
     On Error Resume Next
-    If ObjectExists(ws, "cboFechaReporte") Then ws.OLEObjects("cboFechaReporte").Delete
-    If ObjectExists(ws, "cboOperariaReporte") Then ws.OLEObjects("cboOperariaReporte").Delete
-    If ObjectExists(ws, "btnGenerarReporte") Then ws.OLEObjects("btnGenerarReporte").Delete
-    If ObjectExists(ws, "btnImprimirReporte") Then ws.OLEObjects("btnImprimirReporte").Delete
-    If ObjectExists(ws, "lblMensajeCarga") Then ws.OLEObjects("lblMensajeCarga").Delete
-    If ObjectExists(ws, "btnRefrescarOperarias") Then ws.OLEObjects("btnRefrescarOperarias").Delete
+    ws.OLEObjects("cboFechaReporte").Delete
+    ws.OLEObjects("cboOperariaReporte").Delete
+    ws.OLEObjects("btnGenerarReporte").Delete
+    ws.OLEObjects("btnImprimirReporte").Delete
+    ws.OLEObjects("lblMensajeCarga").Delete
+    ws.OLEObjects("btnRefrescarOperarias").Delete
     On Error GoTo 0
     
     ' Obtener lista de fechas
     Set colFechas = ObtenerFechasConAsignaciones()
     
     ' Crear combo de fechas
-    Set oleObj = ws.OLEObjects.Add(ClassType:="Forms.ComboBox.1", _
-                                   Left:=ws.Cells(3, 2).Left, _
-                                   Top:=ws.Cells(3, 2).Top, _
-                                   Width:=120, Height:=22)
-    oleObj.Name = "cboFechaReporte"
-    Set cboFecha = oleObj.Object
+    Set cboFecha = ws.OLEObjects.Add(ClassType:="Forms.ComboBox.1", _
+                                     Left:=ws.Cells(3, 2).Left, _
+                                     Top:=ws.Cells(3, 2).Top, _
+                                     Width:=120, Height:=22).Object
+    cboFecha.Name = "cboFechaReporte"
     
     cboFecha.Clear
     For Each fecha In colFechas
@@ -213,74 +208,63 @@ Private Sub ConfigurarControlesReporte(ws As Worksheet)
     If cboFecha.ListCount > 0 Then cboFecha.ListIndex = 0
     
     ' Crear combo de operarias
-    Set oleObj = ws.OLEObjects.Add(ClassType:="Forms.ComboBox.1", _
-                                   Left:=ws.Cells(4, 2).Left, _
-                                   Top:=ws.Cells(4, 2).Top, _
-                                   Width:=200, Height:=22)
-    oleObj.Name = "cboOperariaReporte"
-    Set cboOperaria = oleObj.Object
+    Set cboOperaria = ws.OLEObjects.Add(ClassType:="Forms.ComboBox.1", _
+                                        Left:=ws.Cells(4, 2).Left, _
+                                        Top:=ws.Cells(4, 2).Top, _
+                                        Width:=200, Height:=22).Object
+    cboOperaria.Name = "cboOperariaReporte"
     cboOperaria.Clear
     
     ' Crear boton GENERAR REPORTE
-    Set oleObj = ws.OLEObjects.Add(ClassType:="Forms.CommandButton.1", _
-                                   Left:=ws.Cells(3, 4).Left, _
-                                   Top:=ws.Cells(3, 4).Top, _
-                                   Width:=130, Height:=28)
-    oleObj.Name = "btnGenerarReporte"
-    Set btnGenerar = oleObj.Object
-    btnGenerar.Caption = "GENERAR REPORTE"
-    btnGenerar.BackColor = RGB(0, 122, 204)
-    btnGenerar.ForeColor = RGB(255, 255, 255)
+    With ws.OLEObjects.Add(ClassType:="Forms.CommandButton.1", _
+                           Left:=ws.Cells(3, 4).Left, _
+                           Top:=ws.Cells(3, 4).Top, _
+                           Width:=130, Height:=28).Object
+        .Name = "btnGenerarReporte"
+        .Caption = "GENERAR REPORTE"
+        .BackColor = RGB(0, 122, 204)
+        .ForeColor = RGB(255, 255, 255)
+    End With
     
     ' Crear boton IMPRIMIR
-    Set oleObj = ws.OLEObjects.Add(ClassType:="Forms.CommandButton.1", _
-                                   Left:=ws.Cells(4, 4).Left, _
-                                   Top:=ws.Cells(4, 4).Top, _
-                                   Width:=130, Height:=28)
-    oleObj.Name = "btnImprimirReporte"
-    Set btnImprimir = oleObj.Object
-    btnImprimir.Caption = "IMPRIMIR"
-    btnImprimir.BackColor = RGB(44, 62, 80)
-    btnImprimir.ForeColor = RGB(255, 255, 255)
+    With ws.OLEObjects.Add(ClassType:="Forms.CommandButton.1", _
+                           Left:=ws.Cells(4, 4).Left, _
+                           Top:=ws.Cells(4, 4).Top, _
+                           Width:=130, Height:=28).Object
+        .Name = "btnImprimirReporte"
+        .Caption = "IMPRIMIR"
+        .BackColor = RGB(44, 62, 80)
+        .ForeColor = RGB(255, 255, 255)
+    End With
     
     ' Crear boton REFRESCAR OPERARIAS
-    Set oleObj = ws.OLEObjects.Add(ClassType:="Forms.CommandButton.1", _
-                                   Left:=ws.Cells(3, 3).Left + 10, _
-                                   Top:=ws.Cells(3, 2).Top, _
-                                   Width:=140, Height:=22)
-    oleObj.Name = "btnRefrescarOperarias"
-    Set btnRefrescar = oleObj.Object
-    btnRefrescar.Caption = "REFRESCAR OPERARIAS"
-    btnRefrescar.BackColor = RGB(255, 140, 0)
-    btnRefrescar.ForeColor = RGB(255, 255, 255)
+    With ws.OLEObjects.Add(ClassType:="Forms.CommandButton.1", _
+                           Left:=ws.Cells(3, 3).Left + 10, _
+                           Top:=ws.Cells(3, 2).Top, _
+                           Width:=140, Height:=22).Object
+        .Name = "btnRefrescarOperarias"
+        .Caption = "REFRESCAR OPERARIAS"
+        .BackColor = RGB(255, 140, 0)
+        .ForeColor = RGB(255, 255, 255)
+    End With
     
     ' Crear etiqueta para mensaje de carga (inicialmente invisible)
-    Set oleObj = ws.OLEObjects.Add(ClassType:="Forms.Label.1", _
-                                   Left:=ws.Cells(4, 3).Left + 10, _
-                                   Top:=ws.Cells(4, 2).Top, _
-                                   Width:=150, Height:=22)
-    oleObj.Name = "lblMensajeCarga"
-    Set lblMensaje = oleObj.Object
-    lblMensaje.Caption = "Cargando operarias..."
-    lblMensaje.ForeColor = RGB(0, 112, 192)
-    lblMensaje.Font.Bold = True
-    lblMensaje.Visible = False
+    With ws.OLEObjects.Add(ClassType:="Forms.Label.1", _
+                           Left:=ws.Cells(4, 3).Left + 10, _
+                           Top:=ws.Cells(4, 2).Top, _
+                           Width:=150, Height:=22).Object
+        .Name = "lblMensajeCarga"
+        .Caption = "Cargando operarias..."
+        .ForeColor = RGB(0, 112, 192)
+        .Font.Bold = True
+        .Visible = False
+    End With
 
     ' Cargar operarias para la fecha seleccionada
     If cboFecha.ListCount > 0 Then
         Call CargarOperariasPorFecha(ws, CDate(cboFecha.Value))
     End If
 End Sub
-
-'==============================================================================
-' FUNCIÓN: ObjectExists
-' Propósito: Verifica si un OLEObject existe en una hoja
-'==============================================================================
-Private Function ObjectExists(ws As Worksheet, nombre As String) As Boolean
-    On Error Resume Next
-    ObjectExists = Not ws.OLEObjects(nombre) Is Nothing
-    On Error GoTo 0
-End Function
 
 '==============================================================================
 ' SUB: MostrarIndicadorCarga
