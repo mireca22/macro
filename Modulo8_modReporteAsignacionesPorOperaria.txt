@@ -1,14 +1,11 @@
 Option Explicit
 
 '==============================================================================
-' MODULO 8 - modReporteAsignacionesPorOperaria v1.5
+' MODULO 8 - modReporteAsignacionesPorOperaria v1.9 (ESTANDARIZADO)
 ' Propósito: Generar reporte imprimible de asignaciones por operaria y fecha
-' MEJORAS v1.5:
-'   - Simplificación de eliminación de controles (sin funciones auxiliares)
-'   - Corrección de errores al eliminar controles inexistentes
-'   - Manejo seguro de creación de hoja y controles
-'   - Indicador de carga (spinner visual y mensaje)
-'   - Formato de operaria: "ID - Nombre"
+' CAMBIOS v1.9:
+'   - Fecha: Ahora es un campo de texto libre para digitar (txtFechaReporte).
+'   - Operarias: Lista a todas las operarias activas del sistema (Caché).
 '==============================================================================
 
 '==============================================================================
@@ -38,24 +35,22 @@ Public Sub GenerarReporteAsignacionesPorOperaria(Optional fechaSeleccionada As V
     End If
     On Error GoTo 0
     
-    ' Limpiar contenido anterior (desde fila 7 en adelante)
-    If wsReporte.Rows.Count > 6 Then
-        wsReporte.Rows("7:" & wsReporte.Rows.Count).ClearContents
-        wsReporte.Rows("7:" & wsReporte.Rows.Count).Interior.ColorIndex = xlNone
-    End If
+    ' Limpiar contenido y formato anterior completamente (desde fila 7 en adelante)
+    ' Esto elimina bordes, colores y datos de reportes previos que pudieran ser más largos.
+    wsReporte.Rows("7:" & wsReporte.Rows.Count).Clear
     
     ' Configurar encabezados de la hoja
     wsReporte.Range("A1").Value = "REPORTE DE ASIGNACIONES POR OPERARIA"
     wsReporte.Range("A1").Font.Size = 18
     wsReporte.Range("A1").Font.Bold = True
     
-    wsReporte.Range("A3").Value = "Fecha:"
+    wsReporte.Range("A3").Value = "Fecha (dd/mm/yyyy):"
     wsReporte.Range("A3").Font.Bold = True
-    wsReporte.Range("B3").Value = "Seleccione una fecha"
+    wsReporte.Range("B3").Value = ""
     
     wsReporte.Range("A4").Value = "Operaria:"
     wsReporte.Range("A4").Font.Bold = True
-    wsReporte.Range("B4").Value = "Seleccione una operaria"
+    wsReporte.Range("B4").Value = ""
     
     wsReporte.Range("A6").Value = "ID_Lote"
     wsReporte.Range("B6").Value = "Nombre_Tarea"
@@ -71,11 +66,6 @@ Public Sub GenerarReporteAsignacionesPorOperaria(Optional fechaSeleccionada As V
         .Borders(xlEdgeBottom).Weight = xlThick
     End With
     
-    ' Ajustar ancho de columnas
-    wsReporte.Columns("A").ColumnWidth = 25
-    wsReporte.Columns("B").ColumnWidth = 40
-    wsReporte.Columns("C").ColumnWidth = 25
-    wsReporte.Columns("D").ColumnWidth = 30
     
     ' Configurar controles de la hoja
     Call ConfigurarControlesReporte(wsReporte)
@@ -153,15 +143,17 @@ Public Sub GenerarReporteAsignacionesPorOperaria(Optional fechaSeleccionada As V
             End If
         Next j
         
+        ' Ajustar anchos de columna dinámicamente según el contenido
+        Call AjustarAnchoColumnasInteligente(wsReporte)
+        
         wsReporte.PageSetup.PrintArea = "$A$1:$D$" & filaDestino
         wsReporte.PageSetup.Orientation = xlPortrait
+        wsReporte.PageSetup.PaperSize = xlPaperLetter ' Configurar a tamaño CARTA
         wsReporte.PageSetup.FitToPagesWide = 1
-        wsReporte.PageSetup.FitToPagesTall = False
+        wsReporte.PageSetup.FitToPagesTall = 1 ' Ajustar a una sola hoja (alto y ancho)
         wsReporte.PageSetup.CenterHeader = "Asignaciones de: " & nombreOperaria & " - Fecha: " & Format(fechaFiltro, "dd/mm/yyyy")
+        wsReporte.PageSetup.Zoom = False ' Necesario para que FitToPages funcione
     End If
-    
-    ' Ocultar indicador de carga si está visible
-    Call OcultarIndicadorCarga(wsReporte)
     
     wsReporte.Activate
     Application.ScreenUpdating = True
@@ -176,322 +168,125 @@ End Sub
 ' Propósito: Agrega o actualiza los controles desplegables en la hoja de reporte
 '==============================================================================
 Private Sub ConfigurarControlesReporte(ws As Worksheet)
-    Dim colFechas As Collection
-    Dim cboFecha As Object
-    Dim cboOperaria As Object
-    Dim fecha As Variant
-    
-    ' Eliminar controles existentes (usando On Error Resume Next para ignorar si no existen)
-    On Error Resume Next
-    ws.OLEObjects("cboFechaReporte").Delete
-    ws.OLEObjects("cboOperariaReporte").Delete
-    ws.OLEObjects("btnGenerarReporte").Delete
-    ws.OLEObjects("btnImprimirReporte").Delete
-    ws.OLEObjects("lblMensajeCarga").Delete
-    ws.OLEObjects("btnRefrescarOperarias").Delete
-    On Error GoTo 0
-    
-    ' Obtener lista de fechas
-    Set colFechas = ObtenerFechasConAsignaciones()
-    
-    ' Crear combo de fechas
-    Set cboFecha = ws.OLEObjects.Add(ClassType:="Forms.ComboBox.1", _
-                                     Left:=ws.Cells(3, 2).Left, _
-                                     Top:=ws.Cells(3, 2).Top, _
-                                     Width:=120, Height:=22).Object
-    cboFecha.Name = "cboFechaReporte"
-    
-    cboFecha.Clear
-    For Each fecha In colFechas
-        cboFecha.AddItem Format(fecha, "dd/mm/yyyy")
-    Next fecha
-    If cboFecha.ListCount > 0 Then cboFecha.ListIndex = 0
-    
-    ' Crear combo de operarias
-    Set cboOperaria = ws.OLEObjects.Add(ClassType:="Forms.ComboBox.1", _
-                                        Left:=ws.Cells(4, 2).Left, _
-                                        Top:=ws.Cells(4, 2).Top, _
-                                        Width:=200, Height:=22).Object
-    cboOperaria.Name = "cboOperariaReporte"
-    cboOperaria.Clear
-    
-    ' Crear boton GENERAR REPORTE
-    With ws.OLEObjects.Add(ClassType:="Forms.CommandButton.1", _
-                           Left:=ws.Cells(3, 4).Left, _
-                           Top:=ws.Cells(3, 4).Top, _
-                           Width:=130, Height:=28).Object
-        .Name = "btnGenerarReporte"
-        .Caption = "GENERAR REPORTE"
-        .BackColor = RGB(0, 122, 204)
-        .ForeColor = RGB(255, 255, 255)
-    End With
-    
-    ' Crear boton IMPRIMIR
-    With ws.OLEObjects.Add(ClassType:="Forms.CommandButton.1", _
-                           Left:=ws.Cells(4, 4).Left, _
-                           Top:=ws.Cells(4, 4).Top, _
-                           Width:=130, Height:=28).Object
-        .Name = "btnImprimirReporte"
-        .Caption = "IMPRIMIR"
-        .BackColor = RGB(44, 62, 80)
-        .ForeColor = RGB(255, 255, 255)
-    End With
-    
-    ' Crear boton REFRESCAR OPERARIAS
-    With ws.OLEObjects.Add(ClassType:="Forms.CommandButton.1", _
-                           Left:=ws.Cells(3, 3).Left + 10, _
-                           Top:=ws.Cells(3, 2).Top, _
-                           Width:=140, Height:=22).Object
-        .Name = "btnRefrescarOperarias"
-        .Caption = "REFRESCAR OPERARIAS"
-        .BackColor = RGB(255, 140, 0)
-        .ForeColor = RGB(255, 255, 255)
-    End With
-    
-    ' Crear etiqueta para mensaje de carga (inicialmente invisible)
-    With ws.OLEObjects.Add(ClassType:="Forms.Label.1", _
-                           Left:=ws.Cells(4, 3).Left + 10, _
-                           Top:=ws.Cells(4, 2).Top, _
-                           Width:=150, Height:=22).Object
-        .Name = "lblMensajeCarga"
-        .Caption = "Cargando operarias..."
-        .ForeColor = RGB(0, 112, 192)
-        .Font.Bold = True
-        .Visible = False
-    End With
+    Dim colOps As Collection, opId As Variant
+    Dim txtFecha As Object, cboOperaria As Object, obj As OLEObject, oleObj As OLEObject
 
-    ' Cargar operarias para la fecha seleccionada
-    If cboFecha.ListCount > 0 Then
-        Call CargarOperariasPorFecha(ws, CDate(cboFecha.Value))
+    ' --- LIMPIEZA SEGURA DE CONTROLES ---
+    ws.Unprotect "admin123" ' Asegurar que la hoja no esté bloqueada
+    Application.EnableEvents = False
+    On Error Resume Next
+    ' Borrar OLEObjects (Inputs y posibles botones obsoletos)
+    For Each obj In ws.OLEObjects
+        Select Case obj.Name
+            Case "txtFechaReporte", "cboOperariaReporte", "btnGenerarReporte", "btnImprimirReporte"
+                obj.Delete
+        End Select
+    Next obj
+    ' Borrar Shapes (Botones nuevos)
+    Call LimpiarBotonesReporte(ws)
+    On Error GoTo 0
+    DoEvents ' Pausa para procesar la eliminación de objetos en memoria
+    Application.EnableEvents = True
+    
+    ' --- CREACIÓN DE CONTROLES (Patrón Robusto) ---
+    
+    ' 1. Crear campo de fecha (TextBox) para que el usuario digite
+    Set oleObj = ws.OLEObjects.Add(ClassType:="Forms.TextBox.1", _
+                                   Left:=ws.Cells(3, 2).Left, _
+                                   Top:=ws.Cells(3, 2).Top, _
+                                   Width:=120, Height:=22)
+    oleObj.Name = "txtFechaReporte"
+    With oleObj.Object
+        .Value = Format(Date, "dd/mm/yyyy")
+        .TextAlign = 2 ' Centrado
+    End With
+    
+    ' 2. Crear combo de operarias
+    Set oleObj = ws.OLEObjects.Add(ClassType:="Forms.ComboBox.1", _
+                                   Left:=ws.Cells(4, 2).Left, _
+                                   Top:=ws.Cells(4, 2).Top, _
+                                   Width:=200, Height:=22)
+    oleObj.Name = "cboOperariaReporte"
+    Set cboOperaria = oleObj.Object
+    cboOperaria.Clear
+    ' Llenar con todas las operarias activas del sistema (Independiente de la fecha)
+    Set colOps = ObtenerAllOperarias(True)
+    If Not colOps Is Nothing Then
+        For Each opId In colOps
+            cboOperaria.AddItem opId & " - " & ObtenerNombreOperaria(CStr(opId))
+        Next opId
     End If
+
+    ' 3. Crear botones usando el patrón del Dashboard (Modulo 1)
+    Call CrearBotonReporte(ws, "GENERAR REPORTE", "EjecutarGenerarReporte", 3, 4, RGB(0, 122, 204))
+    Call CrearBotonReporte(ws, "IMPRIMIR", "EjecutarImprimirReporte", 4, 4, RGB(44, 62, 80))
 End Sub
 
 '==============================================================================
-' SUB: MostrarIndicadorCarga
-' Propósito: Muestra un indicador visual de carga
+' SUB: CrearBotonReporte (Basado en Modulo 1)
+' Propósito: Crea botones uniformes como Formas para asegurar ejecución de macro.
 '==============================================================================
-Private Sub MostrarIndicadorCarga(ws As Worksheet)
-    Dim lbl As Object
+Private Sub CrearBotonReporte(ws As Worksheet, texto As String, macro As String, fila As Integer, col As Integer, color As Long)
+    Dim btn As Shape
+    ' Altura de fila para que el botón quepa bien
+    ws.Rows(fila).RowHeight = 30
+    
+    Set btn = ws.Shapes.AddShape(msoShapeRoundedRectangle, ws.Cells(fila, col).Left + 5, ws.Cells(fila, col).Top + 2, 130, 26)
+    With btn
+        .Name = "btn_" & macro ' Nombre único para limpieza
+        .TextFrame.Characters.Text = texto
+        .TextFrame.HorizontalAlignment = xlHAlignCenter
+        .TextFrame.VerticalAlignment = xlVAlignCenter
+        .Fill.ForeColor.RGB = color
+        .Line.Visible = msoFalse
+        .TextFrame.Characters.Font.Color = RGB(255, 255, 255)
+        .TextFrame.Characters.Font.Bold = True
+        .OnAction = macro
+        .Shadow.Type = msoShadow25
+    End With
+End Sub
+
+'==============================================================================
+' SUB: LimpiarBotonesReporte
+' Propósito: Elimina solo las formas que funcionan como botones.
+'==============================================================================
+Private Sub LimpiarBotonesReporte(ws As Worksheet)
+    Dim shp As Shape
+    For Each shp In ws.Shapes
+        If shp.Type <> msoOLEControlObject Then
+            If Left(shp.Name, 4) = "btn_" Or shp.Name = "btnGenerarReporte" Or shp.Name = "btnImprimirReporte" Then
+                shp.Delete
+            End If
+        End If
+    Next shp
+End Sub
+
+'==============================================================================
+' SUB: ActualizarControlesConSeleccion (Modificado)
+'==============================================================================
+Private Sub ActualizarControlesConSeleccion(ws As Worksheet, fecha As Date, idOperaria As String, nombreOperaria As String)
+    Dim txtFecha As Object
     Dim cboOperaria As Object
+    Dim i As Integer
     
     On Error Resume Next
-    Set lbl = ws.OLEObjects("lblMensajeCarga").Object
+    Set txtFecha = ws.OLEObjects("txtFechaReporte").Object
     Set cboOperaria = ws.OLEObjects("cboOperariaReporte").Object
     
-    If Not lbl Is Nothing Then
-        lbl.Visible = True
-        lbl.Caption = "Cargando operarias..."
-        lbl.ForeColor = RGB(0, 112, 192)
+    If Not txtFecha Is Nothing Then
+        txtFecha.Value = Format(fecha, "dd/mm/yyyy")
     End If
     
     If Not cboOperaria Is Nothing Then
-        cboOperaria.Clear
-        cboOperaria.AddItem "Cargando, espere..."
-        cboOperaria.Enabled = False
-    End If
-    
-    ' Forzar actualización de pantalla
-    DoEvents
-    Application.ScreenUpdating = True
-    
-    On Error GoTo 0
-End Sub
-
-'==============================================================================
-' SUB: OcultarIndicadorCarga
-' Propósito: Oculta el indicador de carga
-'==============================================================================
-Private Sub OcultarIndicadorCarga(ws As Worksheet)
-    Dim lbl As Object
-    
-    On Error Resume Next
-    Set lbl = ws.OLEObjects("lblMensajeCarga").Object
-    If Not lbl Is Nothing Then
-        lbl.Visible = False
-    End If
-    On Error GoTo 0
-End Sub
-
-'==============================================================================
-' SUB: CargarOperariasPorFecha
-' Propósito: Actualiza el combo de operarias con las que tienen asignaciones
-'            en la fecha especificada
-'==============================================================================
-Public Sub CargarOperariasPorFecha(ws As Worksheet, fecha As Date)
-    Dim cboOperaria As Object
-    Dim colOperarias As Collection
-    Dim operaria As Variant
-    
-    ' Mostrar indicador de carga
-    Call MostrarIndicadorCarga(ws)
-    
-    ' Pequeña pausa para que el usuario vea el mensaje
-    Application.Wait Now + TimeValue("00:00:01")
-    
-    On Error Resume Next
-    Set cboOperaria = ws.OLEObjects("cboOperariaReporte").Object
-    If cboOperaria Is Nothing Then
-        Call OcultarIndicadorCarga(ws)
-        Exit Sub
-    End If
-    On Error GoTo 0
-    
-    ' Obtener operarias con asignaciones en la fecha especificada
-    Set colOperarias = ObtenerOperariasPorFecha(fecha)
-    
-    ' Llenar combo
-    cboOperaria.Clear
-    For Each operaria In colOperarias
-        cboOperaria.AddItem operaria
-    Next operaria
-    
-    If cboOperaria.ListCount > 0 Then
-        cboOperaria.ListIndex = 0
-        cboOperaria.Enabled = True
-    Else
-        cboOperaria.AddItem "No hay operarias con asignaciones en esta fecha"
-        cboOperaria.Enabled = True
-    End If
-    
-    ' Ocultar indicador de carga
-    Call OcultarIndicadorCarga(ws)
-End Sub
-
-'==============================================================================
-' FUNCIÓN: ObtenerOperariasPorFecha
-' Propósito: Retorna una colección de operarias (formato "ID - Nombre") que tienen
-'            asignaciones en la fecha especificada
-'==============================================================================
-Public Function ObtenerOperariasPorFecha(fecha As Date) As Collection
-    Dim ws As Worksheet
-    Dim resultado As New Collection
-    Dim ultFila As Long
-    Dim i As Long
-    Dim data As Variant
-    Dim idOperaria As String
-    Dim nombreOperaria As String
-    Dim itemExiste As Boolean
-    Dim item As Variant
-    
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
-    
-    If ultFila < 4 Then
-        Set ObtenerOperariasPorFecha = resultado
-        Exit Function
-    End If
-    
-    data = ws.Range(ws.Cells(4, 1), ws.Cells(ultFila, 3)).Value
-    
-    For i = 1 To UBound(data, 1)
-        If IsDate(data(i, 1)) Then
-            If Int(data(i, 1)) = Int(fecha) Then
-                idOperaria = Trim(CStr(data(i, 2)))
-                nombreOperaria = Trim(CStr(data(i, 3)))
-                
-                If idOperaria <> "" And nombreOperaria <> "" Then
-                    itemExiste = False
-                    For Each item In resultado
-                        If item = idOperaria & " - " & nombreOperaria Then
-                            itemExiste = True
-                            Exit For
-                        End If
-                    Next item
-                    
-                    If Not itemExiste Then
-                        resultado.Add idOperaria & " - " & nombreOperaria
-                    End If
-                End If
-            End If
-        End If
-    Next i
-    
-    Set ObtenerOperariasPorFecha = resultado
-End Function
-
-'==============================================================================
-' FUNCIÓN: ObtenerFechasConAsignaciones
-' Propósito: Retorna una colección de fechas únicas que tienen asignaciones
-'==============================================================================
-Public Function ObtenerFechasConAsignaciones() As Collection
-    Dim ws As Worksheet
-    Dim colFechas As New Collection
-    Dim ultFila As Long
-    Dim i As Long
-    Dim data As Variant
-    Dim fechaActual As Date
-    Dim fechaExiste As Boolean
-    Dim item As Variant
-    
-    Set ws = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
-    ultFila = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
-    
-    If ultFila >= 4 Then
-        data = ws.Range(ws.Cells(4, 1), ws.Cells(ultFila, 1)).Value
-        For i = 1 To UBound(data, 1)
-            If IsDate(data(i, 1)) Then
-                fechaActual = Int(CDate(data(i, 1)))
-                fechaExiste = False
-                For Each item In colFechas
-                    If item = fechaActual Then
-                        fechaExiste = True
-                        Exit For
-                    End If
-                Next item
-                If Not fechaExiste Then
-                    colFechas.Add fechaActual
-                End If
+        For i = 0 To cboOperaria.ListCount - 1
+            If cboOperaria.List(i) = idOperaria & " - " & nombreOperaria Then
+                cboOperaria.ListIndex = i
+                Exit For
             End If
         Next i
     End If
-    
-    Set ObtenerFechasConAsignaciones = OrdenarCollectionFechas(colFechas, True)
-End Function
-
-'==============================================================================
-' FUNCIÓN: OrdenarCollectionFechas
-' Propósito: Ordena una colección de fechas ascendente o descendentemente
-'==============================================================================
-Private Function OrdenarCollectionFechas(col As Collection, Optional descendente As Boolean = False) As Collection
-    Dim resultado As New Collection
-    Dim i As Long, j As Long
-    Dim tempArray() As Variant
-    Dim temp As Variant
-    
-    If col.Count = 0 Then
-        Set OrdenarCollectionFechas = resultado
-        Exit Function
-    End If
-    
-    ReDim tempArray(1 To col.Count)
-    For i = 1 To col.Count
-        tempArray(i) = col(i)
-    Next i
-    
-    For i = 1 To col.Count - 1
-        For j = i + 1 To col.Count
-            If descendente Then
-                If tempArray(i) < tempArray(j) Then
-                    temp = tempArray(i)
-                    tempArray(i) = tempArray(j)
-                    tempArray(j) = temp
-                End If
-            Else
-                If tempArray(i) > tempArray(j) Then
-                    temp = tempArray(i)
-                    tempArray(i) = tempArray(j)
-                    tempArray(j) = temp
-                End If
-            End If
-        Next j
-    Next i
-    
-    For i = 1 To col.Count
-        resultado.Add tempArray(i)
-    Next i
-    
-    Set OrdenarCollectionFechas = resultado
-End Function
+    On Error GoTo 0
+End Sub
 
 '==============================================================================
 ' FUNCIÓN: ExtraerIDOperaria
@@ -509,44 +304,12 @@ End Function
 ' SUB: ActualizarControlesConSeleccion
 ' Propósito: Sincroniza los controles con los valores seleccionados
 '==============================================================================
-Private Sub ActualizarControlesConSeleccion(ws As Worksheet, fecha As Date, idOperaria As String, nombreOperaria As String)
-    Dim cboFecha As Object
-    Dim cboOperaria As Object
-    Dim i As Integer
-    
-    On Error Resume Next
-    Set cboFecha = ws.OLEObjects("cboFechaReporte").Object
-    Set cboOperaria = ws.OLEObjects("cboOperariaReporte").Object
-    
-    If Not cboFecha Is Nothing Then
-        For i = 0 To cboFecha.ListCount - 1
-            If CDate(cboFecha.List(i)) = fecha Then
-                cboFecha.ListIndex = i
-                Exit For
-            End If
-        Next i
-    End If
-    
-    If Not cboOperaria Is Nothing Then
-        Call CargarOperariasPorFecha(ws, fecha)
-        
-        For i = 0 To cboOperaria.ListCount - 1
-            If cboOperaria.List(i) = idOperaria & " - " & nombreOperaria Then
-                cboOperaria.ListIndex = i
-                Exit For
-            End If
-        Next i
-    End If
-    On Error GoTo 0
-End Sub
-
-'==============================================================================
 ' SUB: EjecutarGenerarReporte
 ' Propósito: Macro asociada al botón GENERAR REPORTE
 '==============================================================================
 Public Sub EjecutarGenerarReporte()
     Dim ws As Worksheet
-    Dim cboFecha As Object
+    Dim txtFecha As Object
     Dim cboOperaria As Object
     Dim fechaSeleccionada As String
     Dim operariaSeleccionada As String
@@ -558,24 +321,24 @@ Public Sub EjecutarGenerarReporte()
         Exit Sub
     End If
     
-    Set cboFecha = ws.OLEObjects("cboFechaReporte").Object
+    Set txtFecha = ws.OLEObjects("txtFechaReporte").Object
     Set cboOperaria = ws.OLEObjects("cboOperariaReporte").Object
     
-    If cboFecha Is Nothing Or cboOperaria Is Nothing Then
+    If txtFecha Is Nothing Or cboOperaria Is Nothing Then
         MsgBox "Controles no encontrados. Reintente.", vbCritical
         Exit Sub
     End If
     
-    fechaSeleccionada = cboFecha.Value
+    fechaSeleccionada = txtFecha.Value
     operariaSeleccionada = cboOperaria.Value
     
-    If fechaSeleccionada = "" Then
-        MsgBox "Seleccione una fecha antes de generar el reporte.", vbExclamation
+    If Not IsDate(fechaSeleccionada) Then
+        MsgBox "Ingrese una fecha válida (dd/mm/yyyy).", vbExclamation
         Exit Sub
     End If
     
-    If operariaSeleccionada = "" Or operariaSeleccionada = "No hay operarias con asignaciones en esta fecha" Or operariaSeleccionada = "Cargando, espere..." Then
-        MsgBox "No hay operarias con asignaciones en la fecha seleccionada.", vbExclamation
+    If operariaSeleccionada = "" Then
+        MsgBox "Seleccione una operaria de la lista.", vbExclamation
         Exit Sub
     End If
     
@@ -606,31 +369,4 @@ Public Sub EjecutarImprimirReporte()
     On Error GoTo 0
     
     ws.PrintOut Preview:=True
-End Sub
-
-'==============================================================================
-' SUB: EjecutarRefrescarOperarias
-' Propósito: Macro asociada al botón REFRESCAR OPERARIAS
-'==============================================================================
-Public Sub EjecutarRefrescarOperarias()
-    Dim ws As Worksheet
-    Dim cboFecha As Object
-    Dim fechaSeleccionada As String
-    
-    On Error Resume Next
-    Set ws = ThisWorkbook.Sheets("REPORTE_ASIGNACIONES_OPERARIA")
-    If ws Is Nothing Then Exit Sub
-    
-    Set cboFecha = ws.OLEObjects("cboFechaReporte").Object
-    If cboFecha Is Nothing Then Exit Sub
-    
-    fechaSeleccionada = cboFecha.Value
-    If fechaSeleccionada = "" Then
-        MsgBox "Seleccione una fecha primero.", vbExclamation
-        Exit Sub
-    End If
-    
-    On Error GoTo 0
-    
-    Call CargarOperariasPorFecha(ws, CDate(fechaSeleccionada))
 End Sub

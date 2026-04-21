@@ -1,7 +1,7 @@
 
 ╔══════════════════════════════════════════════════════════════════════════════════════╗
-║         SISTEMA DE GESTIÓN DE PRODUCCIÓN TEXTIL v3.3 — GUÍA DE INSTALACIÓN          ║
-║                      Última actualización: March 08, 2026                            ║
+║         SISTEMA DE GESTIÓN DE PRODUCCIÓN TEXTIL v3.8 — GUÍA DE INSTALACIÓN          ║
+║                      Última actualización: March 13, 2026                            ║
 ╚══════════════════════════════════════════════════════════════════════════════════════╝
 
 CARACTERÍSTICAS DE LA VERSIÓN v3.2
@@ -15,6 +15,17 @@ CARACTERÍSTICAS DE LA VERSIÓN v3.2
   ✅ NUEVO v3.2 — Estructura unificada: Fila 1 separador, Fila 2 botón VOLVER, Fila 3 headers
   ✅ NUEVO v3.2 — Asignaciones integradas en frmGestionLotes (lista + nueva + editar)
   ✅ NUEVO v3.2 — Variable global PreselectLoteID para preselección automática de lote
+  ✅ NUEVO v3.5 — Limpieza robusta de reportes interactivos
+  ✅ NUEVO v3.6 — Creación de controles ActiveX desacoplada para máxima compatibilidad
+  ✅ NUEVO v3.7 — Fix crítico: Naming atómico de controles dinámicos
+  ✅ NUEVO v3.8 — Unificación de arquitectura de controles (Mirror Pattern)
+
+⚠️ AVISO CRÍTICO DE CONFIGURACIÓN (VBA):
+   Para que el Reporte de Operarias funcione sin interrupciones:
+   1. En el editor VBA (Alt+F11) ve a: Herramientas -> Opciones.
+   2. Pestaña 'General'.
+   3. En 'Captura de errores', selecciona: "Interrupción en errores no controlados".
+   ❌ NO seleccionar "Interrupción en todos los errores".
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

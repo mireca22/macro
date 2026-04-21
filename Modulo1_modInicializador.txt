@@ -69,10 +69,11 @@ End Sub
 Public Sub CrearHojas(Optional reiniciarTotal As Boolean = False)
     Dim ws As Worksheet, nombresHojas As Variant, i&
     nombresHojas = Array("INICIO", "MANUAL", "ASIGNACIONES_DIARIAS", "OPERARIAS", _
-        "REFERENCIAS", "COLORES", "TALLAS", "TAREAS", "LOTES", "EFICIENCIA_OPERARIAS", _
-        "DIAS_NO_LABORALES", "AVANCE_PRODUCCION", "REPORTE_LOTES", "INFORME_CONSOLIDADO", _
-        "RESUMEN_DIARIO", "PRODUCCION_FINALIZADA", "ANALISIS_TIEMPOS", _
-        "ARCHIVO_ASIGNACIONES", "PARAMETROS", "MATRIZ_ASIGNACION", "TRAZABILIDAD_LOTE")
+    "REFERENCIAS", "COLORES", "TALLAS", "TAREAS", "LOTES", "EFICIENCIA_OPERARIAS", _
+    "DIAS_NO_LABORALES", "AVANCE_PRODUCCION", "REPORTE_LOTES", "INFORME_CONSOLIDADO", _
+    "RESUMEN_DIARIO", "PRODUCCION_FINALIZADA", "ANALISIS_TIEMPOS", _
+    "ARCHIVO_ASIGNACIONES", "PARAMETROS", "MATRIZ_ASIGNACION", "TRAZABILIDAD_LOTE", _
+    "REPORTE_ASIGNACIONES_OPERARIA")
 
     If reiniciarTotal Then
         Application.DisplayAlerts = False
@@ -213,6 +214,7 @@ Public Sub CrearDashboardInicio()
     Call CrearBotonDashboard(ws, "REPORTE DE EFICIENCIA", "GenerarReporteEficiencia", 9, 4, RGB(204, 102, 0))
     Call CrearBotonDashboard(ws, "INFORME CONSOLIDADO", "GenerarInformeGerencialProduccion", 11, 4, RGB(44, 62, 80))
     Call CrearBotonDashboard(ws, "REPORTE DE LOTES", "GenerarReporteLotes", 15, 4, RGB(0, 128, 128))
+    Call CrearBotonDashboard(ws, "TRAZABILIDAD PENDIENTES", "GenerarReporteTrazabilidadLotesPendientes", 17, 2, RGB(0, 128, 128))
     Call CrearBotonDashboard(ws, "ACTUALIZAR PROYECCIONES", "RecalcularSistemaLotes", 17, 4, RGB(44, 62, 80))
     Call CrearBotonDashboard(ws, "ASIGNACIONES POR OPERARIA", "MostrarReporteAsignacionesPorOperaria", 19, 4, RGB(0, 112, 192))
 
