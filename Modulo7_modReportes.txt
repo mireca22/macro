@@ -1247,3 +1247,81 @@ SiguienteLote:
         MsgBox "Informe de producción generado (corregido).", vbInformation
 
 End Sub
+
+
+'==============================================================================
+' SUB: GenerarReporteEnHoja
+' Propósito: Calcula la ocupación por operaria vs su capacidad instalada.
+'==============================================================================
+Public Sub GenerarReporteEnHoja(fecha As Date, tipo As String, Optional activar As Boolean = False)
+    Dim wsR As Worksheet, wsA As Worksheet, dictO As Object
+    Dim i As Long, ultF As Long, fila As Long
+    Dim idOp As String, nomOp As String, cap As Double
+    Dim fFila As Date, data As Variant, k As Variant, d As Variant
+    Dim ocu As Double, disp As Double, est As String
+    Dim colOp As Collection
+    
+    Set wsR = ThisWorkbook.Sheets("RESUMEN_DIARIO")
+    Set wsA = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
+    Set dictO = CreateObject("Scripting.Dictionary")
+    
+    ' 1. Inicializar con operarias activas desde caché (Filtro solicitado)
+    Set colOp = ObtenerAllOperarias(True)
+    For Each k In colOp
+        idOp = CStr(k)
+        dictO(idOp) = Array(ObtenerNombreOperaria(idOp), ObtenerHorasDisponiblesOperaria(idOp), 0)
+    Next k
+    
+    ultF = wsA.Cells(wsA.Rows.count, 1).End(xlUp).Row
+    If ultF >= 4 Then
+        data = wsA.Range(wsA.Cells(4, 1), wsA.Cells(ultF, 15)).Value
+        For i = 1 To UBound(data, 1)
+            If IsDate(data(i, 1)) Then
+                If Int(data(i, 1)) = Int(fecha) Then
+                    idOp = Trim(CStr(data(i, 2)))
+                    If dictO.Exists(idOp) Then
+                        d = dictO(idOp): d(2) = d(2) + val(data(i, 14)): dictO(idOp) = d
+                    End If
+                End If
+            End If
+        Next i
+    End If
+    
+    Application.ScreenUpdating = False
+    wsR.Rows("4:" & wsR.Rows.count).ClearContents
+    wsR.Rows("4:" & wsR.Rows.count).Interior.ColorIndex = xlNone
+    
+    fila = 4
+    For Each k In dictO.Keys
+        d = dictO(k)
+        ocu = IIf(d(1) > 0, d(2) / d(1), 0)
+        disp = d(1) - d(2)
+        
+        If ocu > 1.05 Then
+            est = "SOBRECARGA"
+        ElseIf ocu >= 0.9 Then
+            est = "ÓPTIMA"
+        Else
+            est = "DISPONIBLE"
+        End If
+        
+        wsR.Cells(fila, 1).Value = d(0)
+        wsR.Cells(fila, 2).Value = d(1)
+        wsR.Cells(fila, 3).Value = d(2)
+        wsR.Cells(fila, 4).Value = ocu
+        wsR.Cells(fila, 5).Value = disp
+        wsR.Cells(fila, 6).Value = est
+        
+        Select Case est
+            Case "SOBRECARGA": wsR.Cells(fila, 6).Interior.color = RGB(255, 199, 206)
+            Case "ÓPTIMA":     wsR.Cells(fila, 6).Interior.color = RGB(198, 239, 206)
+            Case "DISPONIBLE": wsR.Cells(fila, 6).Interior.color = RGB(255, 235, 156)
+        End Select
+        fila = fila + 1
+    Next k
+    
+    If fila > 4 Then wsR.Range("D4:D" & fila - 1).NumberFormat = "0%"
+    Call AjustarAnchoColumnasInteligente(wsR)
+    If activar Then wsR.Activate
+    Application.ScreenUpdating = True
+End Sub
