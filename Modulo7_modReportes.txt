@@ -4,12 +4,14 @@
 '            en la columna Fecha_Fin_Estimada (columna 11) de la hoja LOTES.
 '==============================================================================
 Public Sub RecalcularSistemaLotes()
-    Dim wsR As Worksheet, wsL As Worksheet, wsT As Worksheet
+    Dim wsR As Worksheet, wsL As Worksheet, wsT As Worksheet, wsAs As Worksheet
     Dim i As Long, ultF As Long, idRef As String
-    Dim cantPend As Long, cantRecibida As Long, unidadesCompletadas As Long
+    Dim cantPend As Long, cantRecibida As Long, unidadesCompletadas As Double
     Dim fInicio As Date, fechaFinEstimada As Date
     Dim tUnitTotal As Long, minutosRequeridos As Double, capD As Long, diasNecesarios As Double
     Dim dContados As Long, fIter As Date
+    Dim dictOps As Object, keyOps As String, dataAs As Variant, nTasks As Long, totalOps As Long
+    Dim porcAvance As Double
     
     Application.ScreenUpdating = False
     On Error GoTo ErrorHandler
@@ -18,6 +20,7 @@ Public Sub RecalcularSistemaLotes()
     Set wsR = ThisWorkbook.Sheets("REFERENCIAS")
     Set wsL = ThisWorkbook.Sheets("LOTES")
     Set wsT = ThisWorkbook.Sheets("TAREAS")
+    Set wsAs = ThisWorkbook.Sheets("ASIGNACIONES_DIARIAS")
     
     ultF = wsR.Cells(wsR.Rows.Count, 1).End(xlUp).Row
     For i = 4 To ultF
@@ -25,13 +28,57 @@ Public Sub RecalcularSistemaLotes()
         If idRef <> "" Then Call ActualizarTiempoTotalReferencia(idRef)
     Next i
     
-    ' 2. Actualizar Fechas Estimadas en Lotes segun unidades pendientes
+    ' 2. Cargar sumatoria de operaciones por lote para recalcular avance (Unidades Terminadas)
+    Set dictOps = CreateObject("Scripting.Dictionary")
+    ultF = wsAs.Cells(wsAs.Rows.Count, 1).End(xlUp).Row
+    If ultF >= 4 Then
+        ' Leemos desde Col D (4) hasta P (16)
+        dataAs = wsAs.Range("D4:P" & ultF).Value
+        For i = 1 To UBound(dataAs, 1)
+            ' Key: Ref|Lote|Color|Talla
+            keyOps = Trim(CStr(dataAs(i, 1))) & "|" & Trim(CStr(dataAs(i, 3))) & "|" & _
+                     Trim(CStr(dataAs(i, 4))) & "|" & Trim(CStr(dataAs(i, 5)))
+            dictOps(keyOps) = dictOps(keyOps) + Val(dataAs(i, 13)) ' Col P es índice 13
+        Next i
+    End If
+
+    ' 3. Actualizar Avances y Fechas Estimadas en Lotes
     ultF = wsL.Cells(wsL.Rows.Count, 1).End(xlUp).Row
     
     For i = 4 To ultF
         idRef = Trim(CStr(wsL.Cells(i, 2).Value))
         cantRecibida = Val(wsL.Cells(i, 5).Value)
-        unidadesCompletadas = Val(wsL.Cells(i, 8).Value)
+        
+        ' --- NUEVO: Sincronización de Unidades Terminadas ---
+        ' Una unidad está terminada solo si pasó por todas las tareas de la referencia
+        nTasks = ObtenerTareasDeReferencia(idRef).Count
+        If nTasks > 0 Then
+            keyOps = idRef & "|" & Trim(CStr(wsL.Cells(i, 1).Value)) & "|" & _
+                     Trim(CStr(wsL.Cells(i, 3).Value)) & "|" & Trim(CStr(wsL.Cells(i, 4).Value))
+            
+            totalOps = 0
+            If dictOps.Exists(keyOps) Then totalOps = dictOps(keyOps)
+            
+            ' Cálculo de unidades equivalentes terminadas
+            unidadesCompletadas = Round(totalOps / nTasks, 2)
+            If unidadesCompletadas > cantRecibida Then unidadesCompletadas = cantRecibida
+            
+            wsL.Cells(i, 8).Value = unidadesCompletadas
+            porcAvance = 0: If cantRecibida > 0 Then porcAvance = Round(unidadesCompletadas / cantRecibida, 4)
+            wsL.Cells(i, 9).Value = porcAvance
+            
+            ' Actualizar Estado visualmente
+            If porcAvance >= 1 Then
+                wsL.Cells(i, 10).Value = "Completada"
+                wsL.Cells(i, 8).Value = cantRecibida ' Sellar al 100%
+            ElseIf porcAvance > 0 Then
+                wsL.Cells(i, 10).Value = "En Proceso"
+            Else
+                wsL.Cells(i, 10).Value = "Pendiente"
+            End If
+        Else
+            unidadesCompletadas = Val(wsL.Cells(i, 8).Value)
+        End If
         
         ' Calcular unidades pendientes (no puede ser negativo)
         cantPend = cantRecibida - unidadesCompletadas
@@ -1244,7 +1291,7 @@ SiguienteLote:
         wsInforme.Columns("B").AutoFit
         wsInforme.Activate
         Application.ScreenUpdating = True
-        MsgBox "Informe de producción generado (corregido).", vbInformation
+        MsgBox "Informe de producción generado.", vbInformation
 
 End Sub
 
