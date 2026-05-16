@@ -1228,70 +1228,70 @@ Sub GenerarInformeGerencialProduccion()
             End If
         End If
             
-SiguienteLote:
-        Next keyLote
-        
-        '--------------------------------------------------------------------------
-        ' PASO 6: Generar informe visual
-        '--------------------------------------------------------------------------
-        wsInforme.Rows("4:" & wsInforme.Rows.count).Clear
-        wsInforme.Rows("4:" & wsInforme.Rows.count).Interior.color = xlNone
-        
-        wsInforme.Range("B4").Value = "INFORME DETALLADO DE PRODUCCIÓN"
-        wsInforme.Range("B4").Font.Size = 14
-        wsInforme.Range("B4").Font.Bold = True
-        
-        wsInforme.Range("B5").Value = Format(Date, "mmmm d \d\e yyyy")
-        wsInforme.Range("B5").Font.Italic = True
-        
-        fila = 7
-        
-        For Each k In dictRefData.Keys
-            arrTemp = dictRefData(k)
+    SiguienteLote:
+            Next keyLote
             
-            Dim totalCantidad As Double
-            Dim totalMinutosReq As Double
-            Dim totalMinutosEjec As Double
-            Dim unidTerm As Double
-            Dim avanceRef As Double
+            '--------------------------------------------------------------------------
+            ' PASO 6: Generar informe visual
+            '--------------------------------------------------------------------------
+            wsInforme.Rows("4:" & wsInforme.Rows.count).Clear
+            wsInforme.Rows("4:" & wsInforme.Rows.count).Interior.color = xlNone
             
-            totalCantidad = CDbl(arrTemp(1))
-            totalMinutosReq = CDbl(arrTemp(2))
-            totalMinutosEjec = CDbl(arrTemp(3))
-            unidTerm = CDbl(arrTemp(4))
+            wsInforme.Range("B4").Value = "INFORME DETALLADO DE PRODUCCIÓN"
+            wsInforme.Range("B4").Font.Size = 14
+            wsInforme.Range("B4").Font.Bold = True
             
-            avanceRef = 0
-            If totalMinutosReq > 0 Then
-                avanceRef = Round(totalMinutosEjec / totalMinutosReq, 4)
-            End If
+            wsInforme.Range("B5").Value = Format(Date, "mmmm d \d\e yyyy")
+            wsInforme.Range("B5").Font.Italic = True
             
-            wsInforme.Cells(fila, 2).Value = k
-            wsInforme.Cells(fila, 2).Font.Bold = True
-            fila = fila + 1
+            fila = 7
             
-            wsInforme.Cells(fila, 2).Value = "Descripción: " & arrTemp(0)
-            fila = fila + 1
+            For Each k In dictRefData.Keys
+                arrTemp = dictRefData(k)
+                
+                Dim totalCantidad As Double
+                Dim totalMinutosReq As Double
+                Dim totalMinutosEjec As Double
+                Dim unidTerm As Double
+                Dim avanceRef As Double
+                
+                totalCantidad = CDbl(arrTemp(1))
+                totalMinutosReq = CDbl(arrTemp(2))
+                totalMinutosEjec = CDbl(arrTemp(3))
+                unidTerm = CDbl(arrTemp(4))
+                
+                avanceRef = 0
+                If totalMinutosReq > 0 Then
+                    avanceRef = Round(totalMinutosEjec / totalMinutosReq, 4)
+                End If
+                
+                wsInforme.Cells(fila, 2).Value = k
+                wsInforme.Cells(fila, 2).Font.Bold = True
+                fila = fila + 1
+                
+                wsInforme.Cells(fila, 2).Value = "Descripción: " & arrTemp(0)
+                fila = fila + 1
+                
+                wsInforme.Cells(fila, 2).Value = "Cantidad Recibida: " & totalCantidad
+                fila = fila + 1
+                
+                wsInforme.Cells(fila, 2).Value = "Avance:"
+                With wsInforme.Cells(fila, 3)
+                    .Value = avanceRef
+                    .NumberFormat = "0.00%"
+                    .FormatConditions.Delete
+                    .FormatConditions.AddDatabar
+                End With
+                fila = fila + 1
+                
+                wsInforme.Cells(fila, 2).Value = "Unidades terminadas: " & Format(unidTerm, "#,##0")
+                fila = fila + 2
+            Next k
             
-            wsInforme.Cells(fila, 2).Value = "Cantidad Recibida: " & totalCantidad
-            fila = fila + 1
-            
-            wsInforme.Cells(fila, 2).Value = "Avance:"
-            With wsInforme.Cells(fila, 3)
-                .Value = avanceRef
-                .NumberFormat = "0.00%"
-                .FormatConditions.Delete
-                .FormatConditions.AddDatabar
-            End With
-            fila = fila + 1
-            
-            wsInforme.Cells(fila, 2).Value = "Unidades terminadas: " & Format(unidTerm, "#,##0")
-            fila = fila + 2
-        Next k
-        
-        wsInforme.Columns("B").AutoFit
-        wsInforme.Activate
-        Application.ScreenUpdating = True
-        MsgBox "Informe de producción generado.", vbInformation
+            wsInforme.Columns("B").AutoFit
+            wsInforme.Activate
+            Application.ScreenUpdating = True
+            MsgBox "Informe de producción generado.", vbInformation
 
 End Sub
 
@@ -1371,4 +1371,17 @@ Public Sub GenerarReporteEnHoja(fecha As Date, tipo As String, Optional activar 
     Call AjustarAnchoColumnasInteligente(wsR)
     If activar Then wsR.Activate
     Application.ScreenUpdating = True
+End Sub
+
+
+'==============================================================================
+' SUB: MostrarEstadisticasDelDia
+' Propósito: Lanza el reporte de ocupación diaria solicitando fecha al usuario.
+'==============================================================================
+Public Sub MostrarEstadisticasDelDia()
+    Dim fStr As String, fRep As Date
+    fStr = InputBox("Fecha Reporte (dd/mm/yyyy):", "Resumen Diario", Format(Date, "dd/mm/yyyy"))
+    If fStr = "" Or Not IsDate(fStr) Then Exit Sub
+    fRep = CDate(fStr)
+    Call GenerarReporteEnHoja(fRep, "DIARIO", True)
 End Sub
