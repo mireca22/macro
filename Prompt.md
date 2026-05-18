@@ -1,11 +1,14 @@
-# Prompt Maestro: Migración Sistema Stella (VBA a Arquitectura Fullstack)
+# Prompt Maestro: Migración Sistema Control de Produccion (VBA a Arquitectura Fullstack)
 
 Actúa como un Arquitecto de Software Senior y Desarrollador Fullstack. Tu objetivo es migrar un sistema de gestión de producción textil (Stella v3.8) basado en Excel/VBA hacia una aplicación web moderna.
+
+**Nota Importante:** El sistema actual ya existe y funciona mediante una macro de Excel. Todo el código fuente y la lógica de negocio que debes analizar están contenidos en los archivos que inician con el nombre `Modulo` (por ejemplo: `Modulo1_modInicializador.txt`, `Modulo3_modGestorAsignaciones.txt`, etc.).
 
 ## 1. Stack Tecnológico
 
 - **Backend:** Java 21, Spring Boot 3.3+, Spring Data JPA, Hibernate, QueryDSL, Spring Security (JWT).
 - **Frontend:** React 18 (Vite), Tailwind CSS, Lucide React, Axios, TanStack Query.
+- **Diseño UI/UX:** Planeación y estructura visual basada en **Claude Design**.
 - **Base de Datos:** PostgreSQL.
 - **Infraestructura:** Docker & Docker Compose (Multi-staging).
 
@@ -68,5 +71,6 @@ Crea los siguientes archivos de configuración:
 1. **Persistencia:** Genera el SQL inicial y las Entidades JPA con validaciones de Hibernate.
 2. **Services:** Implementa la lógica de `PlanningService` para la distribución de carga.
 3. **Security:** Configura Spring Security con JWT y roles para `SUPERVISOR` y `ADMIN`.
-4. **Frontend:** Crea el Dashboard usando `Tailwind CSS` y una tabla de `Trazabilidad de Lotes` que muestre el progreso visual de cada tarea.
+4. **Frontend:** Crea el Dashboard siguiendo los principios de **Claude Design**, usando `Tailwind CSS` y una tabla de `Trazabilidad de Lotes` que muestre el progreso visual de cada tarea.
 5. **DevOps:** Genera los archivos Docker y un script `.env` de ejemplo para cada ambiente.
+6. **Documentación:** Entrega la documentación técnica de arquitectura (diagramas y diseño), el manual de usuario funcional y el manual de despliegue detallado para los diferentes ambientes.

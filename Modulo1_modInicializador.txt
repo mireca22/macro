@@ -200,7 +200,7 @@ Public Sub CrearDashboardInicio()
     ws.Columns("D").ColumnWidth = 35   ' Columna Botones Der
     
     With ws.Range("B2")
-        .Value = "SISTEMA STELLA - GESTIÓN DE PRODUCCIÓN TEXTIL"
+        .Value = "SISTEMA - GESTIÓN DE PRODUCCIÓN TEXTIL"
         .Font.Size = 20: .Font.Bold = True: .Font.Color = RGB(50, 50, 50)
     End With
 
@@ -332,7 +332,7 @@ Public Sub IrAHojaManual(): ThisWorkbook.Sheets("MANUAL").Activate: End Sub
 Public Sub CrearHojaManual()
     Dim ws As Worksheet, f&: Set ws = ThisWorkbook.Sheets("MANUAL")
     ws.Activate: ws.Cells.Clear: f = 2
-    With ws.Cells(f, 2): .Value = "MANUAL DE USO - SISTEMA STELLA": .Font.Size = 20: .Font.Bold = True: End With
+    With ws.Cells(f, 2): .Value = "MANUAL DE USO - SISTEMA": .Font.Size = 20: .Font.Bold = True: End With
     f = f + 3: Call EscribirSeccionManual(ws, f, "1. INICIO DEL DÍA", "Haga clic en RECARGAR CACHÉ al abrir el archivo para asegurar datos frescos.")
     Call EscribirSeccionManual(ws, f, "2. ASIGNACIONES", "Use el botón NUEVA ASIGNACIÓN para distribuir tareas a las operarias.")
 End Sub
